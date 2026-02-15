@@ -1,0 +1,23 @@
+logs/**
+data/**
+**/__pycache__/
+.ipynb_checkpoints/
+pcap_traffic
+pcap_traffic_latest
+zeek_logs
+pcap_connection_index.pkl
+
+
+CLAUDE.md
+ICS-Project/
+ICSGraph/
+docs/
+graphs/
+*.pkl
+# Don’t track local datasets / logs
+data/
+logs/
+
+# Don’t track local datasets / logs
+data/
+logs/
