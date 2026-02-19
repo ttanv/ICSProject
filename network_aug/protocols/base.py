@@ -10,7 +10,7 @@ from .context import ProtocolBuildContext
 
 @dataclass
 class ProtocolBuildResult:
-    """Result returned by protocol handlers after artifact generation."""
+    """Result returned by protocol handlers after artifact generation.""" 
 
     relationship_count: int = 0
     consumed_cids: Set[str] = field(default_factory=set)

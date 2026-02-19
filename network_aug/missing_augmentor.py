@@ -170,50 +170,29 @@ class MissingTrafficAugmentor:
             ),
         )
         modbus_relationships += modbus_result.relationship_count
-
-        monitor_groups, monitor_consumed = group_http_monitor_connections(connections)
-
-        monitor_iterable = (
-            tqdm(monitor_groups, desc="Processing HTTP monitor groups", unit="group") if show_progress else monitor_groups
-        )
-        for group in monitor_iterable:
-            # Skip if all connections are either in base telemetry OR already correlated
-            if all(cid in base_connection_ids or cid in correlated_cids for cid in group.canonical_ids()):
-                continue
-
-            packets = group.packets()
-            if not packets:
-                continue
-
-            connection_key = ConnectionKey(
-                src_ip=group.client_ip,
-                src_port=0,
-                dst_ip=group.server_ip,
-                dst_port=group.service_port,
-                protocol=group.protocol,
-            )
-
-            if not self.config.policy.is_interesting(connection_key, packets):
-                continue
-
-            before_count = len(relationship_statements)
-            rel_type = self._add_http_monitor_group(
-                group,
-                connection_key,
-                packets,
-                asset_statements,
-                service_statements,
-                host_statements,
-                process_statements,
-                runs_statements,
-                relationship_statements,
+        
+        http_result = self._protocol_registry.run(
+            "http_monitor",
+            ProtocolBuildContext(
+                augmentor=self,
+                connections=connections,
+                base_connection_ids=base_connection_ids,
+                correlated_cids=correlated_cids,
+                processed_cids=processed_cids,
+                show_progress=show_progress,
                 process_index=process_index,
-            )
-            added = len(relationship_statements) - before_count
-            http_relationships += max(added, 0)
-            processed_cids.update(group.canonical_ids())
-
-        processed_cids.update(monitor_consumed)
+                telemetry_index=telemetry_index,
+                asset_statements=asset_statements,
+                service_statements=service_statements,
+                host_statements=host_statements,
+                register_statements=register_statements,
+                process_statements=process_statements,
+                runs_statements=runs_statements,
+                relationship_statements=relationship_statements,
+                process_register_statements=process_register_stmts,
+            ),
+        )
+        http_relationships += http_result.relationship_count
 
         collapse_groups, collapse_consumed = group_collapsed_connections(
             connections,
