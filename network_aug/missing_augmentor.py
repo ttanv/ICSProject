@@ -44,6 +44,7 @@ from .features import (
     total_bytes,
 )
 from .modbus_helpers import modbus_transaction_key, register_type_from_function
+from .protocols import ProtocolBuildContext, build_default_registry
 
 from .grouping import (
     CollapsedConnectionGroup,
@@ -76,6 +77,7 @@ class MissingTrafficAugmentor:
 
     def __init__(self, config: AugmentationConfig) -> None:
         self.config = config
+        self._protocol_registry = build_default_registry()
         self._asset_ip_map = self._load_asset_lookup()
         self._asset_metadata: Dict[str, AssetMetadata] = {}  # hostname -> metadata
         self._ip_to_hostname: Dict[str, str] = {}  # IP -> hostname (multi-IP support)
@@ -146,53 +148,30 @@ class MissingTrafficAugmentor:
         else:
             process_index = None
 
-        modbus_groups, modbus_consumed = group_modbus_connections(connections)
-        monitor_groups, monitor_consumed = group_http_monitor_connections(connections)
-
-        modbus_iterable = (
-            tqdm(modbus_groups, desc="Processing Modbus groups", unit="group") if show_progress else modbus_groups
-        )
-        for group in modbus_iterable:
-            # Skip if all connections are either in base telemetry OR already correlated
-            # (correlated connections already have READ/WRITE register attribution)
-            if all(cid in base_connection_ids or cid in correlated_cids for cid in group.canonical_ids()):
-                continue
-            packets = group.packets()
-            if not packets:
-                continue
-
-            connection_key = ConnectionKey(
-                src_ip=group.client_ip,
-                src_port=0,
-                dst_ip=group.server_ip,
-                dst_port=group.service_port,
-                protocol=group.protocol,
-            )
-
-            if not self.config.policy.is_interesting(connection_key, packets):
-                continue
-
-            before_count = len(relationship_statements)
-            rel_type = self._add_modbus_group(
-                group,
-                connection_key,
-                packets,
-                asset_statements,
-                service_statements,
-                host_statements,
-                register_statements,
-                process_statements,
-                runs_statements,
-                relationship_statements,
-                process_register_stmts,
+        modbus_result = self._protocol_registry.run(
+            "modbus",
+            ProtocolBuildContext(
+                augmentor=self,
+                connections=connections,
+                base_connection_ids=base_connection_ids,
+                correlated_cids=correlated_cids,
+                processed_cids=processed_cids,
+                show_progress=show_progress,
                 process_index=process_index,
                 telemetry_index=telemetry_index,
-            )
-            added = len(relationship_statements) - before_count
-            modbus_relationships += max(added, 0)
-            processed_cids.update(group.canonical_ids())
+                asset_statements=asset_statements,
+                service_statements=service_statements,
+                host_statements=host_statements,
+                register_statements=register_statements,
+                process_statements=process_statements,
+                runs_statements=runs_statements,
+                relationship_statements=relationship_statements,
+                process_register_statements=process_register_stmts,
+            ),
+        )
+        modbus_relationships += modbus_result.relationship_count
 
-        processed_cids.update(modbus_consumed)
+        monitor_groups, monitor_consumed = group_http_monitor_connections(connections)
 
         monitor_iterable = (
             tqdm(monitor_groups, desc="Processing HTTP monitor groups", unit="group") if show_progress else monitor_groups
