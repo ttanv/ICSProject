@@ -16,12 +16,15 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Sequence,
     Set,
     Tuple,
 )
 
 from tqdm import tqdm
 
+from .enhancer import _PendingModbusRequest, _RegisterAccumulator
+from .modbus_helpers import modbus_transaction_key, register_type_from_function
 from .models import ConnectionKey, IndexedConnection, PacketRecord
 
 
@@ -72,6 +75,14 @@ class ConnectionStats:
     modbus_unit_ids: Set[int] = field(default_factory=set)
     modbus_registers_seen: Set[int] = field(default_factory=set)
     modbus_transaction_count: int = 0
+    modbus_register_stats: Dict[Tuple[int, Optional[int], str], _RegisterAccumulator] = field(
+        default_factory=dict,
+        repr=False,
+    )
+    _modbus_pending: Dict[Tuple[str, int, str, Optional[int], int], _PendingModbusRequest] = field(
+        default_factory=dict,
+        repr=False,
+    )
 
     # HTTP tracking
     http_methods_seen: Set[str] = field(default_factory=set)
@@ -90,6 +101,176 @@ class ConnectionStats:
     # Sample packets for detailed analysis (limited to save memory)
     _sample_packets: List[PacketRecord] = field(default_factory=list)
     _max_samples: int = 100  # Keep at most 100 sample packets per connection
+
+    @staticmethod
+    def _infer_service_port(packet: PacketRecord) -> Optional[int]:
+        if packet.dst_port == 502 or packet.src_port == 502:
+            return 502
+        if packet.dst_port < 1024:
+            return packet.dst_port
+        if packet.src_port < 1024:
+            return packet.src_port
+        return None
+
+    @staticmethod
+    def _normalize_register_type(register_type: Optional[str]) -> str:
+        return register_type or "unknown"
+
+    def _get_register_acc(
+        self,
+        address: int,
+        unit_id: Optional[int],
+        register_type: str,
+    ) -> _RegisterAccumulator:
+        key = (address, unit_id, register_type)
+        if key not in self.modbus_register_stats:
+            self.modbus_register_stats[key] = _RegisterAccumulator(
+                address=address,
+                unit_id=unit_id,
+                register_type=register_type,
+            )
+        return self.modbus_register_stats[key]
+
+    def _ensure_register_hints(
+        self,
+        addresses: Sequence[int],
+        unit_id: Optional[int],
+        timestamp: float,
+        function_code: Optional[int],
+        register_type: Optional[str],
+    ) -> None:
+        normalized_type = self._normalize_register_type(register_type)
+        for address in addresses:
+            if address is None or address < 0:
+                continue
+            acc = self._get_register_acc(address, unit_id, normalized_type)
+            acc.apply_type_hint(register_type)
+            acc.mark_seen(timestamp, function_code)
+
+    def _accumulate_modbus_registers(self, packet: PacketRecord) -> None:
+        function_code = packet.modbus_function
+        if function_code is None:
+            return
+
+        service_port = self._infer_service_port(packet)
+        if service_port is None:
+            return
+
+        register_type = register_type_from_function(function_code)
+        normalized_type = self._normalize_register_type(register_type)
+        unit_id = packet.modbus_unit_id
+        read_registers = packet.modbus_read_registers or ()
+        write_registers = packet.modbus_write_registers or ()
+        if not read_registers and not write_registers and packet.modbus_registers:
+            read_registers = packet.modbus_registers
+
+        if packet.dst_port == service_port:
+            key = modbus_transaction_key(packet, service_port)
+            if key is not None:
+                self._modbus_pending[key] = _PendingModbusRequest(
+                    timestamp=packet.timestamp,
+                    unit_id=unit_id,
+                    function_code=function_code,
+                    read_registers=read_registers,
+                    write_registers=write_registers,
+                )
+            self._ensure_register_hints(read_registers, unit_id, packet.timestamp, function_code, register_type)
+            self._ensure_register_hints(write_registers, unit_id, packet.timestamp, function_code, register_type)
+
+            if write_registers and packet.modbus_register_values:
+                for address, value in zip(write_registers, packet.modbus_register_values):
+                    if address is None or address < 0:
+                        continue
+                    acc = self._get_register_acc(address, unit_id, normalized_type)
+                    acc.observe(
+                        value=value,
+                        timestamp=packet.timestamp,
+                        function_code=function_code,
+                        role="write",
+                        register_type=register_type,
+                    )
+            return
+
+        if packet.src_port != service_port:
+            return
+
+        key = modbus_transaction_key(packet, service_port)
+        request = self._modbus_pending.pop(key, None)
+        response_values = tuple(packet.modbus_register_values or ())
+
+        if request:
+            req_type = register_type_from_function(request.function_code)
+            normalized_req_type = self._normalize_register_type(req_type)
+            read_addresses = request.read_registers
+            if read_addresses and response_values:
+                trimmed_values = response_values[: len(read_addresses)]
+                for address, value in zip(read_addresses, trimmed_values):
+                    if address is None or address < 0:
+                        continue
+                    acc = self._get_register_acc(address, request.unit_id, normalized_req_type)
+                    acc.observe(
+                        value=value,
+                        timestamp=packet.timestamp,
+                        function_code=request.function_code,
+                        role="read",
+                        register_type=req_type,
+                    )
+            elif read_addresses:
+                self._ensure_register_hints(
+                    read_addresses,
+                    request.unit_id,
+                    packet.timestamp,
+                    request.function_code,
+                    req_type,
+                )
+
+            if request.write_registers and response_values:
+                trimmed_values = response_values[: len(request.write_registers)]
+                for address, value in zip(request.write_registers, trimmed_values):
+                    if address is None or address < 0:
+                        continue
+                    acc = self._get_register_acc(address, request.unit_id, normalized_req_type)
+                    acc.observe(
+                        value=value,
+                        timestamp=packet.timestamp,
+                        function_code=request.function_code,
+                        role="write",
+                        register_type=req_type,
+                    )
+            elif request.write_registers:
+                self._ensure_register_hints(
+                    request.write_registers,
+                    request.unit_id,
+                    packet.timestamp,
+                    request.function_code,
+                    req_type,
+                )
+            return
+
+        fallback_registers = packet.modbus_write_registers or packet.modbus_registers or ()
+        if fallback_registers and response_values:
+            fallback_type = register_type_from_function(function_code)
+            normalized_fallback_type = self._normalize_register_type(fallback_type)
+            trimmed_values = response_values[: len(fallback_registers)]
+            for address, value in zip(fallback_registers, trimmed_values):
+                if address is None or address < 0:
+                    continue
+                acc = self._get_register_acc(address, unit_id, normalized_fallback_type)
+                acc.observe(
+                    value=value,
+                    timestamp=packet.timestamp,
+                    function_code=function_code,
+                    role="write",
+                    register_type=fallback_type,
+                )
+        elif fallback_registers:
+            self._ensure_register_hints(
+                fallback_registers,
+                unit_id,
+                packet.timestamp,
+                function_code,
+                register_type,
+            )
 
     def add_packet(self, packet: PacketRecord) -> None:
         """Update statistics with a new packet."""
@@ -145,8 +326,13 @@ class ConnectionStats:
             self.modbus_unit_ids.add(packet.modbus_unit_id)
         if packet.modbus_registers:
             self.modbus_registers_seen.update(packet.modbus_registers)
+        if packet.modbus_read_registers:
+            self.modbus_registers_seen.update(packet.modbus_read_registers)
+        if packet.modbus_write_registers:
+            self.modbus_registers_seen.update(packet.modbus_write_registers)
         if packet.modbus_transaction_id is not None:
             self.modbus_transaction_count += 1
+        self._accumulate_modbus_registers(packet)
 
         # Track HTTP
         if packet.http_method:
@@ -191,6 +377,10 @@ class ConnectionStats:
             records=self._sample_packets,  # Only sample packets, not all
             origin_timestamp=self.origin_timestamp,
         )
+
+    def get_register_summaries(self) -> Dict[Tuple[int, Optional[int], str], Dict[str, object]]:
+        """Return finalized per-register summaries for this connection."""
+        return {key: acc.to_properties() for key, acc in self.modbus_register_stats.items()}
 
     def duration_seconds(self) -> float:
         """Return connection duration in seconds."""

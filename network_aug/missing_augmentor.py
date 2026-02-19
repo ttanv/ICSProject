@@ -43,6 +43,7 @@ from .features import (
     resolve_mac_addresses,
     total_bytes,
 )
+from .modbus_helpers import modbus_transaction_key, register_type_from_function
 
 from .grouping import (
     CollapsedConnectionGroup,
@@ -57,19 +58,7 @@ from .grouping import (
 logger = logging.getLogger(__name__)
 
 def _modbus_transaction_key(packet: PacketRecord, service_port: int) -> Optional[Tuple[str, int, str, Optional[int], int]]:
-    transaction_id = packet.modbus_transaction_id
-    if transaction_id is None:
-        return None
-    unit_id = packet.modbus_unit_id
-    if packet.dst_port == service_port:
-        client_ip, client_port = packet.src_ip, packet.src_port
-        server_ip = packet.dst_ip
-    elif packet.src_port == service_port:
-        client_ip, client_port = packet.dst_ip, packet.dst_port
-        server_ip = packet.src_ip
-    else:
-        return None
-    return (client_ip, client_port, server_ip, unit_id, transaction_id)
+    return modbus_transaction_key(packet, service_port)
 
 def _generate_node_guid(node_type: str, hostname: str, *identifiers: object) -> str:
     """Replicate the GUID scheme used by the base provenance notebook."""
@@ -80,20 +69,7 @@ def _generate_node_guid(node_type: str, hostname: str, *identifiers: object) -> 
     return f"{{{guid}}}"
 
 def _register_type_from_function(function_code: Optional[int]) -> Optional[str]:
-    mapping = {
-        1: "coil",
-        2: "discreteInput",
-        3: "holdingRegister",
-        4: "inputRegister",
-        5: "coil",
-        6: "holdingRegister",
-        15: "coil",
-        16: "holdingRegister",
-        23: "holdingRegister",
-    }
-    if function_code is None:
-        return None
-    return mapping.get(int(function_code))
+    return register_type_from_function(function_code)
 
 class MissingTrafficAugmentor:
     """Coordinates loading graph outputs, indexing PCAP, and writing augmented Cypher."""

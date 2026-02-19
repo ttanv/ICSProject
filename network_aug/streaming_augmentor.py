@@ -4,11 +4,11 @@ This module provides a complete augmentation pipeline that uses the streaming
 PCAP index, processing files one at a time to handle multi-GB captures without
 running out of memory.
 
-Now includes full correlation support to match the non-streaming MissingTrafficAugmentor:
-- Session-based correlation using sessionPorts/sessionTimestamps
-- Temporal correlation for connections without session metadata
-- Edge enrichment for existing telemetry connections
-- SignalContainer and ACCESSED_SIGNAL generation for Modbus process attribution
+It keeps the streaming memory profile while emitting non-streaming-compatible
+Modbus register artifacts:
+- Register nodes with HAS_REGISTER edges
+- READ_REGISTER / WRITE_REGISTER process attribution edges
+- SDT-based register summary properties
 """
 
 from __future__ import annotations
@@ -34,10 +34,7 @@ from .correlation import (
 from .cypher_reader import CypherConnectionExtractor, ExistingConnection
 from .enhancer import (
     AugmentationConfig,
-    _PendingModbusRequest,
-    _register_type_from_function,
-    _modbus_transaction_key,
-    _SignalAccumulator,
+    _SDTCompressor,
 )
 from .features import (
     PreSortedPackets,
@@ -56,7 +53,7 @@ from .features import (
     total_bytes,
 )
 from .grouping import _is_service_port
-from .models import ConnectionKey, PacketRecord, SignalClass, SignalContainerData, TimeSegment
+from .models import ConnectionKey, PacketRecord
 from .streaming import ConnectionStats, StreamingPCAPIndex
 
 
@@ -75,6 +72,11 @@ def _generate_node_guid_v2(node_type: str, hostname: str, *identifiers: object) 
     return str(uuid.UUID(digest))
 
 
+def _generate_node_guid_v2_braced(node_type: str, hostname: str, *identifiers: object) -> str:
+    """Generate a deterministic GUID compatible with brace-wrapped base exports."""
+    return f"{{{_generate_node_guid_v2(node_type, hostname, *identifiers)}}}"
+
+
 @dataclass
 class CorrelationStats:
     """Statistics about the correlation process."""
@@ -84,7 +86,7 @@ class CorrelationStats:
     session_port_matches: int = 0
     temporal_matches: int = 0
     pcap_only_connections: int = 0
-    process_attributed_signals: int = 0
+    process_attributed_registers: int = 0
 
 
 class StreamingAugmentor:
@@ -94,7 +96,7 @@ class StreamingAugmentor:
     this version also:
     - Correlates PCAP connections to existing telemetry
     - Enriches existing edges with PCAP-derived metrics
-    - Creates SignalContainer nodes and ACCESSED_SIGNAL relationships for Modbus
+    - Creates Register nodes and READ/WRITE_REGISTER relationships for Modbus
     """
 
     def __init__(self, config: AugmentationConfig) -> None:
@@ -187,10 +189,10 @@ class StreamingAugmentor:
         print("Generating augmented graph with correlation...")
         asset_statements: Dict[str, str] = {}
         service_statements: Dict[str, str] = {}
-        signal_statements: Dict[str, str] = {}
+        register_statements: Dict[str, str] = {}
         relationship_statements: List[str] = []
         edge_update_statements: List[str] = []
-        process_signal_statements: List[str] = []
+        process_register_statements: List[str] = []
 
         # Track which PCAP connections have been correlated
         correlated_cids: Set[str] = set()
@@ -255,11 +257,12 @@ class StreamingAugmentor:
             if not src_guid or not dst_guid:
                 continue
 
-            # Combine all packets from correlated PCAP connections
+            # Combine sampled packets from correlated PCAP connections for edge features
             all_packets: List[PacketRecord] = []
             best_confidence = 0.0
             best_method = "unknown"
             representative_anchor: Optional[TelemetryAnchor] = None
+            representative_corr: Optional[CorrelatedConnection] = None
 
             for stats, corr in correlations:
                 all_packets.extend(stats._sample_packets)
@@ -267,8 +270,9 @@ class StreamingAugmentor:
                     best_confidence = corr.confidence
                     best_method = corr.correlation_method
                     representative_anchor = corr.telemetry_anchor
+                    representative_corr = corr
 
-            if not all_packets or representative_anchor is None:
+            if not all_packets or representative_anchor is None or representative_corr is None:
                 continue
 
             anchor = representative_anchor
@@ -306,11 +310,7 @@ class StreamingAugmentor:
             feature_props["correlatedPcapConnections"] = len(correlations)
 
             # Preserve process context reference
-            proc_ctx = ProcessContext.from_connection(
-                next((c for c in existing_connections
-                      if c.src_guid == src_guid and c.dst_guid == dst_guid),
-                     existing_connections[0])
-            ) if existing_connections else None
+            proc_ctx = representative_corr.process_context
 
             if proc_ctx and proc_ctx.is_valid():
                 feature_props["correlatedProcessGuid"] = proc_ctx.process_guid
@@ -351,116 +351,88 @@ class StreamingAugmentor:
 
             edge_update_statements.append(statement)
 
-            # Generate process-to-signal attribution for Modbus
+            # Generate process-to-register attribution for Modbus
             if (
                 self.config.enable_process_attribution
                 and proc_ctx
                 and proc_ctx.is_valid()
                 and base_key.dst_port == 502  # Modbus port
             ):
-                # Collect signal observations for both endpoints
-                client_hostname = self._resolve_hostname(base_key.src_ip)
                 server_hostname = self._resolve_hostname(base_key.dst_ip)
-
-                signal_observations = self._collect_modbus_signals(
-                    packets=all_packets,
-                    client_ip=base_key.src_ip,
-                    server_ip=base_key.dst_ip,
-                    server_port=base_key.dst_port,
-                    segment_duration=self.config.segment_duration,
-                    duty_cycle_threshold=self.config.duty_cycle_threshold,
-                )
-
-                # Ensure server has a NetworkService node for signal observation
-                server_service_guid = self._ensure_network_service_node(
+                server_asset_guid = self._ensure_asset_node(
                     ip=base_key.dst_ip,
-                    port=base_key.dst_port,
-                    protocol=proto,
                     asset_statements=asset_statements,
-                    service_statements=service_statements,
-                    service_name="Modbus Server",
+                )
+                register_summaries = self._merge_register_summaries(
+                    [stats.get_register_summaries() for stats, _ in correlations]
                 )
 
-                # Create SignalContainer nodes for server-side observations
-                for (address, unit_id), signal_data in signal_observations.get("server", {}).items():
-                    if signal_data.total_samples > 0:
-                        self._ensure_signal_container_node(
-                            observer_host=server_hostname,
-                            port=base_key.dst_port,
-                            service_guid=server_service_guid,
-                            signal_data=signal_data,
-                            signal_statements=signal_statements,
-                        )
-
-                # Ensure client has a NetworkService node for signal observation
-                client_service_guid = self._ensure_network_service_node(
-                    ip=base_key.src_ip,
-                    port=0,  # Ephemeral client port normalized to 0
-                    protocol=proto,
-                    asset_statements=asset_statements,
-                    service_statements=service_statements,
-                    service_name="Modbus Client",
-                )
-
-                # Create SignalContainer nodes for client-side observations and track GUIDs
-                client_signal_guids: Dict[Tuple[int, Optional[int]], str] = {}
-                client_signals = signal_observations.get("client", {})
-                for (address, unit_id), signal_data in client_signals.items():
-                    if signal_data.total_samples > 0:
-                        signal_guid = self._ensure_signal_container_node(
-                            observer_host=client_hostname,
-                            port=base_key.dst_port,
-                            service_guid=client_service_guid,
-                            signal_data=signal_data,
-                            signal_statements=signal_statements,
-                        )
-                        client_signal_guids[(address, unit_id)] = signal_guid
-
-                # Generate ACCESSED_SIGNAL relationships
-                if client_signals:
-                    signal_stmts, signal_count = self._generate_process_signal_access(
-                        process_context=proc_ctx,
-                        signal_data_map=client_signals,
-                        signal_guids=client_signal_guids,
-                        correlation_confidence=best_confidence,
+                for (address, unit_id, register_type), summary in register_summaries.items():
+                    self._ensure_register_node(
+                        host=server_hostname,
+                        port=base_key.dst_port,
+                        asset_guid=server_asset_guid,
+                        register_address=address,
+                        unit_id=unit_id,
+                        register_type=register_type,
+                        register_statements=register_statements,
+                        register_summary=summary,
                     )
-                    process_signal_statements.extend(signal_stmts)
-                    self._correlation_stats.process_attributed_signals += signal_count
+
+                register_stmts, register_count = self._generate_process_register_access(
+                    process_context=proc_ctx,
+                    register_summaries=register_summaries,
+                    server_hostname=server_hostname,
+                    server_port=base_key.dst_port,
+                    correlation_confidence=best_confidence,
+                )
+                process_register_statements.extend(register_stmts)
+                self._correlation_stats.process_attributed_registers += register_count
 
         print(f"Generated {len(edge_update_statements)} edge updates")
-        print(f"Generated {len(process_signal_statements)} ACCESSED_SIGNAL relationships")
+        print(f"Generated {len(process_register_statements)} READ/WRITE_REGISTER relationships")
 
         # Phase 3: Process PCAP-only connections (not in telemetry)
         print(f"Phase 3: Processing {len(pcap_only_groups)} PCAP-only server groups...")
         for server_key, group_stats in tqdm(pcap_only_groups.items(), desc="PCAP-only", unit="group"):
             if len(group_stats) == 1:
                 stats = group_stats[0]
-                rel_stmt = self._emit_connection(stats, asset_statements, service_statements)
+                rel_stmt = self._emit_connection(
+                    stats,
+                    asset_statements,
+                    service_statements,
+                    register_statements,
+                )
                 if rel_stmt:
                     relationship_statements.append(rel_stmt)
             else:
-                rel_stmt = self._emit_aggregated_group(group_stats, asset_statements, service_statements)
+                rel_stmt = self._emit_aggregated_group(
+                    group_stats,
+                    asset_statements,
+                    service_statements,
+                    register_statements,
+                )
                 if rel_stmt:
                     relationship_statements.append(rel_stmt)
 
         print(f"Generated {len(relationship_statements)} new PCAP-only relationships")
 
         # Write output
-        total_rels = len(edge_update_statements) + len(relationship_statements) + len(process_signal_statements)
+        total_rels = len(edge_update_statements) + len(relationship_statements) + len(process_register_statements)
         print(f"Writing {total_rels} statements to output...")
         self._write_output(
             asset_statements,
             service_statements,
-            signal_statements,
+            register_statements,
             relationship_statements,
             edge_update_statements,
-            process_signal_statements,
+            process_register_statements,
         )
 
         # Print summary
         self._print_summary()
 
-        node_count = len(asset_statements) + len(service_statements) + len(signal_statements)
+        node_count = len(asset_statements) + len(service_statements) + len(register_statements)
         return node_count, total_rels
 
     def _relationship_properties(
@@ -535,6 +507,7 @@ class StreamingAugmentor:
         stats: ConnectionStats,
         asset_statements: Dict[str, str],
         service_statements: Dict[str, str],
+        register_statements: Dict[str, str],
     ) -> Optional[str]:
         """Emit Cypher statements for a single connection."""
         src_is_service = _is_service_port(stats.origin.src_port)
@@ -570,6 +543,25 @@ class StreamingAugmentor:
         if not src_node_id or not dst_node_id:
             return None
 
+        if server_port == 502:
+            server_asset_guid = self._ensure_asset_node(
+                ip=server_ip,
+                asset_statements=asset_statements,
+            )
+            server_hostname = self._resolve_hostname(server_ip)
+            register_summaries = stats.get_register_summaries()
+            for (address, unit_id, register_type), summary in register_summaries.items():
+                self._ensure_register_node(
+                    host=server_hostname,
+                    port=server_port,
+                    asset_guid=server_asset_guid,
+                    register_address=address,
+                    unit_id=unit_id,
+                    register_type=register_type,
+                    register_statements=register_statements,
+                    register_summary=summary,
+                )
+
         rel_props = stats.to_properties()
 
         return cypher_emit.create_connection_statement(
@@ -584,6 +576,7 @@ class StreamingAugmentor:
         group_stats: List[ConnectionStats],
         asset_statements: Dict[str, str],
         service_statements: Dict[str, str],
+        register_statements: Dict[str, str],
     ) -> Optional[str]:
         """Emit Cypher for an aggregated group of connections."""
         if not group_stats:
@@ -600,7 +593,7 @@ class StreamingAugmentor:
             server_ip, server_port = first.origin.src_ip, first.origin.src_port
             client_ip = first.origin.dst_ip
         else:
-            return self._emit_connection(first, asset_statements, service_statements)
+            return self._emit_connection(first, asset_statements, service_statements, register_statements)
 
         client_ips: Set[str] = set()
         for stats in group_stats:
@@ -662,6 +655,27 @@ class StreamingAugmentor:
         if not src_node_id or not dst_node_id:
             return None
 
+        if server_port == 502:
+            server_asset_guid = self._ensure_asset_node(
+                ip=server_ip,
+                asset_statements=asset_statements,
+            )
+            server_hostname = self._resolve_hostname(server_ip)
+            register_summaries = self._merge_register_summaries(
+                [stats.get_register_summaries() for stats in group_stats]
+            )
+            for (address, unit_id, register_type), summary in register_summaries.items():
+                self._ensure_register_node(
+                    host=server_hostname,
+                    port=server_port,
+                    asset_guid=server_asset_guid,
+                    register_address=address,
+                    unit_id=unit_id,
+                    register_type=register_type,
+                    register_statements=register_statements,
+                    register_summary=summary,
+                )
+
         rel_props: Dict[str, object] = {
             "pcapAugmented": True,
             "aggregatedConnections": len(group_stats),
@@ -694,224 +708,371 @@ class StreamingAugmentor:
             relationship_name=self.config.relationship_name,
         )
 
-    def _collect_modbus_signals(
+    def _merge_register_summaries(
         self,
-        packets: Sequence[PacketRecord],
-        client_ip: str,
-        server_ip: str,
-        server_port: int,
-        segment_duration: float = 3600.0,
-        duty_cycle_threshold: int = 10,
-    ) -> Dict[str, Dict[Tuple[int, Optional[int]], SignalContainerData]]:
-        """Collect signal observations for BOTH endpoints in a Modbus connection.
+        summary_maps: Sequence[Dict[Tuple[int, Optional[int], str], Dict[str, object]]],
+    ) -> Dict[Tuple[int, Optional[int], str], Dict[str, object]]:
+        """Merge per-connection register summaries into one map."""
+        merged: Dict[Tuple[int, Optional[int], str], Dict[str, object]] = {}
+        timeline_source_score: Dict[Tuple[int, Optional[int], str], Tuple[int, int, int, int]] = {}
+        timeline_points_by_key: Dict[Tuple[int, Optional[int], str], List[Tuple[float, int]]] = defaultdict(list)
+        timeline_tolerance_by_key: Dict[Tuple[int, Optional[int], str], List[float]] = defaultdict(list)
 
-        Args:
-            packets: Sequence of packet records from the connection.
-            client_ip: IP address of the Modbus client.
-            server_ip: IP address of the Modbus server.
-            server_port: Modbus service port (typically 502).
-            segment_duration: Duration of each time segment in seconds.
-            duty_cycle_threshold: Transitions per segment to trigger duty cycle mode.
+        def _to_int(props: Dict[str, object], key: str) -> int:
+            value = props.get(key)
+            if value in (None, ""):
+                return 0
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                try:
+                    return int(float(str(value)))
+                except (TypeError, ValueError):
+                    return 0
 
-        Returns:
-            Dict mapping observer role ('client' or 'server') to a dict of
-            (address, unit_id) -> SignalContainerData.
-        """
-        client_hostname = self._resolve_hostname(client_ip)
-        server_hostname = self._resolve_hostname(server_ip)
+        def _to_float(props: Dict[str, object], key: str) -> Optional[float]:
+            value = props.get(key)
+            if value in (None, ""):
+                return None
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
 
-        client_accumulators: Dict[Tuple[int, Optional[int]], _SignalAccumulator] = {}
-        server_accumulators: Dict[Tuple[int, Optional[int]], _SignalAccumulator] = {}
-        pending: Dict[Tuple[str, int, str, Optional[int], int], _PendingModbusRequest] = {}
-
-        def _get_acc(address: int, unit_id: Optional[int], observer: str) -> _SignalAccumulator:
-            key = (address, unit_id)
-            if observer == "client":
-                if key not in client_accumulators:
-                    client_accumulators[key] = _SignalAccumulator(
-                        address=address, unit_id=unit_id, observer_host=client_hostname,
-                        port=server_port, segment_duration=segment_duration,
-                        duty_cycle_threshold=duty_cycle_threshold,
-                    )
-                return client_accumulators[key]
-            else:
-                if key not in server_accumulators:
-                    server_accumulators[key] = _SignalAccumulator(
-                        address=address, unit_id=unit_id, observer_host=server_hostname,
-                        port=server_port, segment_duration=segment_duration,
-                        duty_cycle_threshold=duty_cycle_threshold,
-                    )
-                return server_accumulators[key]
-
-        def _observe_value(
-            address: int, unit_id: Optional[int], value: int, timestamp: float,
-            register_type: Optional[str], observers: List[str],
-        ) -> None:
-            for observer in observers:
-                if address is None or address < 0:
+        def _parse_top_values(encoded: object) -> Dict[int, int]:
+            if not encoded:
+                return {}
+            result: Dict[int, int] = {}
+            for token in str(encoded).split(","):
+                if ":" not in token:
                     continue
-                acc = _get_acc(address, unit_id, observer)
-                acc.observe(value, timestamp, register_type)
-
-        def _mark_seen(
-            addresses: Sequence[int], unit_id: Optional[int],
-            register_type: Optional[str], observers: List[str],
-        ) -> None:
-            for address in addresses:
-                if address is None or address < 0:
+                value_raw, count_raw = token.split(":", 1)
+                try:
+                    result[int(value_raw)] = result.get(int(value_raw), 0) + int(count_raw)
+                except (TypeError, ValueError):
                     continue
-                for observer in observers:
-                    acc = _get_acc(address, unit_id, observer)
-                    acc.apply_type_hint(register_type)
+            return result
 
-        for packet in packets:
-            if packet.modbus_function is None:
-                continue
-            if packet.dst_ip != server_ip and packet.src_ip != server_ip:
-                continue
+        def _parse_function_codes(encoded: object) -> Set[int]:
+            if not encoded:
+                return set()
+            parsed: Set[int] = set()
+            for token in str(encoded).split(","):
+                token = token.strip()
+                if not token:
+                    continue
+                try:
+                    parsed.add(int(token))
+                except ValueError:
+                    continue
+            return parsed
 
-            function_code = packet.modbus_function
-            register_type = _register_type_from_function(function_code)
-            unit_id = packet.modbus_unit_id
-            read_registers = packet.modbus_read_registers or ()
-            write_registers = packet.modbus_write_registers or ()
-            if not read_registers and not write_registers and packet.modbus_registers:
-                read_registers = packet.modbus_registers
+        def _summary_score(props: Dict[str, object]) -> Tuple[int, int, int, int]:
+            """Rank compressed summaries by detail richness.
 
-            # Request packet (client -> server)
-            if packet.dst_port == server_port:
-                key = _modbus_transaction_key(packet, server_port)
-                if key is not None:
-                    pending[key] = _PendingModbusRequest(
-                        timestamp=packet.timestamp, unit_id=unit_id,
-                        function_code=function_code, read_registers=read_registers,
-                        write_registers=write_registers,
-                    )
-                _mark_seen(read_registers, unit_id, register_type, ["client", "server"])
-                _mark_seen(write_registers, unit_id, register_type, ["client", "server"])
-                if write_registers and packet.modbus_register_values:
-                    for address, value in zip(write_registers, packet.modbus_register_values):
-                        _observe_value(address, unit_id, value, packet.timestamp,
-                                       register_type, ["client", "server"])
-                continue
-
-            # Response packet (server -> client)
-            if packet.src_port != server_port:
-                continue
-
-            key = _modbus_transaction_key(packet, server_port)
-            request = pending.pop(key, None)
-            response_values = tuple(packet.modbus_register_values or ())
-
-            if request:
-                req_type = _register_type_from_function(request.function_code)
-                read_addresses = request.read_registers
-                if read_addresses and response_values:
-                    trimmed_values = response_values[:len(read_addresses)]
-                    for address, value in zip(read_addresses, trimmed_values):
-                        _observe_value(address, request.unit_id, value, packet.timestamp,
-                                       req_type, ["client", "server"])
-                elif read_addresses:
-                    _mark_seen(read_addresses, request.unit_id, req_type, ["client", "server"])
-
-                if request.write_registers and response_values:
-                    trimmed_values = response_values[:len(request.write_registers)]
-                    for address, value in zip(request.write_registers, trimmed_values):
-                        _observe_value(address, request.unit_id, value, packet.timestamp,
-                                       req_type, ["client", "server"])
-                elif request.write_registers:
-                    _mark_seen(request.write_registers, request.unit_id, req_type, ["client", "server"])
-                continue
-
-            # Fallback for unmatched responses
-            fallback_registers = packet.modbus_write_registers or packet.modbus_registers or ()
-            if fallback_registers and response_values:
-                fallback_type = _register_type_from_function(function_code)
-                trimmed_values = response_values[:len(fallback_registers)]
-                for address, value in zip(fallback_registers, trimmed_values):
-                    _observe_value(address, unit_id, value, packet.timestamp,
-                                   fallback_type, ["client", "server"])
-            elif fallback_registers:
-                _mark_seen(fallback_registers, unit_id, register_type, ["client", "server"])
-
-        # Finalize all accumulators
-        result: Dict[str, Dict[Tuple[int, Optional[int]], SignalContainerData]] = {
-            "client": {key: acc.finalize() for key, acc in client_accumulators.items()},
-            "server": {key: acc.finalize() for key, acc in server_accumulators.items()},
-        }
-        return result
-
-    def _ensure_signal_container_node(
-        self,
-        observer_host: str,
-        port: int,
-        service_guid: str,
-        signal_data: SignalContainerData,
-        signal_statements: Dict[str, str],
-    ) -> str:
-        """Ensure a SignalContainer node exists in the output.
-
-        Returns the signal GUID.
-        """
-        signal_guid = _generate_node_guid_v2(
-            "SignalContainer", observer_host, signal_data.address, signal_data.unit_id
-        )
-
-        if signal_guid not in signal_statements:
-            signal_statements[signal_guid] = cypher_emit.create_signal_container_statement(
-                signal_guid=signal_guid,
-                properties=signal_data.to_properties(),
-                service_guid=service_guid,
+            Prefer summaries with:
+            1) more SDT points,
+            2) more distinct values,
+            3) more RLE runs,
+            4) more samples.
+            """
+            return (
+                _to_int(props, "timelinePoints"),
+                _to_int(props, "distinctValues"),
+                _to_int(props, "rleRuns"),
+                _to_int(props, "valueSamples"),
             )
 
-        return signal_guid
+        def _parse_timeline(encoded: object) -> List[Tuple[float, int]]:
+            if not encoded:
+                return []
+            text = str(encoded).strip()
+            if not text.startswith("@") or "|" not in text:
+                return []
 
-    def _generate_process_signal_access(
-        self,
-        process_context: ProcessContext,
-        signal_data_map: Dict[Tuple[int, Optional[int]], SignalContainerData],
-        signal_guids: Dict[Tuple[int, Optional[int]], str],
-        correlation_confidence: float,
-    ) -> Tuple[List[str], int]:
-        """Generate ACCESSED_SIGNAL relationship statements for process attribution."""
-        statements: List[str] = []
-        signal_count = 0
+            try:
+                base_raw, points_raw = text[1:].split("|", 1)
+                base_ts = float(base_raw)
+            except (TypeError, ValueError):
+                return []
 
-        if not signal_data_map or not signal_guids:
-            return [], 0
+            parsed: List[Tuple[float, int]] = []
+            for token in points_raw.split(","):
+                if ":" not in token:
+                    continue
+                dt_raw, value_raw = token.split(":", 1)
+                try:
+                    ts = base_ts + float(dt_raw)
+                    value = int(float(value_raw))
+                except (TypeError, ValueError):
+                    continue
+                parsed.append((ts, value))
+            return parsed
 
-        for key, signal_data in signal_data_map.items():
-            signal_guid = signal_guids.get(key)
-            if not signal_guid:
+        for summary_map in summary_maps:
+            for key, incoming in summary_map.items():
+                incoming_dict = dict(incoming)
+                incoming_samples = _to_int(incoming_dict, "valueSamples")
+                incoming_last_seen = _to_float(incoming_dict, "lastSeenAt")
+                incoming_last_write = _to_float(incoming_dict, "lastWriteAt")
+                incoming_tolerance = _to_float(incoming_dict, "sdtTolerance")
+                parsed_timeline = _parse_timeline(incoming_dict.get("valueTimeline"))
+                if parsed_timeline:
+                    timeline_points_by_key[key].extend(parsed_timeline)
+                if incoming_tolerance is not None and incoming_tolerance > 0:
+                    timeline_tolerance_by_key[key].append(incoming_tolerance)
+
+                if key not in merged:
+                    merged[key] = incoming_dict
+                    timeline_source_score[key] = _summary_score(incoming_dict)
+                    continue
+
+                current = merged[key]
+                current_samples = _to_int(current, "valueSamples")
+                current_mean = _to_float(current, "meanValue") or 0.0
+                incoming_mean = _to_float(incoming_dict, "meanValue") or 0.0
+                combined_samples = current_samples + incoming_samples
+
+                for field in ("readCount", "writeCount", "valueSamples", "stateChanges"):
+                    total = _to_int(current, field) + _to_int(incoming_dict, field)
+                    if total > 0:
+                        current[field] = total
+
+                if combined_samples > 0:
+                    weighted_mean = (
+                        (current_mean * current_samples) + (incoming_mean * incoming_samples)
+                    ) / combined_samples
+                    current["meanValue"] = round(weighted_mean, 3)
+
+                current_min = _to_float(current, "minValue")
+                incoming_min = _to_float(incoming_dict, "minValue")
+                if incoming_min is not None and (current_min is None or incoming_min < current_min):
+                    current["minValue"] = int(incoming_min)
+
+                current_max = _to_float(current, "maxValue")
+                incoming_max = _to_float(incoming_dict, "maxValue")
+                if incoming_max is not None and (current_max is None or incoming_max > current_max):
+                    current["maxValue"] = int(incoming_max)
+
+                current["distinctValues"] = max(
+                    _to_int(current, "distinctValues"),
+                    _to_int(incoming_dict, "distinctValues"),
+                )
+
+                current_last_seen = _to_float(current, "lastSeenAt")
+                if incoming_last_seen is not None and (
+                    current_last_seen is None or incoming_last_seen > current_last_seen
+                ):
+                    current["lastSeenAt"] = round(incoming_last_seen, 3)
+                    if "lastValue" in incoming_dict:
+                        current["lastValue"] = incoming_dict["lastValue"]
+                    if "lastFunctionCode" in incoming_dict:
+                        current["lastFunctionCode"] = incoming_dict["lastFunctionCode"]
+
+                current_last_write = _to_float(current, "lastWriteAt")
+                if incoming_last_write is not None and (
+                    current_last_write is None or incoming_last_write > current_last_write
+                ):
+                    current["lastWriteAt"] = round(incoming_last_write, 3)
+
+                current_funcs = _parse_function_codes(current.get("observedFunctions"))
+                incoming_funcs = _parse_function_codes(incoming_dict.get("observedFunctions"))
+                all_funcs = sorted(current_funcs | incoming_funcs)
+                if all_funcs:
+                    current["observedFunctions"] = ",".join(str(code) for code in all_funcs)
+
+                top_values = _parse_top_values(current.get("topValues"))
+                for value, count in _parse_top_values(incoming_dict.get("topValues")).items():
+                    top_values[value] = top_values.get(value, 0) + count
+                if top_values:
+                    ordered = sorted(top_values.items(), key=lambda item: (-item[1], item[0]))[:4]
+                    current["topValues"] = ",".join(f"{value}:{count}" for value, count in ordered)
+
+                # Preserve truncation signal if any contributing chunk was truncated.
+                if current.get("rleTruncated") or incoming_dict.get("rleTruncated"):
+                    current["rleTruncated"] = True
+
+                # Keep compressed timeline fields from the most informative summary.
+                incoming_score = _summary_score(incoming_dict)
+                if incoming_score > timeline_source_score.get(key, (0, 0, 0, 0)):
+                    for field in (
+                        "valueRLE",
+                        "rleRuns",
+                        "rleCompressionRatio",
+                        "rleTruncated",
+                        "valueTimeline",
+                        "timelinePoints",
+                        "compressionRatio",
+                        "sdtTolerance",
+                        "sdtRecompressions",
+                    ):
+                        if field in incoming_dict:
+                            current[field] = incoming_dict[field]
+                    timeline_source_score[key] = incoming_score
+
+        # Rebuild SDT timelines from all contributing timeline points per register.
+        for key, summary in merged.items():
+            points = timeline_points_by_key.get(key) or []
+            if not points:
                 continue
 
-            access_props: Dict[str, object] = {
-                "accessType": "read",
-                "sampleCount": signal_data.total_samples,
+            points.sort(key=lambda item: item[0])
+            deduped: List[Tuple[float, int]] = []
+            for ts, val in points:
+                if not deduped or deduped[-1] != (ts, val):
+                    deduped.append((ts, val))
+
+            tolerances = timeline_tolerance_by_key.get(key) or []
+            seed_tolerance = min(tolerances) if tolerances else 1.0
+            sdt = _SDTCompressor(tolerance=seed_tolerance, max_points=100)
+            for ts, val in deduped:
+                sdt.add(ts, val)
+            timeline = sdt.encode_timeline()
+            if timeline:
+                summary["valueTimeline"] = timeline
+                summary["timelinePoints"] = len(sdt.points)
+                summary["sdtTolerance"] = sdt.tolerance
+                if sdt.recompression_count > 0:
+                    summary["sdtRecompressions"] = sdt.recompression_count
+                elif "sdtRecompressions" in summary:
+                    del summary["sdtRecompressions"]
+
+        # Recompute ratios against merged sample counts to keep fields consistent.
+        for summary in merged.values():
+            samples = _to_int(summary, "valueSamples")
+            rle_runs = _to_int(summary, "rleRuns")
+            timeline_points = _to_int(summary, "timelinePoints")
+
+            if samples > 0 and rle_runs > 0:
+                summary["rleCompressionRatio"] = round(samples / rle_runs, 2)
+            if samples > 0 and timeline_points > 0:
+                summary["compressionRatio"] = round(samples / timeline_points, 2)
+
+        return merged
+
+    def _generate_process_register_access(
+        self,
+        process_context: ProcessContext,
+        register_summaries: Dict[Tuple[int, Optional[int], str], Dict[str, object]],
+        server_hostname: str,
+        server_port: int,
+        correlation_confidence: float,
+    ) -> Tuple[List[str], int]:
+        """Generate READ/WRITE_REGISTER relationship statements for process attribution."""
+        statements: List[str] = []
+        edge_count = 0
+        if not register_summaries:
+            return [], 0
+
+        proc_guid_escaped = cypher_emit.escape_cypher_string(process_context.process_guid)
+        for (register_address, unit_id, register_type), summary in register_summaries.items():
+            register_guid = _generate_node_guid_v2_braced(
+                "Register",
+                server_hostname,
+                server_port,
+                unit_id,
+                register_address,
+                register_type,
+            )
+            register_guid_escaped = cypher_emit.escape_cypher_string(register_guid)
+
+            read_count = int(summary.get("readCount") or 0)
+            write_count = int(summary.get("writeCount") or 0)
+
+            common_props: Dict[str, object] = {
                 "correlationConfidence": round(correlation_confidence, 4),
+                "inferredFrom": "pcap",
                 "pcapAugmented": True,
                 "processImage": process_context.process_image,
                 "processId": process_context.process_id,
             }
 
-            if signal_data.signal_class:
-                access_props["signalClass"] = signal_data.signal_class.value
+            if read_count > 0:
+                read_props = {**common_props, "readCount": read_count}
+                if "lastSeenAt" in summary:
+                    read_props["lastSeenAt"] = summary["lastSeenAt"]
+                cypher_props = cypher_emit.format_properties(read_props)
+                statements.append(
+                    f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
+                    f"MATCH (reg:Register {{guid: '{register_guid_escaped}'}})\n"
+                    f"MERGE (proc)-[acc:READ_REGISTER]->(reg)\n"
+                    f"SET acc += {cypher_props}\n"
+                    f"SET acc.pcapAugmented = true;"
+                )
+                edge_count += 1
 
-            if signal_data.global_min is not None:
-                access_props["minValue"] = signal_data.global_min
-            if signal_data.global_max is not None:
-                access_props["maxValue"] = signal_data.global_max
+            if write_count > 0:
+                write_props = {**common_props, "writeCount": write_count}
+                if "lastWriteAt" in summary:
+                    write_props["lastWriteAt"] = summary["lastWriteAt"]
+                cypher_props = cypher_emit.format_properties(write_props)
+                statements.append(
+                    f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
+                    f"MATCH (reg:Register {{guid: '{register_guid_escaped}'}})\n"
+                    f"MERGE (proc)-[acc:WRITE_REGISTER]->(reg)\n"
+                    f"SET acc += {cypher_props}\n"
+                    f"SET acc.pcapAugmented = true;"
+                )
+                edge_count += 1
 
-            statement = cypher_emit.create_accessed_signal_statement(
-                process_guid=process_context.process_guid,
-                signal_guid=signal_guid,
-                properties=access_props,
-            )
+        return statements, edge_count
 
-            statements.append(statement)
-            signal_count += 1
+    def _ensure_asset_node(
+        self,
+        ip: str,
+        asset_statements: Dict[str, str],
+    ) -> str:
+        """Ensure an Asset node exists and return its GUID."""
+        hostname = self._resolve_hostname(ip)
+        asset_guid = _generate_node_guid("Asset", hostname)
+        if asset_guid not in asset_statements:
+            asset_props = {"hostname": hostname, "pcapAugmented": True}
+            if ip != hostname:
+                asset_props["ip"] = ip
+            asset_statements[asset_guid] = cypher_emit.create_asset_statement(asset_guid, asset_props)
+        return asset_guid
 
-        return statements, signal_count
+    def _ensure_register_node(
+        self,
+        host: str,
+        port: int,
+        asset_guid: str,
+        register_address: int,
+        unit_id: Optional[int],
+        register_type: str,
+        register_statements: Dict[str, str],
+        register_summary: Optional[Dict[str, object]] = None,
+    ) -> None:
+        """Ensure a Register node and HAS_REGISTER edge exist in the output."""
+        register_guid = _generate_node_guid_v2_braced(
+            "Register",
+            host,
+            port,
+            unit_id,
+            register_address,
+            register_type,
+        )
+        if register_guid in register_statements:
+            return
+
+        props: Dict[str, object] = {
+            "guid": register_guid,
+            "host": host,
+            "address": register_address,
+            "port": port,
+            "source": "pcap",
+            "registerType": register_type,
+        }
+        if unit_id is not None:
+            props["unitId"] = unit_id
+        if register_summary:
+            props.update(register_summary)
+
+        register_statements[register_guid] = cypher_emit.create_register_statement(
+            register_guid,
+            props,
+            asset_guid,
+        )
 
     def _ensure_network_service_node(
         self,
@@ -924,16 +1085,7 @@ class StreamingAugmentor:
     ) -> Optional[str]:
         """Ensure Asset and NetworkService nodes exist, return NetworkService GUID."""
         hostname = self._resolve_hostname(ip)
-
-        asset_guid = _generate_node_guid("Asset", hostname)
-        if asset_guid not in asset_statements:
-            asset_props = {
-                "hostname": hostname,
-                "pcapAugmented": True,
-            }
-            if ip != hostname:
-                asset_props["ip"] = ip
-            asset_statements[asset_guid] = cypher_emit.create_asset_statement(asset_guid, asset_props)
+        asset_guid = self._ensure_asset_node(ip=ip, asset_statements=asset_statements)
 
         service_guid = _generate_node_guid("NetworkService", hostname, port)
         if service_guid not in service_statements:
@@ -960,10 +1112,10 @@ class StreamingAugmentor:
         self,
         asset_statements: Dict[str, str],
         service_statements: Dict[str, str],
-        signal_statements: Dict[str, str],
+        register_statements: Dict[str, str],
         relationship_statements: List[str],
         edge_update_statements: List[str],
-        process_signal_statements: List[str],
+        process_register_statements: List[str],
     ) -> None:
         """Write augmented Cypher to output file."""
         import shutil
@@ -979,10 +1131,10 @@ class StreamingAugmentor:
                     f.write(stmt + "\n")
                 f.write("\n")
 
-            # Process-to-signal relationships
-            if process_signal_statements:
-                f.write("// ACCESSED_SIGNAL relationships for process attribution\n")
-                for stmt in process_signal_statements:
+            # Process-to-register relationships
+            if process_register_statements:
+                f.write("// READ/WRITE_REGISTER relationships for process attribution\n")
+                for stmt in process_register_statements:
                     f.write(stmt + "\n")
                 f.write("\n")
 
@@ -999,9 +1151,9 @@ class StreamingAugmentor:
                     f.write(stmt + "\n")
                 f.write("\n")
 
-            if signal_statements:
-                f.write("// SignalContainer nodes\n")
-                for stmt in sorted(signal_statements.values()):
+            if register_statements:
+                f.write("// PCAP-Inferred Register Nodes\n")
+                for stmt in sorted(register_statements.values()):
                     f.write(stmt + "\n")
                 f.write("\n")
 
@@ -1024,4 +1176,4 @@ class StreamingAugmentor:
         print(f"  - Session port matches: {self._correlation_stats.session_port_matches}")
         print(f"  - Temporal matches: {self._correlation_stats.temporal_matches}")
         print(f"PCAP-only connections: {self._correlation_stats.pcap_only_connections}")
-        print(f"Process-attributed signals: {self._correlation_stats.process_attributed_signals}")
+        print(f"Process-attributed registers: {self._correlation_stats.process_attributed_registers}")

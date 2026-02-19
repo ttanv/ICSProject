@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--disable-process-attribution",
         action="store_true",
-        help="Disable generation of ACCESSED_REGISTER relationships linking processes to Modbus registers.",
+        help="Disable generation of READ_REGISTER/WRITE_REGISTER relationships linking processes to Modbus registers.",
     )
     parser.add_argument(
         "--telemetry-attribution-only",
