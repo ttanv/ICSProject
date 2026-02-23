@@ -200,6 +200,101 @@ def extract_tls_sni(packets: Sequence[PacketRecord]) -> Optional[str]:
     return None
 
 
+def extract_mqtt_features(packets: Sequence[PacketRecord]) -> Dict[str, Optional[object]]:
+    """Extract compact MQTT metadata from a packet sequence."""
+    packet_types: List[str] = []
+    topics: List[str] = []
+    client_ids: List[str] = []
+    qos_levels: set[int] = set()
+    publish_count = 0
+    subscribe_count = 0
+    retain_seen = False
+
+    for pkt in packets:
+        pkt_type = (pkt.mqtt_packet_type or "").upper()
+        if pkt_type:
+            if pkt_type not in packet_types:
+                packet_types.append(pkt_type)
+            if pkt_type == "PUBLISH":
+                publish_count += 1
+            elif pkt_type in {"SUBSCRIBE", "UNSUBSCRIBE"}:
+                subscribe_count += 1
+        if pkt.mqtt_topic:
+            topic = pkt.mqtt_topic[:120]
+            if topic not in topics:
+                topics.append(topic)
+        if pkt.mqtt_client_id:
+            cid = pkt.mqtt_client_id[:120]
+            if cid not in client_ids:
+                client_ids.append(cid)
+        if pkt.mqtt_qos is not None and 0 <= pkt.mqtt_qos <= 2:
+            qos_levels.add(pkt.mqtt_qos)
+        if pkt.mqtt_retain is True:
+            retain_seen = True
+
+    return {
+        "packetTypes": ",".join(packet_types[:8]) or None,
+        "topics": ",".join(topics[:8]) or None,
+        "clientIds": ",".join(client_ids[:4]) or None,
+        "qosLevels": ",".join(str(q) for q in sorted(qos_levels)) or None,
+        "publishCount": publish_count if publish_count > 0 else None,
+        "subscribeCount": subscribe_count if subscribe_count > 0 else None,
+        "retainSeen": retain_seen if packet_types else None,
+    }
+
+
+def extract_opcua_features(packets: Sequence[PacketRecord]) -> Dict[str, Optional[object]]:
+    """Extract compact OPC UA metadata from a packet sequence."""
+    message_types: List[str] = []
+    chunk_types: List[str] = []
+    endpoint_urls: List[str] = []
+    security_policies: List[str] = []
+    secure_channel_ids: set[int] = set()
+    open_count = 0
+    msg_count = 0
+    close_count = 0
+
+    for pkt in packets:
+        message_type = (pkt.opcua_message_type or "").upper()
+        if message_type:
+            if message_type not in message_types:
+                message_types.append(message_type)
+            if message_type == "OPN":
+                open_count += 1
+            elif message_type == "MSG":
+                msg_count += 1
+            elif message_type == "CLO":
+                close_count += 1
+
+        chunk_type = (pkt.opcua_chunk_type or "").upper()
+        if chunk_type and chunk_type in {"F", "C", "A"} and chunk_type not in chunk_types:
+            chunk_types.append(chunk_type)
+
+        if pkt.opcua_endpoint_url:
+            endpoint = pkt.opcua_endpoint_url[:200]
+            if endpoint not in endpoint_urls:
+                endpoint_urls.append(endpoint)
+
+        if pkt.opcua_security_policy_uri:
+            policy = pkt.opcua_security_policy_uri[:200]
+            if policy not in security_policies:
+                security_policies.append(policy)
+
+        if pkt.opcua_secure_channel_id is not None and pkt.opcua_secure_channel_id >= 0:
+            secure_channel_ids.add(pkt.opcua_secure_channel_id)
+
+    return {
+        "messageTypes": ",".join(message_types[:8]) or None,
+        "chunkTypes": ",".join(chunk_types[:3]) or None,
+        "endpointUrls": ",".join(endpoint_urls[:4]) or None,
+        "securityPolicies": ",".join(security_policies[:4]) or None,
+        "secureChannelIds": ",".join(str(scid) for scid in sorted(secure_channel_ids)[:8]) or None,
+        "openCount": open_count if open_count > 0 else None,
+        "msgCount": msg_count if msg_count > 0 else None,
+        "closeCount": close_count if close_count > 0 else None,
+    }
+
+
 def mean_rtt_ms(connection: ConnectionKey, packets: Sequence[PacketRecord]) -> float:
     """Estimate mean RTT in milliseconds using TCP seq/ack tracking.
 

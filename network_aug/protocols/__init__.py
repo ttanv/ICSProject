@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from .base import ProtocolBuildResult, ProtocolHandler
 from .context import ProtocolBuildContext
-from .modbus_handler import ModbusProtocolHandler
 from .http_monitor_handler import HttpMonitorHandler
+from .modbus_handler import ModbusProtocolHandler
+from .mqtt_handler import MqttProtocolHandler
+from .opcua_handler import OpcUaProtocolHandler
 from .registry import ProtocolRegistry
 
 __all__ = [
@@ -22,4 +24,6 @@ def build_default_registry() -> ProtocolRegistry:
     registry = ProtocolRegistry()
     registry.register(ModbusProtocolHandler())
     registry.register(HttpMonitorHandler())
+    registry.register(MqttProtocolHandler())
+    registry.register(OpcUaProtocolHandler())
     return registry

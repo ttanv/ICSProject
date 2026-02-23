@@ -75,18 +75,37 @@ def create_register_statement(
     properties: Dict[str, object],
     asset_guid: str,
 ) -> str:
-    """Return a MERGE statement for a Register node and related edges."""
+    """Backward-compatible wrapper that emits Register-flavored ICSSignal nodes."""
+    return create_ics_signal_statement(
+        signal_guid=register_guid,
+        properties=properties,
+        asset_guid=asset_guid,
+        include_legacy_register=True,
+    )
+
+
+def create_ics_signal_statement(
+    signal_guid: str,
+    properties: Dict[str, object],
+    asset_guid: str,
+    *,
+    include_legacy_register: bool = False,
+) -> str:
+    """Return a MERGE statement for an ICSSignal node and ownership edges."""
     property_map = format_properties(properties)
-    reg_guid = escape_cypher_string(register_guid)
+    sig_guid = escape_cypher_string(signal_guid)
     asset = escape_cypher_string(asset_guid)
-    return (
+    statement = (
         f"MATCH (m1:Asset {{guid: '{asset}'}})\n"
-        f"MERGE (n:Register {{guid: '{reg_guid}'}})\n"
+        f"MERGE (n:ICSSignal {{guid: '{sig_guid}'}})\n"
         f"ON CREATE SET n += {property_map}\n"
         f"SET n += {property_map}\n"
         f"SET n.pcapAugmented = true\n"
-        f"MERGE (m1)-[:HAS_REGISTER]->(n);"
+        f"MERGE (m1)-[:HAS_SIGNAL]->(n)\n"
     )
+    if include_legacy_register:
+        statement += "SET n:Register\nMERGE (m1)-[:HAS_REGISTER]->(n)\n"
+    return statement.rstrip()
 
 
 def create_virtual_process_statement(

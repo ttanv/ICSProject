@@ -21,6 +21,8 @@ from dataclasses import asdict
 
 from tqdm import tqdm
 
+from .mqtt_helpers import MQTTDetails, parse_mqtt_details
+from .opcua_helpers import OPCUADetails, OPCUA_PORTS, parse_opcua_details
 from .models import ConnectionKey, IndexedConnection, PacketRecord
 
 
@@ -119,9 +121,28 @@ class ScapyPCAPConnectionIndex:
 
                         src_mac, dst_mac = _extract_mac_addresses(packet)
                         tcp_flags, tcp_seq, tcp_ack = _extract_tcp_metadata(packet)
+                        transport_payload = _extract_transport_payload(packet, layer_info.protocol)
                         payload_len = _infer_payload_length(packet, layer_info.protocol)
                         http_meta = _extract_http_metadata(packet)
                         tls_sni = _extract_tls_sni(packet)
+                        mqtt_details = (
+                            parse_mqtt_details(
+                                transport_payload,
+                                layer_info.src_port,
+                                layer_info.dst_port,
+                            )
+                            if layer_info.protocol == "tcp"
+                            else MQTTDetails()
+                        )
+                        opcua_details = (
+                            parse_opcua_details(
+                                transport_payload,
+                                layer_info.src_port,
+                                layer_info.dst_port,
+                            )
+                            if layer_info.protocol == "tcp"
+                            else OPCUADetails()
+                        )
 
                         modbus_details = _extract_modbus_details(packet, layer_info)
 
@@ -155,6 +176,26 @@ class ScapyPCAPConnectionIndex:
                             http_status=http_meta.get("status"),
                             http_content_type=http_meta.get("content_type"),
                             tls_sni=tls_sni,
+                            mqtt_packet_type=mqtt_details.packet_type,
+                            mqtt_packet_type_code=mqtt_details.packet_type_code,
+                            mqtt_topic=mqtt_details.topic,
+                            mqtt_qos=mqtt_details.qos,
+                            mqtt_retain=mqtt_details.retain,
+                            mqtt_dup=mqtt_details.dup,
+                            mqtt_client_id=mqtt_details.client_id,
+                            mqtt_keepalive=mqtt_details.keepalive,
+                            mqtt_packet_id=mqtt_details.packet_id,
+                            mqtt_payload_size=mqtt_details.payload_size,
+                            opcua_message_type=opcua_details.message_type,
+                            opcua_chunk_type=opcua_details.chunk_type,
+                            opcua_message_size=opcua_details.message_size,
+                            opcua_secure_channel_id=opcua_details.secure_channel_id,
+                            opcua_endpoint_url=opcua_details.endpoint_url,
+                            opcua_security_policy_uri=opcua_details.security_policy_uri,
+                            opcua_service_type=opcua_details.service_type,
+                            opcua_operation=opcua_details.operation,
+                            opcua_request_id=opcua_details.request_id,
+                            opcua_node_ids=opcua_details.node_ids,
                             modbus_function=modbus_details.function_code,
                             modbus_unit_id=modbus_details.unit_id,
                             modbus_registers=modbus_details.registers,
@@ -249,6 +290,9 @@ def detect_high_level_protocol(packet, src_port: int, dst_port: int, protocol: s
         443: "HTTPS",
         445: "SMB",
         502: "Modbus",
+        4840: "OPCUA",
+        1883: "MQTT",
+        8883: "MQTT",
         8080: "HTTP",
         8443: "HTTPS",
         1433: "MSSQL",
@@ -266,6 +310,21 @@ def detect_high_level_protocol(packet, src_port: int, dst_port: int, protocol: s
 
     proto = protocol.lower()
     if proto == "tcp":
+        payload = bytes(packet[TCP].payload) if TCP in packet and packet[TCP].payload else b""
+        mqtt_details = parse_mqtt_details(
+            payload,
+            src_port,
+            dst_port,
+        )
+        mqtt_on_known_port = src_port in {1883, 8883} or dst_port in {1883, 8883}
+        mqtt_on_nonstandard_port = mqtt_details.packet_type_code == 1
+        if mqtt_details.packet_type_code is not None and (mqtt_on_known_port or mqtt_on_nonstandard_port):
+            return "MQTT"
+        opcua_details = parse_opcua_details(payload, src_port, dst_port)
+        opcua_on_known_port = src_port in OPCUA_PORTS or dst_port in OPCUA_PORTS
+        opcua_on_nonstandard_port = opcua_details.strong_match
+        if opcua_details.message_type is not None and (opcua_on_known_port or opcua_on_nonstandard_port):
+            return "OPCUA"
         if _is_http_like(packet):
             return "HTTP"
         if _is_tls(packet):
@@ -408,6 +467,19 @@ def _infer_payload_length(packet, protocol: str) -> int:
         return len(raw)
     except Exception:
         return 0
+
+
+def _extract_transport_payload(packet, protocol: str) -> bytes:
+    """Return transport payload bytes for TCP/UDP packets."""
+    proto = (protocol or "").lower()
+    try:
+        if proto == "tcp" and TCP in packet:
+            return bytes(packet[TCP].payload or b"")
+        if proto == "udp" and UDP in packet:
+            return bytes(packet[UDP].payload or b"")
+    except Exception:
+        return b""
+    return b""
 
 
 def _extract_http_metadata(packet) -> dict[str, Optional[object]]:

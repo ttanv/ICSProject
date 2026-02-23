@@ -98,6 +98,9 @@ class AugmentationConfig:
             445: "SMB",
             502: "Modbus",
             1433: "SQL",
+            1883: "MQTT",
+            8883: "MQTT TLS",
+            4840: "OPC UA",
             3389: "RDP",
             44818: "EtherNet/IP",
         }

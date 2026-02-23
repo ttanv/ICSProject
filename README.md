@@ -4,7 +4,7 @@ PCAP-to-graph augmentation pipeline for ICS provenance analysis.
 
 This repository enriches a base Neo4j Cypher export (from host telemetry) with network evidence from PCAP files, including:
 - missing network connections,
-- protocol-aware metadata (for example Modbus/HTTP/TLS fields),
+- protocol-aware metadata (for example Modbus/HTTP/TLS/MQTT fields),
 - correlation of PCAP flows to telemetry connections,
 - optional process-to-register attribution,
 - optional raw signal persistence in DuckDB.
@@ -94,6 +94,11 @@ python -m network_aug \
   --pcap-dir pcap_traffic \
   --streaming
 ```
+
+Streaming mode now emits the same Modbus register artifacts as non-streaming:
+- `Register` nodes + `HAS_REGISTER`
+- process attribution via `READ_REGISTER` / `WRITE_REGISTER`
+- SDT/RLE register summary fields (for example `valueTimeline`, `sdtTolerance`)
 
 ### 3) Rebuild PCAP index cache
 

@@ -82,6 +82,7 @@ WELL_KNOWN_SERVICE_PORTS: frozenset[int] = frozenset({
     11211,        # Memcached
     27017,        # MongoDB
     44818,        # EtherNet/IP
+    4840,         # OPC UA
     47808,        # BACnet
 })
 

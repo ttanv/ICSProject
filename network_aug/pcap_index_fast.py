@@ -24,6 +24,8 @@ from typing import (
 
 from tqdm import tqdm
 
+from .mqtt_helpers import MQTTDetails, MQTT_PORTS, parse_mqtt_details
+from .opcua_helpers import OPCUADetails, OPCUA_PORTS, parse_opcua_details
 from .models import ConnectionKey, IndexedConnection, PacketRecord
 
 
@@ -59,6 +61,9 @@ WELL_KNOWN_PROTOCOLS: Dict[int, str] = {
     443: "HTTPS",
     445: "SMB",
     502: "Modbus",
+    4840: "OPCUA",
+    1883: "MQTT",
+    8883: "MQTT",
     1433: "MSSQL",
     3306: "MySQL",
     3389: "RDP",
@@ -68,7 +73,7 @@ WELL_KNOWN_PROTOCOLS: Dict[int, str] = {
 }
 
 # Ports that need detailed protocol extraction
-INTERESTING_PORTS = frozenset({80, 443, 502, 8080, 8443})
+INTERESTING_PORTS = frozenset({80, 443, 502, 1883, 4840, 8080, 8443, 8883})
 
 
 def _tcp_flags_to_str(flags: int) -> str:
@@ -111,6 +116,16 @@ def _detect_protocol_fast(
 
     # Payload-based detection for TCP
     if protocol == "tcp" and payload:
+        mqtt_details = parse_mqtt_details(payload, src_port, dst_port)
+        mqtt_on_known_port = src_port in MQTT_PORTS or dst_port in MQTT_PORTS
+        mqtt_on_nonstandard_port = mqtt_details.packet_type_code == 1
+        if mqtt_details.packet_type_code is not None and (mqtt_on_known_port or mqtt_on_nonstandard_port):
+            return "MQTT"
+        opcua_details = parse_opcua_details(payload, src_port, dst_port)
+        opcua_on_known_port = src_port in OPCUA_PORTS or dst_port in OPCUA_PORTS
+        opcua_on_nonstandard_port = opcua_details.strong_match
+        if opcua_details.message_type is not None and (opcua_on_known_port or opcua_on_nonstandard_port):
+            return "OPCUA"
         if _is_http_payload(payload):
             return "HTTP"
         if _is_tls_payload(payload):
@@ -833,10 +848,18 @@ def _parse_packet_fast(
     # Extract protocol-specific metadata only for interesting ports
     http_meta: Dict[str, Optional[str]] = {}
     tls_sni: Optional[str] = None
+    mqtt_details = parse_mqtt_details(payload, src_port, dst_port) if proto_str == "tcp" else MQTTDetails()
+    opcua_details = parse_opcua_details(payload, src_port, dst_port) if proto_str == "tcp" else OPCUADetails()
     modbus_data = (None, None, (), (), (), (), None)
 
     if 502 in (src_port, dst_port):
         modbus_data = _parse_modbus_fast(payload, dst_port, src_port)
+    elif mqtt_details.packet_type_code is not None or src_port in MQTT_PORTS or dst_port in MQTT_PORTS:
+        # Metadata already parsed via parse_mqtt_details() above.
+        pass
+    elif opcua_details.message_type is not None or src_port in OPCUA_PORTS or dst_port in OPCUA_PORTS:
+        # Metadata already parsed via parse_opcua_details() above.
+        pass
     elif _is_http_payload(payload):
         http_meta = _extract_http_metadata_fast(payload)
     elif dst_port in {443, 8443} or src_port in {443, 8443}:
@@ -867,6 +890,26 @@ def _parse_packet_fast(
         http_status=int(http_meta["status"]) if http_meta.get("status") else None,
         http_content_type=http_meta.get("content_type"),
         tls_sni=tls_sni,
+        mqtt_packet_type=mqtt_details.packet_type,
+        mqtt_packet_type_code=mqtt_details.packet_type_code,
+        mqtt_topic=mqtt_details.topic,
+        mqtt_qos=mqtt_details.qos,
+        mqtt_retain=mqtt_details.retain,
+        mqtt_dup=mqtt_details.dup,
+        mqtt_client_id=mqtt_details.client_id,
+        mqtt_keepalive=mqtt_details.keepalive,
+        mqtt_packet_id=mqtt_details.packet_id,
+        mqtt_payload_size=mqtt_details.payload_size,
+        opcua_message_type=opcua_details.message_type,
+        opcua_chunk_type=opcua_details.chunk_type,
+        opcua_message_size=opcua_details.message_size,
+        opcua_secure_channel_id=opcua_details.secure_channel_id,
+        opcua_endpoint_url=opcua_details.endpoint_url,
+        opcua_security_policy_uri=opcua_details.security_policy_uri,
+        opcua_service_type=opcua_details.service_type,
+        opcua_operation=opcua_details.operation,
+        opcua_request_id=opcua_details.request_id,
+        opcua_node_ids=opcua_details.node_ids,
         modbus_function=modbus_data[0],
         modbus_unit_id=modbus_data[1],
         modbus_registers=modbus_data[2],

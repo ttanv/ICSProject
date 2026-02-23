@@ -153,6 +153,26 @@ class PacketRecord:
     http_status: Optional[int] = None
     http_content_type: Optional[str] = None
     tls_sni: Optional[str] = None
+    mqtt_packet_type: Optional[str] = None
+    mqtt_packet_type_code: Optional[int] = None
+    mqtt_topic: Optional[str] = None
+    mqtt_qos: Optional[int] = None
+    mqtt_retain: Optional[bool] = None
+    mqtt_dup: Optional[bool] = None
+    mqtt_client_id: Optional[str] = None
+    mqtt_keepalive: Optional[int] = None
+    mqtt_packet_id: Optional[int] = None
+    mqtt_payload_size: Optional[int] = None
+    opcua_message_type: Optional[str] = None
+    opcua_chunk_type: Optional[str] = None
+    opcua_message_size: Optional[int] = None
+    opcua_secure_channel_id: Optional[int] = None
+    opcua_endpoint_url: Optional[str] = None
+    opcua_security_policy_uri: Optional[str] = None
+    opcua_service_type: Optional[str] = None
+    opcua_operation: Optional[str] = None
+    opcua_request_id: Optional[int] = None
+    opcua_node_ids: Tuple[str, ...] = field(default_factory=tuple)
     modbus_function: Optional[int] = None
     modbus_unit_id: Optional[int] = None
     modbus_registers: Tuple[int, ...] = field(default_factory=tuple)
@@ -185,6 +205,18 @@ class PacketRecord:
                 except (TypeError, ValueError):
                     return None
 
+        def _optional_bool(value: object) -> Optional[bool]:
+            if value in (None, "", "None"):
+                return None
+            if isinstance(value, bool):
+                return value
+            text = str(value).strip().lower()
+            if text in ("1", "true", "yes", "y"):
+                return True
+            if text in ("0", "false", "no", "n"):
+                return False
+            return None
+
         return cls(
             pcap_file=str(data.get("pcap_file", "")),
             packet_index=int(data.get("packet_index", 0)),
@@ -210,6 +242,26 @@ class PacketRecord:
             http_status=_optional_int(data.get("http_status")),
             http_content_type=str(data.get("http_content_type") or "") or None,
             tls_sni=str(data.get("tls_sni") or "") or None,
+            mqtt_packet_type=str(data.get("mqtt_packet_type") or "") or None,
+            mqtt_packet_type_code=_optional_int(data.get("mqtt_packet_type_code")),
+            mqtt_topic=str(data.get("mqtt_topic") or "") or None,
+            mqtt_qos=_optional_int(data.get("mqtt_qos")),
+            mqtt_retain=_optional_bool(data.get("mqtt_retain")),
+            mqtt_dup=_optional_bool(data.get("mqtt_dup")),
+            mqtt_client_id=str(data.get("mqtt_client_id") or "") or None,
+            mqtt_keepalive=_optional_int(data.get("mqtt_keepalive")),
+            mqtt_packet_id=_optional_int(data.get("mqtt_packet_id")),
+            mqtt_payload_size=_optional_int(data.get("mqtt_payload_size")),
+            opcua_message_type=str(data.get("opcua_message_type") or "") or None,
+            opcua_chunk_type=str(data.get("opcua_chunk_type") or "") or None,
+            opcua_message_size=_optional_int(data.get("opcua_message_size")),
+            opcua_secure_channel_id=_optional_int(data.get("opcua_secure_channel_id")),
+            opcua_endpoint_url=str(data.get("opcua_endpoint_url") or "") or None,
+            opcua_security_policy_uri=str(data.get("opcua_security_policy_uri") or "") or None,
+            opcua_service_type=str(data.get("opcua_service_type") or "") or None,
+            opcua_operation=str(data.get("opcua_operation") or "") or None,
+            opcua_request_id=_optional_int(data.get("opcua_request_id")),
+            opcua_node_ids=tuple(str(node) for node in data.get("opcua_node_ids") or []),
             modbus_function=_optional_int(data.get("modbus_function")),
             modbus_unit_id=_optional_int(data.get("modbus_unit_id")),
             modbus_registers=tuple(int(reg) for reg in data.get("modbus_registers") or []),

@@ -36,6 +36,8 @@ from .features import (
     directional_totals,
     directionality_ratio,
     extract_http_features,
+    extract_mqtt_features,
+    extract_opcua_features,
     extract_tls_sni,
     mean_interarrival_time,
     mean_rtt_ms,
@@ -44,6 +46,8 @@ from .features import (
     total_bytes,
 )
 from .modbus_helpers import modbus_transaction_key, register_type_from_function
+from .mqtt_helpers import MQTT_PORTS
+from .opcua_helpers import OPCUA_PORTS
 from .protocols import ProtocolBuildContext, build_default_registry
 
 from .grouping import (
@@ -68,6 +72,30 @@ def _generate_node_guid(node_type: str, hostname: str, *identifiers: object) -> 
     guid_hash = hashlib.md5(combined.encode("utf-8")).digest()
     guid = uuid.UUID(bytes=guid_hash)
     return f"{{{guid}}}"
+
+
+def _generate_signal_guid(protocol: str, host: str, port: int, *identifiers: object) -> str:
+    """Generate deterministic ICSSignal GUID (case-preserving identifiers)."""
+    components = [
+        "ICSSignal",
+        protocol.strip().lower(),
+        host.strip().lower(),
+        str(port),
+    ] + [str(value) for value in identifiers if value not in (None, "")]
+    combined = "|".join(components)
+    guid_hash = hashlib.md5(combined.encode("utf-8")).digest()
+    guid = uuid.UUID(bytes=guid_hash)
+    return f"{{{guid}}}"
+
+
+def _generate_signal_key(protocol: str, host: str, port: int, *identifiers: object) -> str:
+    """Generate canonical ICSSignal identity key."""
+    components = [
+        protocol.strip().lower(),
+        host.strip().lower(),
+        str(port),
+    ] + [str(value) for value in identifiers if value not in (None, "")]
+    return "|".join(components)
 
 def _register_type_from_function(function_code: Optional[int]) -> Optional[str]:
     return register_type_from_function(function_code)
@@ -193,6 +221,55 @@ class MissingTrafficAugmentor:
             ),
         )
         http_relationships += http_result.relationship_count
+
+        mqtt_result = self._protocol_registry.run(
+            "mqtt",
+            ProtocolBuildContext(
+                augmentor=self,
+                connections=connections,
+                base_connection_ids=base_connection_ids,
+                correlated_cids=correlated_cids,
+                processed_cids=processed_cids,
+                show_progress=show_progress,
+                process_index=process_index,
+                telemetry_index=telemetry_index,
+                asset_statements=asset_statements,
+                service_statements=service_statements,
+                host_statements=host_statements,
+                register_statements=register_statements,
+                process_statements=process_statements,
+                runs_statements=runs_statements,
+                relationship_statements=relationship_statements,
+                process_register_statements=process_register_stmts,
+            ),
+        )
+        # MQTT phase 1 emits per-connection relationship enrichment and is
+        # currently tracked under individual relationships.
+        individual_relationships += mqtt_result.relationship_count
+
+        opcua_result = self._protocol_registry.run(
+            "opcua",
+            ProtocolBuildContext(
+                augmentor=self,
+                connections=connections,
+                base_connection_ids=base_connection_ids,
+                correlated_cids=correlated_cids,
+                processed_cids=processed_cids,
+                show_progress=show_progress,
+                process_index=process_index,
+                telemetry_index=telemetry_index,
+                asset_statements=asset_statements,
+                service_statements=service_statements,
+                host_statements=host_statements,
+                register_statements=register_statements,
+                process_statements=process_statements,
+                runs_statements=runs_statements,
+                relationship_statements=relationship_statements,
+                process_register_statements=process_register_stmts,
+            ),
+        )
+        # OPC UA phase 1 is metadata-first and tracked under individual links.
+        individual_relationships += opcua_result.relationship_count
 
         collapse_groups, collapse_consumed = group_collapsed_connections(
             connections,
@@ -660,13 +737,13 @@ class MissingTrafficAugmentor:
             register_summaries = self._collect_modbus_registers(packets, server_ip, group.service_port)
             for (register_address, unit_id, register_type) in register_summaries.keys():
                 register_guids.add(
-                    _generate_node_guid(
-                        "Register",
+                    _generate_signal_guid(
+                        "modbus",
                         server_hostname,
                         group.service_port,
                         unit_id,
-                        register_address,
                         register_type,
+                        register_address,
                     )
                 )
 
@@ -707,6 +784,96 @@ class MissingTrafficAugmentor:
             http_relationships += 1
 
         processed_cids.update(monitor_consumed)
+
+        # MQTT connections (metadata-first) are processed as individual links.
+        mqtt_relationships = 0
+        mqtt_iterable = (
+            tqdm(connections, desc="Processing MQTT connections", unit="connection")
+            if show_progress
+            else connections
+        )
+        for indexed in mqtt_iterable:
+            if indexed.canonical_id in base_connection_ids:
+                continue
+            if indexed.canonical_id in processed_cids:
+                continue
+            if not indexed.records:
+                continue
+            if not self._is_mqtt_indexed_connection(indexed):
+                continue
+
+            orientation = self._orient_mqtt_connection(indexed)
+            if orientation is None:
+                continue
+            client_ip, server_ip, service_port, protocol = orientation
+            connection_key = ConnectionKey(
+                src_ip=client_ip,
+                src_port=0,
+                dst_ip=server_ip,
+                dst_port=service_port,
+                protocol=protocol,
+            )
+            if not self.config.policy.is_interesting(connection_key, indexed.records):
+                continue
+
+            _record_service(client_ip, 0)
+            server_hostname, _, _ = _record_service(server_ip, service_port)
+            mqtt_signal_summaries = self._collect_mqtt_signals(
+                packets=indexed.records,
+                server_ip=server_ip,
+                server_port=service_port,
+            )
+            for topic in mqtt_signal_summaries.keys():
+                register_guids.add(
+                    _generate_signal_guid("mqtt", server_hostname, service_port, topic)
+                )
+            processed_cids.add(indexed.canonical_id)
+            mqtt_relationships += 1
+
+        # OPC UA connections (metadata-first) are processed as individual links.
+        opcua_relationships = 0
+        opcua_iterable = (
+            tqdm(connections, desc="Processing OPC UA connections", unit="connection")
+            if show_progress
+            else connections
+        )
+        for indexed in opcua_iterable:
+            if indexed.canonical_id in base_connection_ids:
+                continue
+            if indexed.canonical_id in processed_cids:
+                continue
+            if not indexed.records:
+                continue
+            if not self._is_opcua_indexed_connection(indexed):
+                continue
+
+            orientation = self._orient_opcua_connection(indexed)
+            if orientation is None:
+                continue
+            client_ip, server_ip, service_port, protocol = orientation
+            connection_key = ConnectionKey(
+                src_ip=client_ip,
+                src_port=0,
+                dst_ip=server_ip,
+                dst_port=service_port,
+                protocol=protocol,
+            )
+            if not self.config.policy.is_interesting(connection_key, indexed.records):
+                continue
+
+            _record_service(client_ip, 0)
+            server_hostname, _, _ = _record_service(server_ip, service_port)
+            opcua_signal_summaries = self._collect_opcua_signals(
+                packets=indexed.records,
+                server_ip=server_ip,
+                server_port=service_port,
+            )
+            for signal_name in opcua_signal_summaries.keys():
+                register_guids.add(
+                    _generate_signal_guid("opcua", server_hostname, service_port, signal_name)
+                )
+            processed_cids.add(indexed.canonical_id)
+            opcua_relationships += 1
 
         # Aggregate collapsed port groups
         collapse_groups, collapse_consumed = group_collapsed_connections(
@@ -752,7 +919,7 @@ class MissingTrafficAugmentor:
             if show_progress
             else connections
         )
-        individual_relationships = 0
+        individual_relationships = mqtt_relationships + opcua_relationships
         for indexed in connection_iterable:
             if indexed.canonical_id in base_connection_ids:
                 continue
@@ -1320,7 +1487,7 @@ class MissingTrafficAugmentor:
         server_port: int,
         correlation_confidence: float,
     ) -> Tuple[List[str], int]:
-        """Generate READ/WRITE_REGISTER relationship statements for process attribution."""
+        """Generate READ/WRITE signal relationship statements for process attribution."""
         from .correlation import ProcessContext  # Import for type hint
 
         statements: List[str] = []
@@ -1330,8 +1497,8 @@ class MissingTrafficAugmentor:
         proc_guid_escaped = cypher_emit.escape_cypher_string(process_context.process_guid)
 
         for (register_address, unit_id, register_type), summary in register_summaries.items():
-            register_guid = _generate_node_guid(
-                "Register", server_hostname, server_port, unit_id, register_address, register_type
+            register_guid = _generate_signal_guid(
+                "modbus", server_hostname, server_port, unit_id, register_type, register_address
             )
             register_guid_escaped = cypher_emit.escape_cypher_string(register_guid)
 
@@ -1356,10 +1523,13 @@ class MissingTrafficAugmentor:
                 cypher_props = cypher_emit.format_properties(read_props)
                 statements.append(
                     f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
-                    f"MATCH (reg:Register {{guid: '{register_guid_escaped}'}})\n"
-                    f"MERGE (proc)-[acc:READ_REGISTER]->(reg)\n"
+                    f"MATCH (reg:ICSSignal {{guid: '{register_guid_escaped}'}})\n"
+                    f"MERGE (proc)-[acc:READ_SIGNAL]->(reg)\n"
                     f"SET acc += {cypher_props}\n"
-                    f"SET acc.pcapAugmented = true"
+                    f"SET acc.pcapAugmented = true\n"
+                    f"MERGE (proc)-[legacy:READ_REGISTER]->(reg)\n"
+                    f"SET legacy += {cypher_props}\n"
+                    f"SET legacy.pcapAugmented = true"
                 )
                 edge_count += 1
 
@@ -1373,10 +1543,13 @@ class MissingTrafficAugmentor:
                 cypher_props = cypher_emit.format_properties(write_props)
                 statements.append(
                     f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
-                    f"MATCH (reg:Register {{guid: '{register_guid_escaped}'}})\n"
-                    f"MERGE (proc)-[acc:WRITE_REGISTER]->(reg)\n"
+                    f"MATCH (reg:ICSSignal {{guid: '{register_guid_escaped}'}})\n"
+                    f"MERGE (proc)-[acc:WRITE_SIGNAL]->(reg)\n"
                     f"SET acc += {cypher_props}\n"
-                    f"SET acc.pcapAugmented = true"
+                    f"SET acc.pcapAugmented = true\n"
+                    f"MERGE (proc)-[legacy:WRITE_REGISTER]->(reg)\n"
+                    f"SET legacy += {cypher_props}\n"
+                    f"SET legacy.pcapAugmented = true"
                 )
                 edge_count += 1
 
@@ -1579,6 +1752,8 @@ class MissingTrafficAugmentor:
         retransmits = count_tcp_retransmits(sorted_packets)
         src_mac, dst_mac = resolve_mac_addresses(connection, sorted_packets)
         http_features = extract_http_features(sorted_packets)
+        mqtt_features = extract_mqtt_features(sorted_packets)
+        opcua_features = extract_opcua_features(sorted_packets)
         tls_sni = extract_tls_sni(sorted_packets)
         rtt_ms = mean_rtt_ms(connection, sorted_packets)
         return {
@@ -1612,8 +1787,391 @@ class MissingTrafficAugmentor:
             "httpMethod": http_features.get("method"),
             "httpStatus": http_features.get("status"),
             "httpContent": http_features.get("content"),
+            "mqttPacketTypes": mqtt_features.get("packetTypes"),
+            "mqttTopics": mqtt_features.get("topics"),
+            "mqttClientIds": mqtt_features.get("clientIds"),
+            "mqttQosLevels": mqtt_features.get("qosLevels"),
+            "mqttPublishCount": mqtt_features.get("publishCount"),
+            "mqttSubscribeCount": mqtt_features.get("subscribeCount"),
+            "mqttRetainSeen": mqtt_features.get("retainSeen"),
+            "opcuaMessageTypes": opcua_features.get("messageTypes"),
+            "opcuaChunkTypes": opcua_features.get("chunkTypes"),
+            "opcuaEndpointUrls": opcua_features.get("endpointUrls"),
+            "opcuaSecurityPolicies": opcua_features.get("securityPolicies"),
+            "opcuaSecureChannelIds": opcua_features.get("secureChannelIds"),
+            "opcuaOpenCount": opcua_features.get("openCount"),
+            "opcuaMsgCount": opcua_features.get("msgCount"),
+            "opcuaCloseCount": opcua_features.get("closeCount"),
             "rttMs": round(rtt_ms, 3) if rtt_ms > 0.0 else None,
         }
+
+    def _is_mqtt_indexed_connection(self, connection: IndexedConnection) -> bool:
+        """Return True if this connection appears to carry MQTT traffic."""
+        if connection.origin.src_port in MQTT_PORTS or connection.origin.dst_port in MQTT_PORTS:
+            return True
+
+        # For non-standard ports, require a parsed CONNECT packet to avoid
+        # classifying arbitrary binary traffic as MQTT.
+        for packet in connection.records:
+            if packet.mqtt_packet_type_code == 1 and (packet.mqtt_packet_type or "").upper() == "CONNECT":
+                return True
+        return False
+
+    def _orient_mqtt_connection(
+        self,
+        connection: IndexedConnection,
+    ) -> Optional[Tuple[str, str, int, str]]:
+        """Orient MQTT traffic as (client_ip, server_ip, service_port, protocol)."""
+        origin = connection.origin
+        if origin.dst_port in MQTT_PORTS and origin.src_port not in MQTT_PORTS:
+            return origin.src_ip, origin.dst_ip, origin.dst_port, origin.protocol
+        if origin.src_port in MQTT_PORTS and origin.dst_port not in MQTT_PORTS:
+            return origin.dst_ip, origin.src_ip, origin.src_port, origin.protocol
+
+        if not connection.records:
+            return None
+
+        first_packet = min(connection.records, key=lambda pkt: pkt.timestamp)
+        if first_packet.dst_port in MQTT_PORTS and first_packet.src_port not in MQTT_PORTS:
+            return first_packet.src_ip, first_packet.dst_ip, first_packet.dst_port, first_packet.protocol
+        if first_packet.src_port in MQTT_PORTS and first_packet.dst_port not in MQTT_PORTS:
+            return first_packet.dst_ip, first_packet.src_ip, first_packet.src_port, first_packet.protocol
+
+        # Non-standard ports: orient by CONNECT packet (client -> broker).
+        connect_packets = [
+            pkt
+            for pkt in connection.records
+            if pkt.mqtt_packet_type_code == 1 and (pkt.mqtt_packet_type or "").upper() == "CONNECT"
+        ]
+        if not connect_packets:
+            return None
+
+        connect_pkt = min(connect_packets, key=lambda pkt: pkt.timestamp)
+        service_port = connect_pkt.dst_port if connect_pkt.dst_port > 0 else connect_pkt.src_port
+        if service_port <= 0:
+            return None
+        return connect_pkt.src_ip, connect_pkt.dst_ip, service_port, connect_pkt.protocol
+
+    def _add_mqtt_connection(
+        self,
+        *,
+        client_ip: str,
+        server_ip: str,
+        service_port: int,
+        protocol: str,
+        packets: Sequence[PacketRecord],
+        asset_statements: Dict[str, str],
+        service_statements: Dict[str, str],
+        host_statements: Dict[str, str],
+        process_statements: Dict[str, str],
+        runs_statements: Dict[str, str],
+        register_statements: Dict[str, str],
+        relationship_statements: List[str],
+        process_register_statements: List[str],
+        process_index: Optional[TemporalProcessIndex] = None,
+    ) -> str:
+        """Add MQTT connection artifacts and return the relationship type."""
+        service_name = self.config.service_map.get(service_port, "MQTT")
+
+        client_node_id: Optional[str] = None
+        client_is_process = False
+        process_entry: Optional[TemporalProcessEntry] = None
+
+        if process_index and packets and not self.config.telemetry_attribution_only:
+            timestamps = [p.timestamp for p in packets]
+            range_start = min(timestamps)
+            range_end = max(timestamps)
+            process_entry = process_index.find_process_for_range(client_ip, range_start, range_end)
+            if process_entry:
+                client_node_id = process_entry.process_guid
+                client_is_process = True
+
+        if client_node_id is None:
+            hostname, ip_address = self._resolve_host(client_ip)
+            asset_guid = self._ensure_asset_node(hostname, ip_address, asset_statements)
+            client_node_id = self._ensure_placeholder_process(
+                hostname,
+                asset_guid,
+                process_statements,
+                runs_statements,
+            )
+            client_is_process = True
+
+        rel_type, dst_label = self._classify_destination(server_ip)
+        server_node_id = self._ensure_network_service_node(
+            ip=server_ip,
+            port=service_port,
+            protocol=protocol,
+            asset_statements=asset_statements,
+            service_statements=service_statements,
+            service_name=service_name,
+            aggregation="mqtt",
+            note="MQTT server inferred from PCAP traffic",
+        )
+
+        server_hostname, server_ip_address = self._resolve_host(server_ip)
+        server_asset_guid = self._ensure_asset_node(
+            server_hostname,
+            server_ip_address,
+            asset_statements,
+        )
+        mqtt_signal_summaries = self._collect_mqtt_signals(
+            packets=packets,
+            server_ip=server_ip,
+            server_port=service_port,
+        )
+        for topic, summary in mqtt_signal_summaries.items():
+            signal_guid = self._ensure_ics_signal_node(
+                protocol="mqtt",
+                host=server_hostname,
+                port=service_port,
+                asset_guid=server_asset_guid,
+                signal_name=topic,
+                register_statements=register_statements,
+                signal_properties={
+                    "signalKind": "topic",
+                    "mqttTopic": topic,
+                    "registerType": "topic",
+                    **summary,
+                },
+                include_legacy_register=False,
+            )
+            if client_is_process and client_node_id and not self.config.telemetry_attribution_only:
+                process_register_statements.extend(
+                    self._build_process_signal_statements(
+                        process_guid=client_node_id,
+                        signal_guid=signal_guid,
+                        summary=summary,
+                        correlation_confidence=1.0 if process_entry else 0.5,
+                        process_image=process_entry.process_image if process_entry else None,
+                        process_id=process_entry.process_id if process_entry else None,
+                        include_legacy_register=False,
+                    )
+                )
+
+        connection_key = ConnectionKey(
+            src_ip=client_ip,
+            src_port=0,
+            dst_ip=server_ip,
+            dst_port=service_port,
+            protocol=protocol,
+        )
+        relationship_properties = self._relationship_properties(connection_key, packets)
+        relationship_properties.update(
+            {
+                "SourcePort": "aggregated",
+                "aggregated": "mqtt",
+                "canonicalCount": 1,
+            }
+        )
+
+        if client_is_process and process_entry and not self.config.telemetry_attribution_only:
+            relationship_properties["temporallyInferred"] = True
+            relationship_properties["correlatedProcessGuid"] = process_entry.process_guid
+            relationship_properties["correlatedProcessImage"] = process_entry.process_image
+            relationship_properties["correlatedProcessId"] = process_entry.process_id
+            relationship_properties["note"] = (
+                f"MQTT traffic temporally correlated to process {process_entry.process_image} "
+                f"(PID {process_entry.process_id}) based on host activity overlap"
+            )
+
+        source_label = "Process" if client_is_process else "NetworkService"
+        relationship_statement = cypher_emit.create_connection_statement(
+            client_node_id,
+            server_node_id,
+            relationship_properties,
+            relationship_name=rel_type,
+            source_label=source_label,
+            dest_label=dst_label,
+        )
+        relationship_statements.append(relationship_statement)
+        return rel_type
+
+    def _is_opcua_indexed_connection(self, connection: IndexedConnection) -> bool:
+        """Return True if this connection appears to carry OPC UA traffic."""
+        if connection.origin.src_port in OPCUA_PORTS or connection.origin.dst_port in OPCUA_PORTS:
+            return True
+
+        # For non-standard ports, require high-confidence HEL/OPN metadata.
+        for packet in connection.records:
+            message_type = (packet.opcua_message_type or "").upper()
+            if message_type == "HEL" and packet.opcua_endpoint_url:
+                return True
+            if message_type == "OPN" and packet.opcua_security_policy_uri:
+                return True
+        return False
+
+    def _orient_opcua_connection(
+        self,
+        connection: IndexedConnection,
+    ) -> Optional[Tuple[str, str, int, str]]:
+        """Orient OPC UA traffic as (client_ip, server_ip, service_port, protocol)."""
+        origin = connection.origin
+        if origin.dst_port in OPCUA_PORTS and origin.src_port not in OPCUA_PORTS:
+            return origin.src_ip, origin.dst_ip, origin.dst_port, origin.protocol
+        if origin.src_port in OPCUA_PORTS and origin.dst_port not in OPCUA_PORTS:
+            return origin.dst_ip, origin.src_ip, origin.src_port, origin.protocol
+
+        if not connection.records:
+            return None
+
+        hel_packets = [
+            pkt for pkt in connection.records if (pkt.opcua_message_type or "").upper() == "HEL"
+        ]
+        if hel_packets:
+            hel_packet = min(hel_packets, key=lambda pkt: pkt.timestamp)
+            service_port = hel_packet.dst_port if hel_packet.dst_port > 0 else hel_packet.src_port
+            if service_port > 0:
+                return hel_packet.src_ip, hel_packet.dst_ip, service_port, hel_packet.protocol
+
+        opn_packets = [
+            pkt for pkt in connection.records if (pkt.opcua_message_type or "").upper() == "OPN"
+        ]
+        if opn_packets:
+            opn_packet = min(opn_packets, key=lambda pkt: pkt.timestamp)
+            service_port = opn_packet.dst_port if opn_packet.dst_port > 0 else opn_packet.src_port
+            if service_port > 0:
+                return opn_packet.src_ip, opn_packet.dst_ip, service_port, opn_packet.protocol
+
+        return None
+
+    def _add_opcua_connection(
+        self,
+        *,
+        client_ip: str,
+        server_ip: str,
+        service_port: int,
+        protocol: str,
+        packets: Sequence[PacketRecord],
+        asset_statements: Dict[str, str],
+        service_statements: Dict[str, str],
+        host_statements: Dict[str, str],
+        process_statements: Dict[str, str],
+        runs_statements: Dict[str, str],
+        register_statements: Dict[str, str],
+        relationship_statements: List[str],
+        process_register_statements: List[str],
+        process_index: Optional[TemporalProcessIndex] = None,
+    ) -> str:
+        """Add OPC UA connection artifacts and return the relationship type."""
+        service_name = self.config.service_map.get(service_port, "OPC UA")
+
+        client_node_id: Optional[str] = None
+        client_is_process = False
+        process_entry: Optional[TemporalProcessEntry] = None
+
+        if process_index and packets and not self.config.telemetry_attribution_only:
+            timestamps = [p.timestamp for p in packets]
+            range_start = min(timestamps)
+            range_end = max(timestamps)
+            process_entry = process_index.find_process_for_range(client_ip, range_start, range_end)
+            if process_entry:
+                client_node_id = process_entry.process_guid
+                client_is_process = True
+
+        if client_node_id is None:
+            hostname, ip_address = self._resolve_host(client_ip)
+            asset_guid = self._ensure_asset_node(hostname, ip_address, asset_statements)
+            client_node_id = self._ensure_placeholder_process(
+                hostname,
+                asset_guid,
+                process_statements,
+                runs_statements,
+            )
+            client_is_process = True
+
+        rel_type, dst_label = self._classify_destination(server_ip)
+        server_node_id = self._ensure_network_service_node(
+            ip=server_ip,
+            port=service_port,
+            protocol=protocol,
+            asset_statements=asset_statements,
+            service_statements=service_statements,
+            service_name=service_name,
+            aggregation="opcua",
+            note="OPC UA server inferred from PCAP traffic",
+        )
+
+        server_hostname, server_ip_address = self._resolve_host(server_ip)
+        server_asset_guid = self._ensure_asset_node(
+            server_hostname,
+            server_ip_address,
+            asset_statements,
+        )
+        opcua_signal_summaries = self._collect_opcua_signals(
+            packets=packets,
+            server_ip=server_ip,
+            server_port=service_port,
+        )
+        for signal_name, summary in opcua_signal_summaries.items():
+            identity_kind = str(summary.get("opcuaIdentityKind") or "nodeid")
+            signal_props: Dict[str, object] = {
+                "signalKind": "tag" if identity_kind == "nodeid" else "channel",
+                **summary,
+            }
+            signal_props.setdefault("opcuaTag", signal_name)
+            if identity_kind != "nodeid":
+                signal_props["opcuaPseudoTag"] = True
+            signal_guid = self._ensure_ics_signal_node(
+                protocol="opcua",
+                host=server_hostname,
+                port=service_port,
+                asset_guid=server_asset_guid,
+                signal_name=signal_name,
+                register_statements=register_statements,
+                signal_properties=signal_props,
+                include_legacy_register=False,
+            )
+            if client_is_process and client_node_id and not self.config.telemetry_attribution_only:
+                process_register_statements.extend(
+                    self._build_process_signal_statements(
+                        process_guid=client_node_id,
+                        signal_guid=signal_guid,
+                        summary=summary,
+                        correlation_confidence=1.0 if process_entry else 0.5,
+                        process_image=process_entry.process_image if process_entry else None,
+                        process_id=process_entry.process_id if process_entry else None,
+                        include_legacy_register=False,
+                    )
+                )
+
+        connection_key = ConnectionKey(
+            src_ip=client_ip,
+            src_port=0,
+            dst_ip=server_ip,
+            dst_port=service_port,
+            protocol=protocol,
+        )
+        relationship_properties = self._relationship_properties(connection_key, packets)
+        relationship_properties.update(
+            {
+                "SourcePort": "aggregated",
+                "aggregated": "opcua",
+                "canonicalCount": 1,
+            }
+        )
+
+        if client_is_process and process_entry and not self.config.telemetry_attribution_only:
+            relationship_properties["temporallyInferred"] = True
+            relationship_properties["correlatedProcessGuid"] = process_entry.process_guid
+            relationship_properties["correlatedProcessImage"] = process_entry.process_image
+            relationship_properties["correlatedProcessId"] = process_entry.process_id
+            relationship_properties["note"] = (
+                f"OPC UA traffic temporally correlated to process {process_entry.process_image} "
+                f"(PID {process_entry.process_id}) based on host activity overlap"
+            )
+
+        source_label = "Process" if client_is_process else "NetworkService"
+        relationship_statement = cypher_emit.create_connection_statement(
+            client_node_id,
+            server_node_id,
+            relationship_properties,
+            relationship_name=rel_type,
+            source_label=source_label,
+            dest_label=dst_label,
+        )
+        relationship_statements.append(relationship_statement)
+        return rel_type
 
     def _collect_modbus_registers(
         self,
@@ -2054,6 +2612,371 @@ class MissingTrafficAugmentor:
 
         return signal_guid
 
+    def _ensure_ics_signal_node(
+        self,
+        *,
+        protocol: str,
+        host: str,
+        port: int,
+        asset_guid: str,
+        signal_name: str,
+        register_statements: Dict[str, str],
+        signal_properties: Optional[Dict[str, object]] = None,
+        include_legacy_register: bool = False,
+    ) -> str:
+        """Ensure an ICSSignal node and ownership edge exist in output."""
+        signal_key = _generate_signal_key(protocol, host, port, signal_name)
+        signal_guid = _generate_signal_guid(protocol, host, port, signal_name)
+        if signal_guid in register_statements:
+            return signal_guid
+
+        props: Dict[str, object] = {
+            "guid": signal_guid,
+            "signalKey": signal_key,
+            "protocol": protocol.lower(),
+            "host": host,
+            "port": port,
+            "name": signal_name,
+            "source": "pcap",
+        }
+        if signal_properties:
+            props.update(signal_properties)
+
+        register_statements[signal_guid] = cypher_emit.create_ics_signal_statement(
+            signal_guid=signal_guid,
+            properties=props,
+            asset_guid=asset_guid,
+            include_legacy_register=include_legacy_register,
+        )
+        return signal_guid
+
+    def _build_process_signal_statements(
+        self,
+        *,
+        process_guid: str,
+        signal_guid: str,
+        summary: Dict[str, object],
+        correlation_confidence: float,
+        process_image: Optional[str] = None,
+        process_id: Optional[int] = None,
+        include_legacy_register: bool = False,
+    ) -> List[str]:
+        """Build READ_SIGNAL / WRITE_SIGNAL statements for one process+signal pair."""
+        statements: List[str] = []
+        read_count = int(summary.get("readCount") or 0)
+        write_count = int(summary.get("writeCount") or 0)
+        if read_count <= 0 and write_count <= 0:
+            return statements
+
+        proc_guid_escaped = cypher_emit.escape_cypher_string(process_guid)
+        signal_guid_escaped = cypher_emit.escape_cypher_string(signal_guid)
+        common_props: Dict[str, object] = {
+            "correlationConfidence": round(correlation_confidence, 4),
+            "inferredFrom": "pcap",
+            "pcapAugmented": True,
+        }
+        if process_image:
+            common_props["processImage"] = process_image
+        if process_id is not None:
+            common_props["processId"] = process_id
+
+        if read_count > 0:
+            read_props = dict(common_props)
+            read_props["readCount"] = read_count
+            if summary.get("lastReadAt") is not None:
+                read_props["lastReadAt"] = summary["lastReadAt"]
+            cypher_props = cypher_emit.format_properties(read_props)
+            statement = (
+                f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
+                f"MATCH (sig:ICSSignal {{guid: '{signal_guid_escaped}'}})\n"
+                f"MERGE (proc)-[acc:READ_SIGNAL]->(sig)\n"
+                f"SET acc += {cypher_props}\n"
+                "SET acc.pcapAugmented = true"
+            )
+            if include_legacy_register:
+                statement += (
+                    "\n"
+                    "MERGE (proc)-[legacy:READ_REGISTER]->(sig)\n"
+                    f"SET legacy += {cypher_props}\n"
+                    "SET legacy.pcapAugmented = true"
+                )
+            statements.append(statement)
+
+        if write_count > 0:
+            write_props = dict(common_props)
+            write_props["writeCount"] = write_count
+            if summary.get("lastWriteAt") is not None:
+                write_props["lastWriteAt"] = summary["lastWriteAt"]
+            cypher_props = cypher_emit.format_properties(write_props)
+            statement = (
+                f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
+                f"MATCH (sig:ICSSignal {{guid: '{signal_guid_escaped}'}})\n"
+                f"MERGE (proc)-[acc:WRITE_SIGNAL]->(sig)\n"
+                f"SET acc += {cypher_props}\n"
+                "SET acc.pcapAugmented = true"
+            )
+            if include_legacy_register:
+                statement += (
+                    "\n"
+                    "MERGE (proc)-[legacy:WRITE_REGISTER]->(sig)\n"
+                    f"SET legacy += {cypher_props}\n"
+                    "SET legacy.pcapAugmented = true"
+                )
+            statements.append(statement)
+
+        return statements
+
+    def _collect_mqtt_signals(
+        self,
+        *,
+        packets: Sequence[PacketRecord],
+        server_ip: str,
+        server_port: int,
+    ) -> Dict[str, Dict[str, object]]:
+        """Collect per-topic MQTT summaries suitable for ICSSignal properties."""
+        summaries: Dict[str, Dict[str, object]] = {}
+
+        def _topic_summary(topic: str) -> Dict[str, object]:
+            if topic not in summaries:
+                summaries[topic] = {
+                    "sampleCount": 0,
+                    "readCount": 0,
+                    "writeCount": 0,
+                    "firstSeenAt": None,
+                    "lastSeenAt": None,
+                    "lastReadAt": None,
+                    "lastWriteAt": None,
+                    "_qos_levels": set(),
+                    "_packet_types": set(),
+                    "mqttRetainSeen": False,
+                }
+            return summaries[topic]
+
+        for packet in packets:
+            topic = (packet.mqtt_topic or "").strip()
+            if not topic:
+                continue
+            summary = _topic_summary(topic)
+            summary["sampleCount"] = int(summary["sampleCount"]) + 1
+
+            first_seen = summary.get("firstSeenAt")
+            if first_seen is None or packet.timestamp < float(first_seen):
+                summary["firstSeenAt"] = packet.timestamp
+            last_seen = summary.get("lastSeenAt")
+            if last_seen is None or packet.timestamp > float(last_seen):
+                summary["lastSeenAt"] = packet.timestamp
+
+            packet_type = (packet.mqtt_packet_type or "").upper()
+            if packet_type:
+                summary["_packet_types"].add(packet_type)
+            if packet.mqtt_qos is not None and 0 <= packet.mqtt_qos <= 2:
+                summary["_qos_levels"].add(packet.mqtt_qos)
+            if packet.mqtt_retain is True:
+                summary["mqttRetainSeen"] = True
+
+            if packet_type == "PUBLISH":
+                is_write = packet.dst_ip == server_ip and packet.dst_port == server_port
+                is_read = packet.src_ip == server_ip and packet.src_port == server_port
+                if is_write:
+                    summary["writeCount"] = int(summary["writeCount"]) + 1
+                    summary["lastWriteAt"] = packet.timestamp
+                elif is_read:
+                    summary["readCount"] = int(summary["readCount"]) + 1
+                    summary["lastReadAt"] = packet.timestamp
+
+        result: Dict[str, Dict[str, object]] = {}
+        for topic, summary in summaries.items():
+            out = {k: v for k, v in summary.items() if not k.startswith("_")}
+            qos_levels = sorted(summary["_qos_levels"])  # type: ignore[index]
+            packet_types = sorted(summary["_packet_types"])  # type: ignore[index]
+            if qos_levels:
+                out["mqttQosLevels"] = ",".join(str(q) for q in qos_levels[:8])
+            if packet_types:
+                out["mqttPacketTypes"] = ",".join(packet_types[:8])
+            result[topic] = out
+        return result
+
+    def _collect_opcua_signals(
+        self,
+        *,
+        packets: Sequence[PacketRecord],
+        server_ip: str,
+        server_port: int,
+    ) -> Dict[str, Dict[str, object]]:
+        """Collect per-signal OPC UA summaries for ICSSignal nodes.
+
+        Preferred identity is decoded OPC UA NodeId. If unavailable, falls back
+        to endpoint/secure-channel level metadata.
+        """
+        summaries: Dict[str, Dict[str, object]] = {}
+        # Correlate response messages back to request NodeIds:
+        # key = (client_ip, secure_channel_id_or_-1, request_id)
+        request_node_ids: Dict[Tuple[str, int, int], Tuple[str, ...]] = {}
+        request_operation: Dict[Tuple[str, int, int], str] = {}
+
+        def _request_key(
+            *,
+            client_ip: str,
+            secure_channel_id: Optional[int],
+            request_id: Optional[int],
+        ) -> Optional[Tuple[str, int, int]]:
+            if request_id is None:
+                return None
+            channel = secure_channel_id if secure_channel_id is not None else -1
+            return (client_ip, channel, request_id)
+
+        def _display_tag(node_id: str) -> str:
+            # Prefer human-meaningful string NodeIds (e.g., ns=2;s=Robot_Arm).
+            marker = ";s="
+            if marker in node_id:
+                raw = node_id.split(marker, 1)[1] or node_id
+                # Normalize common quoted dotted identifiers:
+                #   "a"."b"."c" -> a.b.c
+                if '".' in raw or '."' in raw:
+                    raw = raw.replace('"."', ".").replace('."', ".").replace('"', "")
+                return raw
+            return node_id
+
+        def _acc(signal_name: str) -> Dict[str, object]:
+            if signal_name not in summaries:
+                summaries[signal_name] = {
+                    "sampleCount": 0,
+                    "readCount": 0,
+                    "writeCount": 0,
+                    "firstSeenAt": None,
+                    "lastSeenAt": None,
+                    "lastReadAt": None,
+                    "lastWriteAt": None,
+                    "_message_types": set(),
+                    "_service_types": set(),
+                    "_chunk_types": set(),
+                    "_security_policies": set(),
+                    "_endpoint_urls": set(),
+                    "_secure_channel_ids": set(),
+                    "_identity_kind": "unknown",
+                }
+            return summaries[signal_name]
+
+        for packet in packets:
+            service_type = (packet.opcua_service_type or "").strip()
+            operation = (packet.opcua_operation or "").strip().lower()
+            message_type = (packet.opcua_message_type or "").upper()
+            from_server = packet.src_ip == server_ip and packet.src_port == server_port
+            to_server = packet.dst_ip == server_ip and packet.dst_port == server_port
+            explicit_node_ids = tuple(dict.fromkeys(n for n in packet.opcua_node_ids if n))
+
+            # Remember request operation/tag context for response correlation.
+            if to_server and explicit_node_ids and operation in {"read", "write"}:
+                key = _request_key(
+                    client_ip=packet.src_ip,
+                    secure_channel_id=packet.opcua_secure_channel_id,
+                    request_id=packet.opcua_request_id,
+                )
+                if key is not None:
+                    request_node_ids[key] = explicit_node_ids
+                    request_operation[key] = operation
+
+            signal_names: Tuple[str, ...] = ()
+            identity_kind = "unknown"
+
+            if explicit_node_ids:
+                signal_names = explicit_node_ids
+                identity_kind = "nodeid"
+            elif from_server and service_type in {"ReadResponse", "WriteResponse"}:
+                # Correlate response to the originating request to recover NodeIds.
+                key = _request_key(
+                    client_ip=packet.dst_ip,
+                    secure_channel_id=packet.opcua_secure_channel_id,
+                    request_id=packet.opcua_request_id,
+                )
+                if key is not None:
+                    mapped_ids = request_node_ids.get(key) or ()
+                    mapped_op = request_operation.get(key)
+                    if mapped_ids:
+                        # Only accept a mapped context when service/operation family matches.
+                        if service_type == "ReadResponse" and mapped_op == "read":
+                            signal_names = mapped_ids
+                            identity_kind = "nodeid"
+                        elif service_type == "WriteResponse" and mapped_op == "write":
+                            signal_names = mapped_ids
+                            identity_kind = "nodeid"
+
+            # Only create ICSSignal nodes for packets with actual NodeIds.
+            # Session management, subscription lifecycle, OPN, etc. don't
+            # carry process-data tags and should be skipped.
+            if not signal_names:
+                continue
+
+            for signal_name in signal_names:
+                summary = _acc(signal_name)
+                summary["sampleCount"] = int(summary["sampleCount"]) + 1
+                summary["_identity_kind"] = identity_kind
+
+                first_seen = summary.get("firstSeenAt")
+                if first_seen is None or packet.timestamp < float(first_seen):
+                    summary["firstSeenAt"] = packet.timestamp
+                last_seen = summary.get("lastSeenAt")
+                if last_seen is None or packet.timestamp > float(last_seen):
+                    summary["lastSeenAt"] = packet.timestamp
+
+                if message_type:
+                    summary["_message_types"].add(message_type)
+                if service_type:
+                    summary["_service_types"].add(service_type)
+                chunk_type = (packet.opcua_chunk_type or "").upper()
+                if chunk_type:
+                    summary["_chunk_types"].add(chunk_type)
+                if packet.opcua_security_policy_uri:
+                    summary["_security_policies"].add(packet.opcua_security_policy_uri)
+                if packet.opcua_endpoint_url:
+                    summary["_endpoint_urls"].add(packet.opcua_endpoint_url)
+                if packet.opcua_secure_channel_id is not None:
+                    summary["_secure_channel_ids"].add(packet.opcua_secure_channel_id)
+
+                if operation == "read":
+                    summary["readCount"] = int(summary["readCount"]) + 1
+                    summary["lastReadAt"] = packet.timestamp
+                elif operation == "write":
+                    summary["writeCount"] = int(summary["writeCount"]) + 1
+                    summary["lastWriteAt"] = packet.timestamp
+                else:
+                    # Keep direction-based fallback only when service decoding is absent.
+                    if not service_type and message_type in {"MSG", "ACK"}:
+                        if from_server:
+                            summary["readCount"] = int(summary["readCount"]) + 1
+                            summary["lastReadAt"] = packet.timestamp
+                        elif to_server:
+                            summary["writeCount"] = int(summary["writeCount"]) + 1
+                            summary["lastWriteAt"] = packet.timestamp
+
+        result: Dict[str, Dict[str, object]] = {}
+        for signal_name, summary in summaries.items():
+            out = {k: v for k, v in summary.items() if not k.startswith("_")}
+            message_types = sorted(summary["_message_types"])  # type: ignore[index]
+            service_types = sorted(summary["_service_types"])  # type: ignore[index]
+            chunk_types = sorted(summary["_chunk_types"])  # type: ignore[index]
+            security_policies = sorted(summary["_security_policies"])  # type: ignore[index]
+            endpoint_urls = sorted(summary["_endpoint_urls"])  # type: ignore[index]
+            secure_channel_ids = sorted(summary["_secure_channel_ids"])  # type: ignore[index]
+            identity_kind = str(summary.get("_identity_kind") or "unknown")
+            if message_types:
+                out["opcuaMessageTypes"] = ",".join(message_types[:8])
+            if service_types:
+                out["opcuaServiceTypes"] = ",".join(service_types[:8])
+            if chunk_types:
+                out["opcuaChunkTypes"] = ",".join(chunk_types[:3])
+            if security_policies:
+                out["opcuaSecurityPolicies"] = ",".join(security_policies[:4])
+            if endpoint_urls:
+                out["opcuaEndpointUrls"] = ",".join(endpoint_urls[:4])
+            if secure_channel_ids:
+                out["opcuaSecureChannelIds"] = ",".join(str(scid) for scid in secure_channel_ids[:8])
+            out["opcuaIdentityKind"] = identity_kind
+            out["opcuaNodeId"] = signal_name
+            out["opcuaTag"] = _display_tag(signal_name)
+            result[signal_name] = out
+        return result
+
     def _ensure_register_node(
         self,
         host: str,
@@ -2065,25 +2988,52 @@ class MissingTrafficAugmentor:
         register_statements: Dict[str, str],
         register_summary: Optional[Dict[str, object]] = None,
     ) -> None:
-        """Ensure a Register node and its relationships exist in the output."""
+        """Ensure a Modbus ICSSignal node and ownership edges exist in output."""
         if not asset_guid:
             return
-        register_guid = _generate_node_guid("Register", host, port, unit_id, register_address, register_type)
+        signal_key = _generate_signal_key(
+            "modbus",
+            host,
+            port,
+            unit_id if unit_id is not None else "none",
+            register_type,
+            register_address,
+        )
+        register_guid = _generate_signal_guid(
+            "modbus",
+            host,
+            port,
+            unit_id,
+            register_type,
+            register_address,
+        )
         if register_guid in register_statements:
             return
         props: Dict[str, object] = {
             "guid": register_guid,
+            "signalKey": signal_key,
+            "protocol": "modbus",
             "host": host,
             "address": register_address,
             "port": port,
             "source": "pcap",
+            "signalKind": "register",
         }
         if unit_id is not None:
             props["unitId"] = unit_id
         props["registerType"] = register_type
+        props["modbusAddress"] = register_address
+        props["modbusRegisterType"] = register_type
+        if unit_id is not None:
+            props["modbusUnitId"] = unit_id
         if register_summary:
             props.update(register_summary)
-        statement = cypher_emit.create_register_statement(register_guid, props, asset_guid)
+        statement = cypher_emit.create_ics_signal_statement(
+            signal_guid=register_guid,
+            properties=props,
+            asset_guid=asset_guid,
+            include_legacy_register=True,
+        )
         register_statements[register_guid] = statement
 
     def _add_modbus_group(
@@ -2560,7 +3510,7 @@ class MissingTrafficAugmentor:
                 handle.write("\n")
 
             if register_statements:
-                handle.write("// PCAP-Inferred Register Nodes\n")
+                handle.write("// PCAP-Inferred ICSSignal Nodes\n")
                 for statement in register_statements:
                     handle.write(statement + ";\n")
                 handle.write("\n")
