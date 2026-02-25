@@ -1287,6 +1287,22 @@ class MissingTrafficAugmentor:
             len(self._ip_to_hostname),
         )
 
+        # Log session metadata coverage for diagnostics
+        has_session_ports = sum(
+            1 for ec in existing_connections
+            if ec.properties.get("sessionPorts")
+        )
+        has_network_meta = sum(
+            1 for ec in existing_connections
+            if ec.properties.get("SourceIp") or ec.properties.get("DestinationIp")
+        )
+        logger.info(
+            "Session metadata coverage: %d/%d connections have sessionPorts, "
+            "%d/%d have network IPs",
+            has_session_ports, len(existing_connections),
+            has_network_meta, len(existing_connections),
+        )
+
         # Correlate PCAP connections to telemetry anchors
         correlations: Dict[str, CorrelatedConnection] = {}
         for pcap_conn in indexed_connections:
@@ -1473,6 +1489,92 @@ class MissingTrafficAugmentor:
                     )
                     process_register_statements.extend(register_stmts)
                     process_attributed_registers += register_count
+
+            # Generate process-to-signal attribution for telemetry-correlated MQTT traffic
+            if (
+                self.config.enable_process_attribution
+                and proc_ctx.is_valid()
+                and base_key.dst_port in MQTT_PORTS
+            ):
+                server_hostname, _ = self._resolve_host(base_key.dst_ip)
+                server_asset_guid = self._ensure_asset_node(server_hostname, base_key.dst_ip, asset_statements)
+                mqtt_signal_summaries = self._collect_mqtt_signals(
+                    packets=all_packets,
+                    server_ip=base_key.dst_ip,
+                    server_port=base_key.dst_port,
+                )
+                for topic, summary in mqtt_signal_summaries.items():
+                    signal_guid = self._ensure_ics_signal_node(
+                        protocol="mqtt",
+                        host=server_hostname,
+                        port=base_key.dst_port,
+                        asset_guid=server_asset_guid,
+                        signal_name=topic,
+                        register_statements=register_statements,
+                        signal_properties={
+                            "signalKind": "topic",
+                            "mqttTopic": topic,
+                            "registerType": "topic",
+                            **summary,
+                        },
+                        include_legacy_register=False,
+                    )
+                    process_register_statements.extend(
+                        self._build_process_signal_statements(
+                            process_guid=proc_ctx.process_guid,
+                            signal_guid=signal_guid,
+                            summary=summary,
+                            correlation_confidence=best_confidence,
+                            process_image=proc_ctx.process_image,
+                            process_id=proc_ctx.process_id,
+                            include_legacy_register=False,
+                        )
+                    )
+
+            # Generate process-to-signal attribution for telemetry-correlated OPC UA traffic
+            if (
+                self.config.enable_process_attribution
+                and proc_ctx.is_valid()
+                and base_key.dst_port in OPCUA_PORTS
+            ):
+                server_hostname, _ = self._resolve_host(base_key.dst_ip)
+                server_asset_guid = self._ensure_asset_node(server_hostname, base_key.dst_ip, asset_statements)
+                opcua_signal_summaries = self._collect_opcua_signals(
+                    packets=all_packets,
+                    server_ip=base_key.dst_ip,
+                    server_port=base_key.dst_port,
+                )
+                for signal_name, summary in opcua_signal_summaries.items():
+                    identity_kind = str(summary.get("opcuaIdentityKind") or "nodeid")
+                    signal_props: Dict[str, object] = {
+                        "signalKind": "tag" if identity_kind == "nodeid" else "channel",
+                        **summary,
+                    }
+                    signal_props.setdefault("opcuaTag", signal_name)
+                    signal_props["name"] = signal_props["opcuaTag"]
+                    if identity_kind != "nodeid":
+                        signal_props["opcuaPseudoTag"] = True
+                    signal_guid = self._ensure_ics_signal_node(
+                        protocol="opcua",
+                        host=server_hostname,
+                        port=base_key.dst_port,
+                        asset_guid=server_asset_guid,
+                        signal_name=signal_name,
+                        register_statements=register_statements,
+                        signal_properties=signal_props,
+                        include_legacy_register=False,
+                    )
+                    process_register_statements.extend(
+                        self._build_process_signal_statements(
+                            process_guid=proc_ctx.process_guid,
+                            signal_guid=signal_guid,
+                            summary=summary,
+                            correlation_confidence=best_confidence,
+                            process_image=proc_ctx.process_image,
+                            process_id=proc_ctx.process_id,
+                            include_legacy_register=False,
+                        )
+                    )
 
         correlation_stats["process_attributed_registers"] = process_attributed_registers
         # Return the set of canonical IDs that were successfully correlated
@@ -1869,6 +1971,7 @@ class MissingTrafficAugmentor:
         relationship_statements: List[str],
         process_register_statements: List[str],
         process_index: Optional[TemporalProcessIndex] = None,
+        telemetry_index: Optional[TelemetryConnectionIndex] = None,
     ) -> str:
         """Add MQTT connection artifacts and return the relationship type."""
         service_name = self.config.service_map.get(service_port, "MQTT")
@@ -1876,8 +1979,25 @@ class MissingTrafficAugmentor:
         client_node_id: Optional[str] = None
         client_is_process = False
         process_entry: Optional[TemporalProcessEntry] = None
+        correlation_confidence = 0.5
+        process_image: Optional[str] = None
+        process_id: Optional[int] = None
 
-        if process_index and packets and not self.config.telemetry_attribution_only:
+        if telemetry_index is not None:
+            process_context = telemetry_index.find_process_for_connection(
+                src_ip=client_ip,
+                dst_ip=server_ip,
+                dst_port=service_port,
+                protocol=protocol,
+            )
+            if process_context and process_context.is_valid():
+                client_node_id = process_context.process_guid
+                client_is_process = True
+                correlation_confidence = 1.0
+                process_image = process_context.process_image
+                process_id = process_context.process_id
+
+        if client_node_id is None and process_index and packets and not self.config.telemetry_attribution_only:
             timestamps = [p.timestamp for p in packets]
             range_start = min(timestamps)
             range_end = max(timestamps)
@@ -1885,6 +2005,8 @@ class MissingTrafficAugmentor:
             if process_entry:
                 client_node_id = process_entry.process_guid
                 client_is_process = True
+                process_image = process_entry.process_image
+                process_id = process_entry.process_id
 
         if client_node_id is None:
             hostname, ip_address = self._resolve_host(client_ip)
@@ -1942,9 +2064,9 @@ class MissingTrafficAugmentor:
                         process_guid=client_node_id,
                         signal_guid=signal_guid,
                         summary=summary,
-                        correlation_confidence=1.0 if process_entry else 0.5,
-                        process_image=process_entry.process_image if process_entry else None,
-                        process_id=process_entry.process_id if process_entry else None,
+                        correlation_confidence=correlation_confidence,
+                        process_image=process_image,
+                        process_id=process_id,
                         include_legacy_register=False,
                     )
                 )
@@ -1965,15 +2087,22 @@ class MissingTrafficAugmentor:
             }
         )
 
-        if client_is_process and process_entry and not self.config.telemetry_attribution_only:
-            relationship_properties["temporallyInferred"] = True
-            relationship_properties["correlatedProcessGuid"] = process_entry.process_guid
-            relationship_properties["correlatedProcessImage"] = process_entry.process_image
-            relationship_properties["correlatedProcessId"] = process_entry.process_id
-            relationship_properties["note"] = (
-                f"MQTT traffic temporally correlated to process {process_entry.process_image} "
-                f"(PID {process_entry.process_id}) based on host activity overlap"
-            )
+        if client_is_process and process_image:
+            relationship_properties["correlatedProcessGuid"] = client_node_id
+            relationship_properties["correlatedProcessImage"] = process_image
+            relationship_properties["correlatedProcessId"] = process_id
+            if process_entry:
+                relationship_properties["temporallyInferred"] = True
+                relationship_properties["note"] = (
+                    f"MQTT traffic temporally correlated to process {process_image} "
+                    f"(PID {process_id}) based on host activity overlap"
+                )
+            elif correlation_confidence >= 1.0:
+                relationship_properties["telemetryCorrelated"] = True
+                relationship_properties["note"] = (
+                    f"MQTT traffic correlated to process {process_image} "
+                    f"(PID {process_id}) via Sysmon telemetry"
+                )
 
         source_label = "Process" if client_is_process else "NetworkService"
         relationship_statement = cypher_emit.create_connection_statement(
@@ -2052,6 +2181,7 @@ class MissingTrafficAugmentor:
         relationship_statements: List[str],
         process_register_statements: List[str],
         process_index: Optional[TemporalProcessIndex] = None,
+        telemetry_index: Optional[TelemetryConnectionIndex] = None,
     ) -> str:
         """Add OPC UA connection artifacts and return the relationship type."""
         service_name = self.config.service_map.get(service_port, "OPC UA")
@@ -2059,8 +2189,25 @@ class MissingTrafficAugmentor:
         client_node_id: Optional[str] = None
         client_is_process = False
         process_entry: Optional[TemporalProcessEntry] = None
+        correlation_confidence = 0.5
+        process_image: Optional[str] = None
+        process_id: Optional[int] = None
 
-        if process_index and packets and not self.config.telemetry_attribution_only:
+        if telemetry_index is not None:
+            process_context = telemetry_index.find_process_for_connection(
+                src_ip=client_ip,
+                dst_ip=server_ip,
+                dst_port=service_port,
+                protocol=protocol,
+            )
+            if process_context and process_context.is_valid():
+                client_node_id = process_context.process_guid
+                client_is_process = True
+                correlation_confidence = 1.0
+                process_image = process_context.process_image
+                process_id = process_context.process_id
+
+        if client_node_id is None and process_index and packets and not self.config.telemetry_attribution_only:
             timestamps = [p.timestamp for p in packets]
             range_start = min(timestamps)
             range_end = max(timestamps)
@@ -2068,6 +2215,8 @@ class MissingTrafficAugmentor:
             if process_entry:
                 client_node_id = process_entry.process_guid
                 client_is_process = True
+                process_image = process_entry.process_image
+                process_id = process_entry.process_id
 
         if client_node_id is None:
             hostname, ip_address = self._resolve_host(client_ip)
@@ -2110,6 +2259,7 @@ class MissingTrafficAugmentor:
                 **summary,
             }
             signal_props.setdefault("opcuaTag", signal_name)
+            signal_props["name"] = signal_props["opcuaTag"]
             if identity_kind != "nodeid":
                 signal_props["opcuaPseudoTag"] = True
             signal_guid = self._ensure_ics_signal_node(
@@ -2128,9 +2278,9 @@ class MissingTrafficAugmentor:
                         process_guid=client_node_id,
                         signal_guid=signal_guid,
                         summary=summary,
-                        correlation_confidence=1.0 if process_entry else 0.5,
-                        process_image=process_entry.process_image if process_entry else None,
-                        process_id=process_entry.process_id if process_entry else None,
+                        correlation_confidence=correlation_confidence,
+                        process_image=process_image,
+                        process_id=process_id,
                         include_legacy_register=False,
                     )
                 )
@@ -2151,15 +2301,22 @@ class MissingTrafficAugmentor:
             }
         )
 
-        if client_is_process and process_entry and not self.config.telemetry_attribution_only:
-            relationship_properties["temporallyInferred"] = True
-            relationship_properties["correlatedProcessGuid"] = process_entry.process_guid
-            relationship_properties["correlatedProcessImage"] = process_entry.process_image
-            relationship_properties["correlatedProcessId"] = process_entry.process_id
-            relationship_properties["note"] = (
-                f"OPC UA traffic temporally correlated to process {process_entry.process_image} "
-                f"(PID {process_entry.process_id}) based on host activity overlap"
-            )
+        if client_is_process and process_image:
+            relationship_properties["correlatedProcessGuid"] = client_node_id
+            relationship_properties["correlatedProcessImage"] = process_image
+            relationship_properties["correlatedProcessId"] = process_id
+            if process_entry:
+                relationship_properties["temporallyInferred"] = True
+                relationship_properties["note"] = (
+                    f"OPC UA traffic temporally correlated to process {process_image} "
+                    f"(PID {process_id}) based on host activity overlap"
+                )
+            elif correlation_confidence >= 1.0:
+                relationship_properties["telemetryCorrelated"] = True
+                relationship_properties["note"] = (
+                    f"OPC UA traffic correlated to process {process_image} "
+                    f"(PID {process_id}) via Sysmon telemetry"
+                )
 
         source_label = "Process" if client_is_process else "NetworkService"
         relationship_statement = cypher_emit.create_connection_statement(
@@ -2863,7 +3020,10 @@ class MissingTrafficAugmentor:
             message_type = (packet.opcua_message_type or "").upper()
             from_server = packet.src_ip == server_ip and packet.src_port == server_port
             to_server = packet.dst_ip == server_ip and packet.dst_port == server_port
-            explicit_node_ids = tuple(dict.fromkeys(n for n in packet.opcua_node_ids if n))
+            explicit_node_ids = tuple(dict.fromkeys(
+                n for n in packet.opcua_node_ids
+                if n and not n.startswith("ns=0;") and not n.startswith("ns=1;")
+            ))
 
             # Remember request operation/tag context for response correlation.
             if to_server and explicit_node_ids and operation in {"read", "write"}:
@@ -2901,9 +3061,6 @@ class MissingTrafficAugmentor:
                             signal_names = mapped_ids
                             identity_kind = "nodeid"
 
-            # Only create ICSSignal nodes for packets with actual NodeIds.
-            # Session management, subscription lifecycle, OPN, etc. don't
-            # carry process-data tags and should be skipped.
             if not signal_names:
                 continue
 

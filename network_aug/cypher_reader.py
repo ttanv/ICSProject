@@ -106,8 +106,16 @@ class CypherConnectionExtractor:
                     continue
 
                 if not key.src_ip or not key.dst_ip:
+                    logger.debug(
+                        "Dropping connection %s->%s: missing IP (src_ip=%r, dst_ip=%r)",
+                        src_guid, dst_guid, key.src_ip, key.dst_ip,
+                    )
                     continue
                 if key.dst_port <= 0:
+                    logger.debug(
+                        "Dropping connection %s->%s (dst_ip=%s): dst_port=%d <= 0",
+                        src_guid, dst_guid, key.dst_ip, key.dst_port,
+                    )
                     continue
 
                 connections.append(
@@ -297,7 +305,7 @@ class CypherConnectionExtractor:
         src_node = self._node_cache.get(src_guid or "")
         dst_node = self._node_cache.get(dst_guid or "")
 
-        src_ip = self._first_value(augmented, ("SourceIp", "sourceIp"))
+        src_ip = self._first_value(augmented, ("SourceIp", "sourceIp", "sourceIP"))
         if not src_ip:
             src_ip = self._ip_from_node(src_node)
         if src_ip:
@@ -305,7 +313,7 @@ class CypherConnectionExtractor:
 
         dst_ip = self._first_value(
             augmented,
-            ("DestinationIp", "destinationIp", "DestIp", "destIp"),
+            ("DestinationIp", "destinationIp", "destinationIP", "DestIp", "destIp"),
         )
         if not dst_ip:
             dst_ip = self._ip_from_node(dst_node)

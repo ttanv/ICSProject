@@ -65,6 +65,7 @@ class MqttProtocolHandler:
                 relationship_statements=context.relationship_statements,
                 process_register_statements=context.process_register_statements,
                 process_index=context.process_index,
+                telemetry_index=context.telemetry_index,
             )
             relationship_count += max(len(context.relationship_statements) - before_count, 0)
             consumed.add(indexed.canonical_id)
