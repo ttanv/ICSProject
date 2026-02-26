@@ -25,28 +25,28 @@ def format_properties(properties: Dict[str, object]) -> str:
     return "{%s}" % ", ".join(parts)
 
 
-def create_asset_statement(asset_guid: str, properties: Dict[str, object]) -> str:
-    """Return a MERGE statement for an Asset node keyed by guid."""
+def create_network_endpoint_statement(endpoint_guid: str, properties: Dict[str, object]) -> str:
+    """Return a MERGE statement for a NetworkEndpoint node keyed by guid."""
     property_map = format_properties(properties)
-    guid = escape_cypher_string(asset_guid)
+    guid = escape_cypher_string(endpoint_guid)
     return (
-        f"MERGE (n:Asset {{guid: '{guid}'}})\n"
+        f"MERGE (n:NetworkEndpoint {{guid: '{guid}'}})\n"
         f"ON CREATE SET n += {property_map}\n"
         f"SET n.pcapAugmented = true;"
     )
 
 
-def create_host_statement(host_guid: str, properties: Dict[str, object]) -> str:
-    """Return a MERGE statement for a Host node (external/unknown host) keyed by guid.
+def create_asset_statement(asset_guid: str, properties: Dict[str, object]) -> str:
+    """Backward-compatible alias that emits a NetworkEndpoint node."""
+    return create_network_endpoint_statement(asset_guid, properties)
 
-    Host nodes represent external or unknown destinations that are not part of
-    the known asset inventory. These are used as targets for ESTABLISH_EXTERNAL_CONNECTION
-    relationships.
-    """
+
+def create_host_statement(host_guid: str, properties: Dict[str, object]) -> str:
+    """Backward-compatible alias for creating an external NetworkEndpoint node."""
     property_map = format_properties(properties)
     guid = escape_cypher_string(host_guid)
     return (
-        f"MERGE (n:Host {{guid: '{guid}'}})\n"
+        f"MERGE (n:NetworkEndpoint {{guid: '{guid}'}})\n"
         f"ON CREATE SET n += {property_map}\n"
         f"SET n.pcapAugmented = true;"
     )
@@ -55,57 +55,51 @@ def create_host_statement(host_guid: str, properties: Dict[str, object]) -> str:
 def create_network_service_statement(
     service_guid: str,
     properties: Dict[str, object],
-    asset_guid: str,
+    endpoint_guid: str,
 ) -> str:
-    """Return a MERGE statement for a NetworkService node plus SERVED_ON edge."""
+    """Return a MERGE statement for a NetworkService node plus LISTENS_ON edge."""
     property_map = format_properties(properties)
     svc_guid = escape_cypher_string(service_guid)
-    asset = escape_cypher_string(asset_guid)
+    endpoint = escape_cypher_string(endpoint_guid)
     return (
-        f"MATCH (m:Asset {{guid: '{asset}'}})\n"
+        f"MATCH (m:NetworkEndpoint {{guid: '{endpoint}'}})\n"
         f"MERGE (n:NetworkService {{guid: '{svc_guid}'}})\n"
         f"ON CREATE SET n += {property_map}\n"
         f"SET n.pcapAugmented = true\n"
-        f"MERGE (n)-[:SERVED_ON]->(m);"
+        f"MERGE (n)-[:LISTENS_ON]->(m);"
     )
 
 
 def create_register_statement(
     register_guid: str,
     properties: Dict[str, object],
-    asset_guid: str,
+    endpoint_guid: str,
 ) -> str:
-    """Backward-compatible wrapper that emits Register-flavored ICSSignal nodes."""
+    """Backward-compatible wrapper that emits ICSSignal nodes."""
     return create_ics_signal_statement(
         signal_guid=register_guid,
         properties=properties,
-        asset_guid=asset_guid,
-        include_legacy_register=True,
+        endpoint_guid=endpoint_guid,
     )
 
 
 def create_ics_signal_statement(
     signal_guid: str,
     properties: Dict[str, object],
-    asset_guid: str,
-    *,
-    include_legacy_register: bool = False,
+    endpoint_guid: str,
 ) -> str:
-    """Return a MERGE statement for an ICSSignal node and ownership edges."""
+    """Return a MERGE statement for an ICSSignal node and EXPOSED_ON edge."""
     property_map = format_properties(properties)
     sig_guid = escape_cypher_string(signal_guid)
-    asset = escape_cypher_string(asset_guid)
-    statement = (
-        f"MATCH (m1:Asset {{guid: '{asset}'}})\n"
+    endpoint = escape_cypher_string(endpoint_guid)
+    return (
+        f"MATCH (m1:NetworkEndpoint {{guid: '{endpoint}'}})\n"
         f"MERGE (n:ICSSignal {{guid: '{sig_guid}'}})\n"
         f"ON CREATE SET n += {property_map}\n"
         f"SET n += {property_map}\n"
         f"SET n.pcapAugmented = true\n"
-        f"MERGE (m1)-[:HAS_SIGNAL]->(n)\n"
+        f"MERGE (n)-[:EXPOSED_ON]->(m1);"
     )
-    if include_legacy_register:
-        statement += "SET n:Register\nMERGE (m1)-[:HAS_REGISTER]->(n)\n"
-    return statement.rstrip()
 
 
 def create_virtual_process_statement(
@@ -122,17 +116,39 @@ def create_virtual_process_statement(
     )
 
 
+def create_run_on_relationship_statement(
+    endpoint_guid: str,
+    process_guid: str,
+) -> str:
+    """Return a MERGE statement for Process-[:RUN_ON]->NetworkEndpoint relationship."""
+    endpoint = escape_cypher_string(endpoint_guid)
+    proc = escape_cypher_string(process_guid)
+    return (
+        f"MATCH (a:NetworkEndpoint {{guid: '{endpoint}'}})\n"
+        f"MATCH (p:Process {{guid: '{proc}'}})\n"
+        f"MERGE (p)-[:RUN_ON]->(a);"
+    )
+
+
 def create_runs_relationship_statement(
     asset_guid: str,
     process_guid: str,
 ) -> str:
-    """Return a MERGE statement for Asset-[:RUNS]->Process relationship."""
-    asset = escape_cypher_string(asset_guid)
+    """Backward-compatible alias that emits Process-[:RUN_ON]->NetworkEndpoint."""
+    return create_run_on_relationship_statement(asset_guid, process_guid)
+
+
+def create_binds_relationship_statement(
+    process_guid: str,
+    service_guid: str,
+) -> str:
+    """Return a MERGE statement for Process-[:BINDS]->NetworkService."""
     proc = escape_cypher_string(process_guid)
+    svc = escape_cypher_string(service_guid)
     return (
-        f"MATCH (a:Asset {{guid: '{asset}'}})\n"
         f"MATCH (p:Process {{guid: '{proc}'}})\n"
-        f"MERGE (a)-[:RUNS]->(p);"
+        f"MATCH (s:NetworkService {{guid: '{svc}'}})\n"
+        f"MERGE (p)-[:BINDS]->(s);"
     )
 
 
@@ -140,8 +156,8 @@ def create_connection_statement(
     source_guid: str,
     dest_guid: str,
     properties: Dict[str, object],
-    relationship_name: str = "ESTABLISH_CONNECTION",
-    source_label: str = "NetworkService",
+    relationship_name: str = "CONNECT_TO",
+    source_label: str = "Process",
     dest_label: str = "NetworkService",
 ) -> str:
     property_map = format_properties(properties)

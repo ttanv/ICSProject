@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--disable-process-attribution",
         action="store_true",
-        help="Disable generation of READ_REGISTER/WRITE_REGISTER relationships linking processes to Modbus registers.",
+        help="Disable generation of READ_SIGNAL/WRITE_SIGNAL relationships linking processes to ICSSignal nodes.",
     )
     parser.add_argument(
         "--telemetry-attribution-only",
@@ -141,12 +141,12 @@ def main() -> None:
         )
         print(f"Existing relationship updates: {metrics.existing_relationship_updates}")
         print(f"Relationships saved by aggregation: {metrics.relationships_saved}")
-        print(f"Raw Asset nodes: {metrics.raw_asset_nodes}")
+        print(f"Raw NetworkEndpoint nodes: {metrics.raw_asset_nodes}")
         print(f"Raw NetworkService nodes: {metrics.raw_service_nodes}")
         print(
             "Post-aggregation nodes: "
             f"{metrics.aggregated_node_count} "
-            f"(assets={metrics.aggregated_asset_nodes}, "
+            f"(endpoints={metrics.aggregated_asset_nodes}, "
             f"services={metrics.aggregated_service_nodes}, "
             f"registers={metrics.aggregated_register_nodes})"
         )

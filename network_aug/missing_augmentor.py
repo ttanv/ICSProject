@@ -128,13 +128,13 @@ class MissingTrafficAugmentor:
     ) -> AugmentationArtifacts:
         asset_statements: Dict[str, str] = {}
         service_statements: Dict[str, str] = {}
-        host_statements: Dict[str, str] = {}  # External/unknown Host nodes
+        host_statements: Dict[str, str] = {}  # External/unknown NetworkEndpoint nodes
         register_statements: Dict[str, str] = {}  # Modbus Register nodes
         signal_statements: Dict[str, str] = {}  # Optional SignalContainer evidence nodes
         process_statements: Dict[str, str] = {}  # Virtual Process nodes for PLCs/RTUs
-        runs_statements: Dict[str, str] = {}  # Asset-[:RUNS]->Process relationships
+        runs_statements: Dict[str, str] = {}  # Process ownership relationships (RUN_ON/BINDS)
         relationship_statements: List[str] = []
-        process_register_stmts: List[str] = []  # READ_REGISTER / WRITE_REGISTER edges
+        process_register_stmts: List[str] = []  # READ_SIGNAL / WRITE_SIGNAL edges
         processed_cids: Set[str] = set()
 
         modbus_relationships = 0
@@ -157,6 +157,8 @@ class MissingTrafficAugmentor:
             asset_statements=asset_statements,
             service_statements=service_statements,
             register_statements=register_statements,
+            process_statements=process_statements,
+            runs_statements=runs_statements,
         )
         # Exclude correlated PCAP connections from further processing - they link to existing telemetry
         processed_cids.update(correlated_cids)
@@ -369,22 +371,12 @@ class MissingTrafficAugmentor:
                     matched_process_entry = process_entry
 
             if src_node_id is None:
-                if src_port == 0:
-                    hostname, ip_address = self._resolve_host(connection_key.src_ip)
-                    asset_guid = self._ensure_asset_node(hostname, ip_address, asset_statements)
-                    src_node_id = self._ensure_placeholder_process(
-                        hostname, asset_guid, process_statements, runs_statements
-                    )
-                    src_is_process = True
-                else:
-                    src_node_id = self._ensure_network_service_node(
-                        ip=connection_key.src_ip,
-                        port=src_port,
-                        protocol=connection_key.protocol,
-                        asset_statements=asset_statements,
-                        service_statements=service_statements,
-                        service_name="Ephemeral Client" if src_port == 0 else None,
-                    )
+                hostname, ip_address = self._resolve_host(connection_key.src_ip)
+                asset_guid = self._ensure_asset_node(hostname, ip_address, asset_statements)
+                src_node_id = self._ensure_placeholder_process(
+                    hostname, asset_guid, process_statements, runs_statements
+                )
+                src_is_process = True
 
             # Classify destination
             rel_type, dst_label = self._classify_destination(connection_key.dst_ip)
@@ -394,6 +386,8 @@ class MissingTrafficAugmentor:
                 protocol=connection_key.protocol,
                 asset_statements=asset_statements,
                 service_statements=service_statements,
+                process_statements=process_statements,
+                runs_statements=runs_statements,
                 service_name="Ephemeral Client" if dst_port == 0 else None,
             )
 
@@ -412,7 +406,7 @@ class MissingTrafficAugmentor:
                     f"(PID {matched_process_entry.process_id}) based on host activity overlap"
                 )
 
-            source_label = "Process" if src_is_process else "NetworkService"
+            source_label = "Process"
             relationship_statement = cypher_emit.create_connection_statement(
                 src_node_id,
                 dst_node_id,
@@ -702,7 +696,7 @@ class MissingTrafficAugmentor:
             hostname, ip_address = self._resolve_host(ip)
             if ip_address and ip_address not in self._asset_ip_map:
                 self._asset_ip_map[ip_address] = hostname
-            asset_guids.add(_generate_node_guid("Asset", hostname))
+            asset_guids.add(_generate_node_guid("NetworkEndpoint", hostname))
             normalized_port = port if port and port >= 0 else 0
             service_guids.add(_generate_node_guid("NetworkService", hostname, normalized_port))
             return hostname, ip_address, normalized_port
@@ -984,13 +978,7 @@ class MissingTrafficAugmentor:
         else:
             logger.warning("No assets.yaml found - hostname-to-IP resolution may be incomplete")
 
-        # Include all connection relationship types (internal, external, generic, and raw Sysmon)
-        relationship_types = [
-            "ESTABLISH_CONNECTION",
-            "ESTABLISH_INTERNAL_CONNECTION",
-            "ESTABLISH_EXTERNAL_CONNECTION",
-            "NETWORK_CONNECTION",  # Raw Sysmon telemetry from base graph
-        ]
+        relationship_types = ["CONNECT_TO"]
         extractor = CypherConnectionExtractor(
             self.config.base_cypher,
             relationship_types=relationship_types,
@@ -1006,13 +994,7 @@ class MissingTrafficAugmentor:
             len(self._ip_to_hostname),
         )
 
-        # Include all connection relationship types for telemetry matching
-        target_rels = {
-            self.config.relationship_name.upper(),
-            "ESTABLISH_INTERNAL_CONNECTION",
-            "ESTABLISH_EXTERNAL_CONNECTION",
-            "NETWORK_CONNECTION",  # Raw Sysmon telemetry
-        }
+        target_rels = {self.config.relationship_name.upper()}
         filtered = [conn for conn in connections if conn.rel_type in target_rels]
         return {conn.key.bidirectional_id() for conn in filtered}, filtered
 
@@ -1025,7 +1007,7 @@ class MissingTrafficAugmentor:
 
         text = path.read_text(encoding="utf-8")
         cursor = 0
-        token = ":Asset"
+        token = ":NetworkEndpoint"
         while True:
             idx = text.find(token, cursor)
             if idx == -1:
@@ -1038,9 +1020,16 @@ class MissingTrafficAugmentor:
                 break
             properties = _parse_property_block(block)
             hostname = str(properties.get("hostname") or "")
-            ip_address = str(properties.get("ipAddress") or "")
-            if hostname and ip_address:
-                lookup[ip_address] = hostname
+            ip_addresses = properties.get("ipAddresses") or properties.get("ip_addresses")
+            if isinstance(ip_addresses, list):
+                for ip in ip_addresses:
+                    ip_address = str(ip or "").strip()
+                    if hostname and ip_address:
+                        lookup[ip_address] = hostname
+            else:
+                ip_address = str(properties.get("ipAddress") or "")
+                if hostname and ip_address:
+                    lookup[ip_address] = hostname
             cursor = brace_end + 1
         return lookup
 
@@ -1088,13 +1077,13 @@ class MissingTrafficAugmentor:
                     ip_addresses.append(ip_str)
 
             role = str(details.get("role") or "")
-            has_logs = bool(details.get("has_logs", True))
+            is_managed = bool(details.get("is_managed", details.get("has_logs", True)))
 
             metadata = AssetMetadata(
                 hostname=hostname,
                 ip_addresses=ip_addresses,
                 role=role,
-                has_logs=has_logs,
+                has_logs=is_managed,
             )
             self._asset_metadata[hostname] = metadata
 
@@ -1124,7 +1113,7 @@ class MissingTrafficAugmentor:
         """Create/return placeholder Process node for PLC/RTU.
 
         Creates a single Virtual Process node per device (not per protocol).
-        Also creates the RUNS relationship from Asset to Process.
+        Also creates the RUN_ON relationship from Process to NetworkEndpoint.
         """
         if hostname in self._placeholder_processes:
             return self._placeholder_processes[hostname]
@@ -1146,7 +1135,7 @@ class MissingTrafficAugmentor:
                 process_guid, props
             )
 
-            # Create RUNS relationship
+            # Create RUN_ON relationship
             runs_key = f"{asset_guid}|{process_guid}"
             if runs_key not in runs_statements:
                 runs_statements[runs_key] = cypher_emit.create_runs_relationship_statement(
@@ -1243,8 +1232,10 @@ class MissingTrafficAugmentor:
         asset_statements: Dict[str, str],
         service_statements: Dict[str, str],
         register_statements: Dict[str, str],
+        process_statements: Dict[str, str],
+        runs_statements: Dict[str, str],
     ) -> Tuple[List[str], List[str], Set[str], Dict[str, int], Optional["TelemetryConnectionIndex"]]:
-        """Build Cypher statements that enrich existing ESTABLISH_CONNECTION edges.
+        """Build Cypher statements that enrich existing CONNECT_TO edges.
 
         Uses the CorrelationEngine for temporal-anchored correlation with
         confidence scoring. Returns:
@@ -1457,6 +1448,8 @@ class MissingTrafficAugmentor:
                     protocol=proto,
                     asset_statements=asset_statements,
                     service_statements=service_statements,
+                    process_statements=process_statements,
+                    runs_statements=runs_statements,
                     service_name="Modbus Server",
                     aggregation="modbus",
                 )
@@ -1517,7 +1510,6 @@ class MissingTrafficAugmentor:
                             "registerType": "topic",
                             **summary,
                         },
-                        include_legacy_register=False,
                     )
                     process_register_statements.extend(
                         self._build_process_signal_statements(
@@ -1527,7 +1519,6 @@ class MissingTrafficAugmentor:
                             correlation_confidence=best_confidence,
                             process_image=proc_ctx.process_image,
                             process_id=proc_ctx.process_id,
-                            include_legacy_register=False,
                         )
                     )
 
@@ -1562,7 +1553,6 @@ class MissingTrafficAugmentor:
                         signal_name=signal_name,
                         register_statements=register_statements,
                         signal_properties=signal_props,
-                        include_legacy_register=False,
                     )
                     process_register_statements.extend(
                         self._build_process_signal_statements(
@@ -1572,7 +1562,6 @@ class MissingTrafficAugmentor:
                             correlation_confidence=best_confidence,
                             process_image=proc_ctx.process_image,
                             process_id=proc_ctx.process_id,
-                            include_legacy_register=False,
                         )
                     )
 
@@ -1628,10 +1617,7 @@ class MissingTrafficAugmentor:
                     f"MATCH (reg:ICSSignal {{guid: '{register_guid_escaped}'}})\n"
                     f"MERGE (proc)-[acc:READ_SIGNAL]->(reg)\n"
                     f"SET acc += {cypher_props}\n"
-                    f"SET acc.pcapAugmented = true\n"
-                    f"MERGE (proc)-[legacy:READ_REGISTER]->(reg)\n"
-                    f"SET legacy += {cypher_props}\n"
-                    f"SET legacy.pcapAugmented = true"
+                    f"SET acc.pcapAugmented = true"
                 )
                 edge_count += 1
 
@@ -1648,10 +1634,7 @@ class MissingTrafficAugmentor:
                     f"MATCH (reg:ICSSignal {{guid: '{register_guid_escaped}'}})\n"
                     f"MERGE (proc)-[acc:WRITE_SIGNAL]->(reg)\n"
                     f"SET acc += {cypher_props}\n"
-                    f"SET acc.pcapAugmented = true\n"
-                    f"MERGE (proc)-[legacy:WRITE_REGISTER]->(reg)\n"
-                    f"SET legacy += {cypher_props}\n"
-                    f"SET legacy.pcapAugmented = true"
+                    f"SET acc.pcapAugmented = true"
                 )
                 edge_count += 1
 
@@ -1739,15 +1722,7 @@ class MissingTrafficAugmentor:
     def _classify_destination(self, dst_ip: str) -> Tuple[str, str]:
         """Classify a destination and return (relationship_type, destination_node_label).
 
-        For graphs with internal/external split:
-        # Known hosts (in asset inventory) use ESTABLISH_INTERNAL_CONNECTION to NetworkService.
-        # Unknown hosts use ESTABLISH_EXTERNAL_CONNECTION to Host.
-        # if self._is_known_host(dst_ip):
-        #     return (self.config.internal_relationship_name, "NetworkService")
-        # else:
-        #     return (self.config.external_relationship_name, "Host")
-
-        For unified ESTABLISH_CONNECTION, always use NetworkService:
+        For unified CONNECT_TO, always use NetworkService:
         """
         return (self.config.relationship_name, "NetworkService")
 
@@ -1756,20 +1731,17 @@ class MissingTrafficAugmentor:
         ip: str,
         host_statements: Dict[str, str],
     ) -> str:
-        """Ensure a Host node MERGE statement exists for an external/unknown host.
-
-        Host nodes are used for destinations that are not in the known asset inventory.
-        They are targets for ESTABLISH_EXTERNAL_CONNECTION relationships.
-        """
-        # For external hosts, use IP as the hostname
-        guid = _generate_node_guid("Host", ip)
+        """Ensure an external NetworkEndpoint MERGE statement exists."""
+        guid = _generate_node_guid("NetworkEndpoint", ip)
         if guid not in host_statements:
             props = {
                 "guid": guid,
                 "hostname": ip,
                 "ipAddress": ip,
                 "source": "pcap",
-                "external": True,
+                "isExternal": True,
+                "isManaged": False,
+                "zone": "Internet",
             }
             host_statements[guid] = cypher_emit.create_host_statement(guid, props)
         return guid
@@ -1780,8 +1752,8 @@ class MissingTrafficAugmentor:
         ip_address: str,
         asset_statements: Dict[str, str],
     ) -> str:
-        """Ensure an Asset MERGE statement exists for the given host."""
-        guid = _generate_node_guid("Asset", hostname)
+        """Ensure a NetworkEndpoint MERGE statement exists for the given host."""
+        guid = _generate_node_guid("NetworkEndpoint", hostname)
         if ip_address and ip_address not in self._asset_ip_map:
             self._asset_ip_map[ip_address] = hostname
         if guid not in asset_statements:
@@ -1789,6 +1761,9 @@ class MissingTrafficAugmentor:
                 "guid": guid,
                 "hostname": hostname,
                 "ipAddress": ip_address,
+                "ipAddresses": [ip_address] if ip_address else [],
+                "isExternal": False if self._is_known_host(ip_address) else True,
+                "isManaged": self._is_known_host(ip_address),
                 "source": "pcap",
             }
             asset_statements[guid] = cypher_emit.create_asset_statement(guid, props)
@@ -1801,6 +1776,8 @@ class MissingTrafficAugmentor:
         protocol: str,
         asset_statements: Dict[str, str],
         service_statements: Dict[str, str],
+        process_statements: Optional[Dict[str, str]] = None,
+        runs_statements: Optional[Dict[str, str]] = None,
         service_name: Optional[str] = None,
         aggregation: Optional[str] = None,
         note: Optional[str] = None,
@@ -1831,6 +1808,21 @@ class MissingTrafficAugmentor:
                 props,
                 asset_guid,
             )
+
+        # For inferred services, ensure placeholder process ownership is present.
+        if process_statements is not None and runs_statements is not None:
+            owner_process_guid = self._ensure_placeholder_process(
+                hostname,
+                asset_guid,
+                process_statements,
+                runs_statements,
+            )
+            binds_key = f"{owner_process_guid}|{service_guid}|BINDS"
+            if binds_key not in runs_statements:
+                runs_statements[binds_key] = cypher_emit.create_binds_relationship_statement(
+                    owner_process_guid,
+                    service_guid,
+                )
 
         return service_guid
 
@@ -2026,6 +2018,8 @@ class MissingTrafficAugmentor:
             protocol=protocol,
             asset_statements=asset_statements,
             service_statements=service_statements,
+            process_statements=process_statements,
+            runs_statements=runs_statements,
             service_name=service_name,
             aggregation="mqtt",
             note="MQTT server inferred from PCAP traffic",
@@ -2056,7 +2050,6 @@ class MissingTrafficAugmentor:
                     "registerType": "topic",
                     **summary,
                 },
-                include_legacy_register=False,
             )
             if client_is_process and client_node_id and not self.config.telemetry_attribution_only:
                 process_register_statements.extend(
@@ -2067,7 +2060,6 @@ class MissingTrafficAugmentor:
                         correlation_confidence=correlation_confidence,
                         process_image=process_image,
                         process_id=process_id,
-                        include_legacy_register=False,
                     )
                 )
 
@@ -2104,7 +2096,7 @@ class MissingTrafficAugmentor:
                     f"(PID {process_id}) via Sysmon telemetry"
                 )
 
-        source_label = "Process" if client_is_process else "NetworkService"
+        source_label = "Process"
         relationship_statement = cypher_emit.create_connection_statement(
             client_node_id,
             server_node_id,
@@ -2236,6 +2228,8 @@ class MissingTrafficAugmentor:
             protocol=protocol,
             asset_statements=asset_statements,
             service_statements=service_statements,
+            process_statements=process_statements,
+            runs_statements=runs_statements,
             service_name=service_name,
             aggregation="opcua",
             note="OPC UA server inferred from PCAP traffic",
@@ -2270,7 +2264,6 @@ class MissingTrafficAugmentor:
                 signal_name=signal_name,
                 register_statements=register_statements,
                 signal_properties=signal_props,
-                include_legacy_register=False,
             )
             if client_is_process and client_node_id and not self.config.telemetry_attribution_only:
                 process_register_statements.extend(
@@ -2281,7 +2274,6 @@ class MissingTrafficAugmentor:
                         correlation_confidence=correlation_confidence,
                         process_image=process_image,
                         process_id=process_id,
-                        include_legacy_register=False,
                     )
                 )
 
@@ -2318,7 +2310,7 @@ class MissingTrafficAugmentor:
                     f"(PID {process_id}) via Sysmon telemetry"
                 )
 
-        source_label = "Process" if client_is_process else "NetworkService"
+        source_label = "Process"
         relationship_statement = cypher_emit.create_connection_statement(
             client_node_id,
             server_node_id,
@@ -2779,7 +2771,6 @@ class MissingTrafficAugmentor:
         signal_name: str,
         register_statements: Dict[str, str],
         signal_properties: Optional[Dict[str, object]] = None,
-        include_legacy_register: bool = False,
     ) -> str:
         """Ensure an ICSSignal node and ownership edge exist in output."""
         signal_key = _generate_signal_key(protocol, host, port, signal_name)
@@ -2802,8 +2793,7 @@ class MissingTrafficAugmentor:
         register_statements[signal_guid] = cypher_emit.create_ics_signal_statement(
             signal_guid=signal_guid,
             properties=props,
-            asset_guid=asset_guid,
-            include_legacy_register=include_legacy_register,
+            endpoint_guid=asset_guid,
         )
         return signal_guid
 
@@ -2816,7 +2806,6 @@ class MissingTrafficAugmentor:
         correlation_confidence: float,
         process_image: Optional[str] = None,
         process_id: Optional[int] = None,
-        include_legacy_register: bool = False,
     ) -> List[str]:
         """Build READ_SIGNAL / WRITE_SIGNAL statements for one process+signal pair."""
         statements: List[str] = []
@@ -2850,13 +2839,6 @@ class MissingTrafficAugmentor:
                 f"SET acc += {cypher_props}\n"
                 "SET acc.pcapAugmented = true"
             )
-            if include_legacy_register:
-                statement += (
-                    "\n"
-                    "MERGE (proc)-[legacy:READ_REGISTER]->(sig)\n"
-                    f"SET legacy += {cypher_props}\n"
-                    "SET legacy.pcapAugmented = true"
-                )
             statements.append(statement)
 
         if write_count > 0:
@@ -2872,13 +2854,6 @@ class MissingTrafficAugmentor:
                 f"SET acc += {cypher_props}\n"
                 "SET acc.pcapAugmented = true"
             )
-            if include_legacy_register:
-                statement += (
-                    "\n"
-                    "MERGE (proc)-[legacy:WRITE_REGISTER]->(sig)\n"
-                    f"SET legacy += {cypher_props}\n"
-                    "SET legacy.pcapAugmented = true"
-                )
             statements.append(statement)
 
         return statements
@@ -3258,8 +3233,7 @@ class MissingTrafficAugmentor:
         statement = cypher_emit.create_ics_signal_statement(
             signal_guid=register_guid,
             properties=props,
-            asset_guid=asset_guid,
-            include_legacy_register=True,
+            endpoint_guid=asset_guid,
         )
         register_statements[register_guid] = statement
 
@@ -3367,6 +3341,8 @@ class MissingTrafficAugmentor:
             protocol=connection_key.protocol,
             asset_statements=asset_statements,
             service_statements=service_statements,
+            process_statements=process_statements,
+            runs_statements=runs_statements,
             service_name=service_name,
             aggregation="modbus",
             note="Aggregated Modbus server inferred from PCAP-only traffic",
@@ -3461,7 +3437,7 @@ class MissingTrafficAugmentor:
                 )
 
         # Use Process label if we found a matching process, otherwise NetworkService
-        source_label = "Process" if client_is_process else "NetworkService"
+        source_label = "Process"
         relationship_statement = cypher_emit.create_connection_statement(
             client_node_id,
             server_node_id,
@@ -3528,6 +3504,8 @@ class MissingTrafficAugmentor:
             protocol=connection_key.protocol,
             asset_statements=asset_statements,
             service_statements=service_statements,
+            process_statements=process_statements,
+            runs_statements=runs_statements,
             service_name=service_name,
             aggregation="modbus_monitor",
             note="Aggregated Modbus monitor server inferred from PCAP-only traffic",
@@ -3563,7 +3541,7 @@ class MissingTrafficAugmentor:
                 )
 
         # Use Process label if we found a matching process, otherwise NetworkService
-        source_label = "Process" if client_is_process else "NetworkService"
+        source_label = "Process"
         relationship_statement = cypher_emit.create_connection_statement(
             client_node_id,
             server_node_id,
@@ -3623,18 +3601,15 @@ class MissingTrafficAugmentor:
 
         # Classify destination
         rel_type, dst_label = self._classify_destination(group.server_ip)
-        # For internal/external split (using Host nodes for external):
-        # if dst_label == "NetworkService":
-        #     ...use NetworkService...
-        # else:
-        #     server_node_id = self._ensure_host_node(ip=group.server_ip, host_statements=host_statements)
-        # For unified ESTABLISH_CONNECTION, always use NetworkService:
+        # Unified ontology uses NetworkService as the CONNECT_TO destination.
         server_node_id = self._ensure_network_service_node(
             ip=group.server_ip,
             port=group.service_port,
             protocol=connection_key.protocol,
             asset_statements=asset_statements,
             service_statements=service_statements,
+            process_statements=process_statements,
+            runs_statements=runs_statements,
             service_name=self._service_name_for_port(group.service_port),
             aggregation="port_group",
             note="Aggregated server inferred from PCAP-only traffic",
@@ -3676,7 +3651,7 @@ class MissingTrafficAugmentor:
                 )
 
         # Use Process label if we found a matching process, otherwise NetworkService
-        source_label = "Process" if client_is_process else "NetworkService"
+        source_label = "Process"
         relationship_statement = cypher_emit.create_connection_statement(
             client_node_id,
             server_node_id,
@@ -3719,7 +3694,7 @@ class MissingTrafficAugmentor:
             handle.write("\n\n// === PCAP Augmentation (Missing Traffic) ===\n\n")
 
             if asset_statements:
-                handle.write("// PCAP-Inferred Asset Nodes\n")
+                handle.write("// PCAP-Inferred NetworkEndpoint Nodes\n")
                 for statement in asset_statements:
                     handle.write(statement + ";\n")
                 handle.write("\n")
@@ -3731,7 +3706,7 @@ class MissingTrafficAugmentor:
                 handle.write("\n")
 
             if host_statements:
-                handle.write("// PCAP-Inferred Host Nodes (External/Unknown Destinations)\n")
+                handle.write("// PCAP-Inferred External NetworkEndpoint Nodes\n")
                 for statement in host_statements:
                     handle.write(statement + ";\n")
                 handle.write("\n")
@@ -3755,7 +3730,7 @@ class MissingTrafficAugmentor:
                 handle.write("\n")
 
             if runs_statements:
-                handle.write("// RUNS Relationships (Asset -> Virtual Process)\n")
+                handle.write("// Process Ownership Relationships (RUN_ON/BINDS)\n")
                 for statement in runs_statements:
                     handle.write(statement + ";\n")
                 handle.write("\n")

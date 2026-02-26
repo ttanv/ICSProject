@@ -106,7 +106,7 @@ class AugmentationConfig:
         }
     )
     policy: AugmentationPolicy = field(default_factory=AugmentationPolicy)
-    relationship_name: str = "ESTABLISH_CONNECTION"
+    relationship_name: str = "CONNECT_TO"
     force_rebuild_index: bool = False
     packet_limit: Optional[int] = None
     min_aggregation_threshold: int = 2

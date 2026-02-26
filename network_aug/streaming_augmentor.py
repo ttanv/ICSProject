@@ -5,9 +5,9 @@ PCAP index, processing files one at a time to handle multi-GB captures without
 running out of memory.
 
 It keeps the streaming memory profile while emitting non-streaming-compatible
-Modbus register artifacts:
-- Register nodes with HAS_REGISTER edges
-- READ_REGISTER / WRITE_REGISTER process attribution edges
+Modbus signal artifacts:
+- ICSSignal nodes with EXPOSED_ON edges
+- READ_SIGNAL / WRITE_SIGNAL process attribution edges
 - SDT-based register summary properties
 """
 
@@ -96,13 +96,14 @@ class StreamingAugmentor:
     this version also:
     - Correlates PCAP connections to existing telemetry
     - Enriches existing edges with PCAP-derived metrics
-    - Creates Register nodes and READ/WRITE_REGISTER relationships for Modbus
+    - Creates ICSSignal nodes and READ/WRITE_SIGNAL relationships for Modbus
     """
 
     def __init__(self, config: AugmentationConfig) -> None:
         self.config = config
         self._asset_ip_map = self._load_asset_lookup()
         self._correlation_stats = CorrelationStats()
+        self._placeholder_processes: Dict[str, str] = {}
 
     def _load_asset_lookup(self) -> Dict[str, str]:
         """Build IP-to-hostname mapping from config and asset file."""
@@ -113,11 +114,21 @@ class StreamingAugmentor:
                 import yaml
                 with open(self.config.asset_file) as f:
                     assets = yaml.safe_load(f)
-                    for asset in assets.get("assets", []):
-                        hostname = asset.get("hostname")
-                        ip = asset.get("ip")
-                        if hostname and ip:
-                            mapping[ip] = hostname
+                    hosts = assets.get("hosts", {}) if isinstance(assets, dict) else {}
+                    for hostname, details in hosts.items():
+                        if not isinstance(details, dict):
+                            continue
+                        ip_addresses = details.get("ip_addresses")
+                        if isinstance(ip_addresses, list):
+                            for ip in ip_addresses:
+                                ip_text = str(ip or "").strip()
+                                if ip_text:
+                                    mapping[ip_text] = hostname
+                        else:
+                            ip = details.get("ip_address") or details.get("ip")
+                            ip_text = str(ip or "").strip()
+                            if ip_text:
+                                mapping[ip_text] = hostname
             except Exception:
                 pass
 
@@ -190,6 +201,8 @@ class StreamingAugmentor:
         asset_statements: Dict[str, str] = {}
         service_statements: Dict[str, str] = {}
         register_statements: Dict[str, str] = {}
+        process_statements: Dict[str, str] = {}
+        ownership_statements: Dict[str, str] = {}
         relationship_statements: List[str] = []
         edge_update_statements: List[str] = []
         process_register_statements: List[str] = []
@@ -390,7 +403,7 @@ class StreamingAugmentor:
                 self._correlation_stats.process_attributed_registers += register_count
 
         print(f"Generated {len(edge_update_statements)} edge updates")
-        print(f"Generated {len(process_register_statements)} READ/WRITE_REGISTER relationships")
+        print(f"Generated {len(process_register_statements)} READ/WRITE_SIGNAL relationships")
 
         # Phase 3: Process PCAP-only connections (not in telemetry)
         print(f"Phase 3: Processing {len(pcap_only_groups)} PCAP-only server groups...")
@@ -402,6 +415,8 @@ class StreamingAugmentor:
                     asset_statements,
                     service_statements,
                     register_statements,
+                    process_statements,
+                    ownership_statements,
                 )
                 if rel_stmt:
                     relationship_statements.append(rel_stmt)
@@ -411,6 +426,8 @@ class StreamingAugmentor:
                     asset_statements,
                     service_statements,
                     register_statements,
+                    process_statements,
+                    ownership_statements,
                 )
                 if rel_stmt:
                     relationship_statements.append(rel_stmt)
@@ -424,6 +441,8 @@ class StreamingAugmentor:
             asset_statements,
             service_statements,
             register_statements,
+            process_statements,
+            ownership_statements,
             relationship_statements,
             edge_update_statements,
             process_register_statements,
@@ -432,7 +451,7 @@ class StreamingAugmentor:
         # Print summary
         self._print_summary()
 
-        node_count = len(asset_statements) + len(service_statements) + len(register_statements)
+        node_count = len(asset_statements) + len(service_statements) + len(register_statements) + len(process_statements)
         return node_count, total_rels
 
     def _relationship_properties(
@@ -508,6 +527,8 @@ class StreamingAugmentor:
         asset_statements: Dict[str, str],
         service_statements: Dict[str, str],
         register_statements: Dict[str, str],
+        process_statements: Dict[str, str],
+        ownership_statements: Dict[str, str],
     ) -> Optional[str]:
         """Emit Cypher statements for a single connection."""
         src_is_service = _is_service_port(stats.origin.src_port)
@@ -523,13 +544,11 @@ class StreamingAugmentor:
             client_ip, client_port = stats.origin.src_ip, stats.origin.src_port
             server_ip, server_port = stats.origin.dst_ip, stats.origin.dst_port
 
-        src_node_id = self._ensure_network_service_node(
+        src_node_id = self._ensure_placeholder_process(
             ip=client_ip,
-            port=client_port,
-            protocol=stats.origin.protocol,
             asset_statements=asset_statements,
-            service_statements=service_statements,
-            service_name="Ephemeral Client" if client_port == 0 else None,
+            process_statements=process_statements,
+            ownership_statements=ownership_statements,
         )
 
         dst_node_id = self._ensure_network_service_node(
@@ -538,6 +557,8 @@ class StreamingAugmentor:
             protocol=stats.origin.protocol,
             asset_statements=asset_statements,
             service_statements=service_statements,
+            process_statements=process_statements,
+            ownership_statements=ownership_statements,
         )
 
         if not src_node_id or not dst_node_id:
@@ -569,6 +590,8 @@ class StreamingAugmentor:
             dst_node_id,
             rel_props,
             relationship_name=self.config.relationship_name,
+            source_label="Process",
+            dest_label="NetworkService",
         )
 
     def _emit_aggregated_group(
@@ -577,6 +600,8 @@ class StreamingAugmentor:
         asset_statements: Dict[str, str],
         service_statements: Dict[str, str],
         register_statements: Dict[str, str],
+        process_statements: Dict[str, str],
+        ownership_statements: Dict[str, str],
     ) -> Optional[str]:
         """Emit Cypher for an aggregated group of connections."""
         if not group_stats:
@@ -593,7 +618,14 @@ class StreamingAugmentor:
             server_ip, server_port = first.origin.src_ip, first.origin.src_port
             client_ip = first.origin.dst_ip
         else:
-            return self._emit_connection(first, asset_statements, service_statements, register_statements)
+            return self._emit_connection(
+                first,
+                asset_statements,
+                service_statements,
+                register_statements,
+                process_statements,
+                ownership_statements,
+            )
 
         client_ips: Set[str] = set()
         for stats in group_stats:
@@ -635,13 +667,11 @@ class StreamingAugmentor:
             protocols[stats.high_level_protocol] += stats.packet_count
         dominant_protocol = max(protocols.keys(), key=lambda p: protocols[p]) if protocols else "UNKNOWN"
 
-        src_node_id = self._ensure_network_service_node(
+        src_node_id = self._ensure_placeholder_process(
             ip=client_ip,
-            port=0,
-            protocol=first.origin.protocol,
             asset_statements=asset_statements,
-            service_statements=service_statements,
-            service_name="Ephemeral Client",
+            process_statements=process_statements,
+            ownership_statements=ownership_statements,
         )
 
         dst_node_id = self._ensure_network_service_node(
@@ -650,6 +680,8 @@ class StreamingAugmentor:
             protocol=first.origin.protocol,
             asset_statements=asset_statements,
             service_statements=service_statements,
+            process_statements=process_statements,
+            ownership_statements=ownership_statements,
         )
 
         if not src_node_id or not dst_node_id:
@@ -706,6 +738,8 @@ class StreamingAugmentor:
             dst_node_id,
             rel_props,
             relationship_name=self.config.relationship_name,
+            source_label="Process",
+            dest_label="NetworkService",
         )
 
     def _merge_register_summaries(
@@ -958,7 +992,7 @@ class StreamingAugmentor:
         server_port: int,
         correlation_confidence: float,
     ) -> Tuple[List[str], int]:
-        """Generate READ/WRITE_REGISTER relationship statements for process attribution."""
+        """Generate READ/WRITE_SIGNAL relationship statements for process attribution."""
         statements: List[str] = []
         edge_count = 0
         if not register_summaries:
@@ -994,8 +1028,8 @@ class StreamingAugmentor:
                 cypher_props = cypher_emit.format_properties(read_props)
                 statements.append(
                     f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
-                    f"MATCH (reg:Register {{guid: '{register_guid_escaped}'}})\n"
-                    f"MERGE (proc)-[acc:READ_REGISTER]->(reg)\n"
+                    f"MATCH (reg:ICSSignal {{guid: '{register_guid_escaped}'}})\n"
+                    f"MERGE (proc)-[acc:READ_SIGNAL]->(reg)\n"
                     f"SET acc += {cypher_props}\n"
                     f"SET acc.pcapAugmented = true;"
                 )
@@ -1008,8 +1042,8 @@ class StreamingAugmentor:
                 cypher_props = cypher_emit.format_properties(write_props)
                 statements.append(
                     f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
-                    f"MATCH (reg:Register {{guid: '{register_guid_escaped}'}})\n"
-                    f"MERGE (proc)-[acc:WRITE_REGISTER]->(reg)\n"
+                    f"MATCH (reg:ICSSignal {{guid: '{register_guid_escaped}'}})\n"
+                    f"MERGE (proc)-[acc:WRITE_SIGNAL]->(reg)\n"
                     f"SET acc += {cypher_props}\n"
                     f"SET acc.pcapAugmented = true;"
                 )
@@ -1022,13 +1056,19 @@ class StreamingAugmentor:
         ip: str,
         asset_statements: Dict[str, str],
     ) -> str:
-        """Ensure an Asset node exists and return its GUID."""
+        """Ensure a NetworkEndpoint node exists and return its GUID."""
         hostname = self._resolve_hostname(ip)
-        asset_guid = _generate_node_guid("Asset", hostname)
+        asset_guid = _generate_node_guid("NetworkEndpoint", hostname)
         if asset_guid not in asset_statements:
-            asset_props = {"hostname": hostname, "pcapAugmented": True}
-            if ip != hostname:
-                asset_props["ip"] = ip
+            asset_props: Dict[str, object] = {
+                "guid": asset_guid,
+                "hostname": hostname,
+                "ipAddress": ip,
+                "ipAddresses": [ip] if ip else [],
+                "isExternal": hostname == ip,
+                "isManaged": hostname != ip,
+                "pcapAugmented": True,
+            }
             asset_statements[asset_guid] = cypher_emit.create_asset_statement(asset_guid, asset_props)
         return asset_guid
 
@@ -1043,7 +1083,7 @@ class StreamingAugmentor:
         register_statements: Dict[str, str],
         register_summary: Optional[Dict[str, object]] = None,
     ) -> None:
-        """Ensure a Register node and HAS_REGISTER edge exist in the output."""
+        """Ensure an ICSSignal node and EXPOSED_ON edge exist in the output."""
         register_guid = _generate_node_guid_v2_braced(
             "Register",
             host,
@@ -1074,6 +1114,46 @@ class StreamingAugmentor:
             asset_guid,
         )
 
+    def _ensure_placeholder_process(
+        self,
+        ip: str,
+        asset_statements: Dict[str, str],
+        process_statements: Dict[str, str],
+        ownership_statements: Dict[str, str],
+    ) -> str:
+        """Ensure a placeholder Process exists and return its GUID."""
+        hostname = self._resolve_hostname(ip)
+        endpoint_guid = self._ensure_asset_node(ip=ip, asset_statements=asset_statements)
+        process_guid = self._placeholder_processes.get(hostname)
+        if process_guid:
+            return process_guid
+
+        process_guid = f"runtime://{hostname}"
+        if process_guid not in process_statements:
+            process_props = {
+                "guid": process_guid,
+                "image": f"{hostname} Runtime",
+                "processName": f"{hostname} Runtime",
+                "type": "Virtual Process",
+                "host": hostname,
+                "source": "pcap",
+                "pcapAugmented": True,
+            }
+            process_statements[process_guid] = cypher_emit.create_virtual_process_statement(
+                process_guid,
+                process_props,
+            )
+
+        run_on_key = f"{process_guid}|{endpoint_guid}|RUN_ON"
+        if run_on_key not in ownership_statements:
+            ownership_statements[run_on_key] = cypher_emit.create_run_on_relationship_statement(
+                endpoint_guid,
+                process_guid,
+            )
+
+        self._placeholder_processes[hostname] = process_guid
+        return process_guid
+
     def _ensure_network_service_node(
         self,
         ip: str,
@@ -1081,9 +1161,11 @@ class StreamingAugmentor:
         protocol: str,
         asset_statements: Dict[str, str],
         service_statements: Dict[str, str],
+        process_statements: Optional[Dict[str, str]] = None,
+        ownership_statements: Optional[Dict[str, str]] = None,
         service_name: Optional[str] = None,
     ) -> Optional[str]:
-        """Ensure Asset and NetworkService nodes exist, return NetworkService GUID."""
+        """Ensure NetworkEndpoint and NetworkService nodes exist, return NetworkService GUID."""
         hostname = self._resolve_hostname(ip)
         asset_guid = self._ensure_asset_node(ip=ip, asset_statements=asset_statements)
 
@@ -1106,6 +1188,20 @@ class StreamingAugmentor:
                 asset_guid,
             )
 
+        if process_statements is not None and ownership_statements is not None:
+            owner_guid = self._ensure_placeholder_process(
+                ip=ip,
+                asset_statements=asset_statements,
+                process_statements=process_statements,
+                ownership_statements=ownership_statements,
+            )
+            binds_key = f"{owner_guid}|{service_guid}|BINDS"
+            if binds_key not in ownership_statements:
+                ownership_statements[binds_key] = cypher_emit.create_binds_relationship_statement(
+                    owner_guid,
+                    service_guid,
+                )
+
         return service_guid
 
     def _write_output(
@@ -1113,6 +1209,8 @@ class StreamingAugmentor:
         asset_statements: Dict[str, str],
         service_statements: Dict[str, str],
         register_statements: Dict[str, str],
+        process_statements: Dict[str, str],
+        ownership_statements: Dict[str, str],
         relationship_statements: List[str],
         edge_update_statements: List[str],
         process_register_statements: List[str],
@@ -1131,16 +1229,16 @@ class StreamingAugmentor:
                     f.write(stmt + "\n")
                 f.write("\n")
 
-            # Process-to-register relationships
+            # Process-to-signal relationships
             if process_register_statements:
-                f.write("// READ/WRITE_REGISTER relationships for process attribution\n")
+                f.write("// READ/WRITE_SIGNAL relationships for process attribution\n")
                 for stmt in process_register_statements:
                     f.write(stmt + "\n")
                 f.write("\n")
 
             # New nodes for PCAP-only connections
             if asset_statements:
-                f.write("// Asset nodes for PCAP-only connections\n")
+                f.write("// NetworkEndpoint nodes for PCAP-only connections\n")
                 for stmt in sorted(asset_statements.values()):
                     f.write(stmt + "\n")
                 f.write("\n")
@@ -1152,8 +1250,20 @@ class StreamingAugmentor:
                 f.write("\n")
 
             if register_statements:
-                f.write("// PCAP-Inferred Register Nodes\n")
+                f.write("// PCAP-Inferred ICSSignal Nodes\n")
                 for stmt in sorted(register_statements.values()):
+                    f.write(stmt + "\n")
+                f.write("\n")
+
+            if process_statements:
+                f.write("// Virtual Process Nodes for inferred services\n")
+                for stmt in sorted(process_statements.values()):
+                    f.write(stmt + "\n")
+                f.write("\n")
+
+            if ownership_statements:
+                f.write("// Process Ownership Relationships (RUN_ON/BINDS)\n")
+                for stmt in sorted(ownership_statements.values()):
                     f.write(stmt + "\n")
                 f.write("\n")
 
@@ -1176,4 +1286,4 @@ class StreamingAugmentor:
         print(f"  - Session port matches: {self._correlation_stats.session_port_matches}")
         print(f"  - Temporal matches: {self._correlation_stats.temporal_matches}")
         print(f"PCAP-only connections: {self._correlation_stats.pcap_only_connections}")
-        print(f"Process-attributed registers: {self._correlation_stats.process_attributed_registers}")
+        print(f"Process-attributed signals: {self._correlation_stats.process_attributed_registers}")

@@ -12,10 +12,10 @@ This repository enriches a base Neo4j Cypher export (from host telemetry) with n
 ## What This Produces
 
 Given a base `neo4j_export.cypher` and a PCAP directory, the tool writes an augmented Cypher file with additional nodes/relationships such as:
-- `Asset`
+- `NetworkEndpoint`
 - `NetworkService`
-- `Register` (Modbus)
-- enriched connection relationships (including updates to existing telemetry edges)
+- `ICSSignal` (Modbus/MQTT/OPC UA observations)
+- enriched `CONNECT_TO` relationships (including updates to existing telemetry edges)
 
 ## Main Entry Point
 
@@ -96,8 +96,8 @@ python -m network_aug \
 ```
 
 Streaming mode now emits the same Modbus register artifacts as non-streaming:
-- `Register` nodes + `HAS_REGISTER`
-- process attribution via `READ_REGISTER` / `WRITE_REGISTER`
+- `ICSSignal` nodes + `EXPOSED_ON`
+- process attribution via `READ_SIGNAL` / `WRITE_SIGNAL`
 - SDT/RLE register summary fields (for example `valueTimeline`, `sdtTolerance`)
 
 ### 3) Rebuild PCAP index cache
@@ -137,7 +137,7 @@ python -m network_aug \
 
 - `--packet-limit N`: limit packets per PCAP file for fast iteration.
 - `--min-aggregation-threshold N`: minimum ephemeral-port fanout to aggregate connections.
-- `--disable-process-attribution`: disable `Process` to register attribution edges.
+- `--disable-process-attribution`: disable `Process` to signal attribution edges.
 - `--telemetry-attribution-only`: only attribute when telemetry evidence exists.
 
 ## Parser Backend Selection

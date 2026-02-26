@@ -54,9 +54,7 @@ class CypherConnectionExtractor:
         asset_file: Optional[Path] = None,
     ) -> None:
         self.cypher_path = Path(cypher_path)
-        # For graphs with separate internal/external types, use:
-        # default_types = ("ESTABLISH_INTERNAL_CONNECTION", "ESTABLISH_EXTERNAL_CONNECTION")
-        default_types = ("ESTABLISH_CONNECTION",)
+        default_types = ("CONNECT_TO",)
         self.relationship_types = tuple(rel.upper() for rel in (relationship_types or default_types))
         pattern = "|".join(re.escape(rel) for rel in self.relationship_types)
         # Pattern handles both [alias:TYPE and [:TYPE (no alias) formats
@@ -177,7 +175,7 @@ class CypherConnectionExtractor:
             self._node_cache.setdefault(guid, cached)
 
             label_lower = label.lower()
-            if label_lower == "asset":
+            if label_lower in {"networkendpoint", "asset"}:
                 hostname = str(properties.get("hostname") or "").strip()
                 # Handle both ipAddress (singular) and ipAddresses (plural/array) formats
                 ip_addresses = properties.get("ipAddresses") or properties.get("ip_addresses")
@@ -373,12 +371,14 @@ class CypherConnectionExtractor:
         if not node:
             return ""
         props = node.get("props", {})
-        ip_address = str(
-            props.get("ipAddress")
-            or props.get("ip")
-            or props.get("address")
-            or ""
-        ).strip()
+        ip_addresses = props.get("ipAddresses") or props.get("ip_addresses")
+        if isinstance(ip_addresses, list):
+            for ip in ip_addresses:
+                ip_address = str(ip or "").strip()
+                if ip_address:
+                    return ip_address
+
+        ip_address = str(props.get("ipAddress") or props.get("ip") or props.get("address") or "").strip()
         if ip_address:
             return ip_address
 
