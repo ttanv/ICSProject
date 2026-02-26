@@ -910,6 +910,8 @@ def _parse_packet_fast(
         opcua_operation=opcua_details.operation,
         opcua_request_id=opcua_details.request_id,
         opcua_node_ids=opcua_details.node_ids,
+        opcua_values=opcua_details.values,
+        mqtt_payload_values=mqtt_details.payload_values,
         modbus_function=modbus_data[0],
         modbus_unit_id=modbus_data[1],
         modbus_registers=modbus_data[2],

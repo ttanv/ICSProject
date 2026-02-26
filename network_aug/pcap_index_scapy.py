@@ -196,6 +196,8 @@ class ScapyPCAPConnectionIndex:
                             opcua_operation=opcua_details.operation,
                             opcua_request_id=opcua_details.request_id,
                             opcua_node_ids=opcua_details.node_ids,
+                            opcua_values=opcua_details.values,
+                            mqtt_payload_values=mqtt_details.payload_values,
                             modbus_function=modbus_details.function_code,
                             modbus_unit_id=modbus_details.unit_id,
                             modbus_registers=modbus_details.registers,

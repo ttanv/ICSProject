@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import struct
 from dataclasses import dataclass
 import uuid
 from typing import List, Optional, Tuple
@@ -41,6 +42,7 @@ class OPCUADetails:
     operation: Optional[str] = None
     request_id: Optional[int] = None
     node_ids: Tuple[str, ...] = ()
+    values: Tuple[Optional[float], ...] = ()
     strong_match: bool = False
 
 
@@ -85,8 +87,10 @@ def parse_opcua_details(payload: bytes, src_port: int, dst_port: int) -> OPCUADe
         # OPN starts with SecureChannelId then AsymmetricSecurityHeader String.
         security_policy_uri, _ = _read_ua_string(payload, 12, frame_end)
 
+    values: Tuple[Optional[float], ...] = ()
+
     if message_type == "MSG" and chunk_type == "F" and frame_end <= len(payload) and frame_end >= 24:
-        service_type, operation, request_id, node_ids = _parse_msg_service(payload, frame_end)
+        service_type, operation, request_id, node_ids, values = _parse_msg_service(payload, frame_end)
 
     strong_match = _is_strong_nonstandard_match(
         src_port=src_port,
@@ -109,6 +113,7 @@ def parse_opcua_details(payload: bytes, src_port: int, dst_port: int) -> OPCUADe
         operation=operation,
         request_id=request_id,
         node_ids=node_ids,
+        values=values,
         strong_match=strong_match,
     )
 
@@ -135,13 +140,13 @@ class _NodeId:
 def _parse_msg_service(
     payload: bytes,
     frame_end: int,
-) -> Tuple[Optional[str], Optional[str], Optional[int], Tuple[str, ...]]:
-    """Parse OPC UA MSG payload and extract request service + NodeIds when present."""
+) -> Tuple[Optional[str], Optional[str], Optional[int], Tuple[str, ...], Tuple[Optional[float], ...]]:
+    """Parse OPC UA MSG payload and extract request service + NodeIds + values."""
     # [8:12] is SecureChannelId. MSG then carries:
     # SymmetricSecurityHeader(tokenId) + SequenceHeader(seqNo, requestId) + ExtensionObject(service)
     idx = 12
     if idx + 12 > frame_end:
-        return None, None, None, ()
+        return None, None, None, (), ()
     # token_id is currently unused, but consumed for alignment.
     _token_id = int.from_bytes(payload[idx : idx + 4], "little", signed=False)
     idx += 4
@@ -155,19 +160,41 @@ def _parse_msg_service(
     # It is not wrapped as ExtensionObject (no encoding byte / length field).
     type_id, idx = _read_node_id(payload, idx, frame_end)
     if type_id is None or idx is None:
-        return None, None, request_id, ()
+        return None, None, request_id, (), ()
     service_name = _service_name_for_type(type_id)
     operation = _REQUEST_SERVICE_TO_OPERATION.get(service_name or "")
 
+    values: Tuple[Optional[float], ...] = ()
+
     if service_name == "ReadRequest":
         node_ids = _extract_read_request_node_ids(payload, idx, frame_end)
+    elif service_name == "ReadResponse":
+        extracted_values = _extract_read_response_values(payload, idx, frame_end)
+        node_ids = []
+        values = tuple(extracted_values)
     elif service_name == "WriteRequest":
-        node_ids = _extract_write_request_node_ids(payload, idx, frame_end)
+        pairs = _extract_write_request_values(payload, idx, frame_end)
+        node_ids = [nid for nid, _ in pairs]
+        values = tuple(v for _, v in pairs)
     else:
         node_ids = []
 
     deduped = tuple(dict.fromkeys(node_ids))
-    return service_name, operation, request_id, deduped
+    # Align values to deduped node_ids (only for WriteRequest where we have both)
+    if service_name == "WriteRequest" and values and len(node_ids) == len(values):
+        seen: dict[str, int] = {}
+        deduped_values: list[Optional[float]] = []
+        for nid, val in zip(node_ids, values):
+            if nid not in seen:
+                seen[nid] = len(deduped_values)
+                deduped_values.append(val)
+            else:
+                deduped_values[seen[nid]] = val
+        values = tuple(deduped_values)
+    elif service_name != "ReadResponse":
+        values = ()
+
+    return service_name, operation, request_id, deduped, values
 
 
 def _service_name_for_type(node_id: _NodeId) -> Optional[str]:
@@ -430,6 +457,166 @@ def _skip_diagnostic_info(payload: bytes, idx: int, end: int, depth: int) -> Opt
     if mask & 0x40:
         idx = _skip_diagnostic_info(payload, idx, end, depth + 1)
     return idx
+
+
+def _read_numeric_from_variant(payload: bytes, idx: int, end: int) -> Tuple[Optional[float], Optional[int]]:
+    """Read a scalar numeric value from a Variant, return (value, new_idx).
+
+    Handles Boolean through Double (types 1-11). Returns (None, new_idx) for
+    non-numeric or array types, skipping the variant properly.
+    """
+    if idx >= end:
+        return None, None
+    encoding = payload[idx]
+    idx += 1
+    is_array = (encoding & 0x80) != 0
+    variant_type = encoding & 0x3F
+
+    if is_array:
+        # Skip the entire variant for arrays
+        idx -= 1
+        new_idx = _skip_variant(payload, idx, end)
+        return None, new_idx
+
+    _NUMERIC_UNPACK = {
+        1: ("<?", 1),    # Boolean
+        2: ("<b", 1),    # SByte
+        3: ("<B", 1),    # Byte
+        4: ("<h", 2),    # Int16
+        5: ("<H", 2),    # UInt16
+        6: ("<i", 4),    # Int32
+        7: ("<I", 4),    # UInt32
+        8: ("<q", 8),    # Int64
+        9: ("<Q", 8),    # UInt64
+        10: ("<f", 4),   # Float
+        11: ("<d", 8),   # Double
+    }
+
+    if variant_type in _NUMERIC_UNPACK:
+        fmt, size = _NUMERIC_UNPACK[variant_type]
+        if idx + size > end:
+            return None, None
+        raw = struct.unpack_from(fmt, payload, idx)
+        return float(raw[0]), idx + size
+
+    # Non-numeric scalar: skip the whole variant
+    idx -= 1
+    new_idx = _skip_variant(payload, idx, end)
+    return None, new_idx
+
+
+def _read_data_value_numeric(payload: bytes, idx: int, end: int) -> Tuple[Optional[float], Optional[int]]:
+    """Read a DataValue and extract numeric value from its Variant.
+
+    Mirrors _skip_data_value but extracts the numeric value.
+    """
+    if idx >= end:
+        return None, None
+    mask = payload[idx]
+    idx += 1
+    value: Optional[float] = None
+
+    if mask & 0x01:  # Has Value (Variant)
+        value, idx = _read_numeric_from_variant(payload, idx, end)
+        if idx is None:
+            return None, None
+    if mask & 0x02:  # StatusCode
+        if idx + 4 > end:
+            return None, None
+        idx += 4
+    if mask & 0x04:  # SourceTimestamp
+        if idx + 8 > end:
+            return None, None
+        idx += 8
+    if mask & 0x08:  # SourcePicoseconds
+        if idx + 2 > end:
+            return None, None
+        idx += 2
+    if mask & 0x10:  # ServerTimestamp
+        if idx + 8 > end:
+            return None, None
+        idx += 8
+    if mask & 0x20:  # ServerPicoseconds
+        if idx + 2 > end:
+            return None, None
+        idx += 2
+    return value, idx
+
+
+def _skip_response_header(payload: bytes, idx: int, end: int) -> Optional[int]:
+    """Skip ResponseHeader: timestamp(8) + requestHandle(4) + serviceResult(4)
+    + diagnosticInfo + stringTable array + additionalHeader ExtensionObject."""
+    if idx + 16 > end:
+        return None
+    idx += 8   # timestamp
+    idx += 4   # requestHandle
+    idx += 4   # serviceResult (StatusCode)
+
+    # DiagnosticInfo
+    idx = _skip_diagnostic_info(payload, idx, end, depth=0)
+    if idx is None:
+        return None
+
+    # StringTable (array of String)
+    count, idx = _read_int32(payload, idx, end)
+    if count is None:
+        return None
+    if count > 0:
+        for _ in range(min(count, _MAX_ARRAY_ITEMS)):
+            _, idx = _read_ua_string(payload, idx, end)
+
+    # additionalHeader (ExtensionObject)
+    idx = _skip_extension_object(payload, idx, end)
+    return idx
+
+
+def _extract_read_response_values(payload: bytes, idx: int, end: int) -> List[Optional[float]]:
+    """Extract numeric values from a ReadResponse body.
+
+    Returns list of values aligned 1:1 with the original ReadRequest's NodeIds.
+    """
+    result: List[Optional[float]] = []
+    idx = _skip_response_header(payload, idx, end)
+    if idx is None:
+        return result
+
+    # Array of DataValue
+    count, idx = _read_int32(payload, idx, end)
+    if count is None or count <= 0:
+        return result
+    count = min(count, _MAX_ARRAY_ITEMS)
+    for _ in range(count):
+        value, idx = _read_data_value_numeric(payload, idx, end)
+        if idx is None:
+            return result
+        result.append(value)
+    return result
+
+
+def _extract_write_request_values(payload: bytes, idx: int, end: int) -> List[Tuple[str, Optional[float]]]:
+    """Extract (NodeId, value) pairs from a WriteRequest body."""
+    result: List[Tuple[str, Optional[float]]] = []
+    idx = _skip_request_header(payload, idx, end)
+    if idx is None:
+        return result
+    count, idx = _read_int32(payload, idx, end)
+    if count is None or count <= 0:
+        return result
+    count = min(count, _MAX_ARRAY_ITEMS)
+    for _ in range(count):
+        node_id, idx = _read_node_id(payload, idx, end)
+        if node_id is None:
+            return result
+        if idx + 4 > end:
+            return result
+        idx += 4  # AttributeId UInt32
+        _, idx = _read_ua_string(payload, idx, end)  # IndexRange
+        value, idx = _read_data_value_numeric(payload, idx, end)
+        if idx is None:
+            return result
+        nid_str = node_id.canonical
+        result.append((nid_str, value))
+    return result
 
 
 def _read_node_id(payload: bytes, idx: int, end: int) -> Tuple[Optional[_NodeId], Optional[int]]:

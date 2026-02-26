@@ -9,7 +9,7 @@ from typing import Tuple, Optional, Dict, Set, List, Sequence
 from tqdm import tqdm
 import uuid
 from .models import SignalContainerData, ConnectionKey, IndexedConnection, PacketRecord
-from .enhancer import AugmentationConfig, AggregationMetrics, AugmentationArtifacts, AssetMetadata, _PendingModbusRequest, _RegisterAccumulator
+from .enhancer import AugmentationConfig, AggregationMetrics, AugmentationArtifacts, AssetMetadata, _PendingModbusRequest, _RegisterAccumulator, _SignalAccumulator
 
 from . import cypher_emit
 from .correlation import (
@@ -2890,12 +2890,22 @@ class MissingTrafficAugmentor:
         server_ip: str,
         server_port: int,
     ) -> Dict[str, Dict[str, object]]:
-        """Collect per-topic MQTT summaries suitable for ICSSignal properties."""
-        summaries: Dict[str, Dict[str, object]] = {}
+        """Collect per-field MQTT summaries suitable for ICSSignal properties.
 
-        def _topic_summary(topic: str) -> Dict[str, object]:
-            if topic not in summaries:
-                summaries[topic] = {
+        Each numeric field in a PUBLISH payload produces a separate signal entry
+        keyed by ``topic.field_name``.  The original topic is stored as the
+        ``mqttTopic`` property so callers can trace back to the source.
+        """
+        # Per-topic shared metadata (timestamps, QoS, packet types).
+        topic_meta: Dict[str, Dict[str, object]] = {}
+        # Per-field accumulators keyed by "topic.field".
+        accumulators: Dict[str, _SignalAccumulator] = {}
+        # Map signal_key -> raw topic for reverse lookup.
+        field_topics: Dict[str, str] = {}
+
+        def _ensure_topic_meta(topic: str) -> Dict[str, object]:
+            if topic not in topic_meta:
+                topic_meta[topic] = {
                     "sampleCount": 0,
                     "readCount": 0,
                     "writeCount": 0,
@@ -2907,50 +2917,80 @@ class MissingTrafficAugmentor:
                     "_packet_types": set(),
                     "mqttRetainSeen": False,
                 }
-            return summaries[topic]
+            return topic_meta[topic]
+
+        def _get_accumulator(signal_key: str, topic: str) -> _SignalAccumulator:
+            if signal_key not in accumulators:
+                accumulators[signal_key] = _SignalAccumulator(
+                    signal_id=signal_key, protocol="mqtt",
+                )
+                field_topics[signal_key] = topic
+            return accumulators[signal_key]
 
         for packet in packets:
             topic = (packet.mqtt_topic or "").strip()
             if not topic:
                 continue
-            summary = _topic_summary(topic)
-            summary["sampleCount"] = int(summary["sampleCount"]) + 1
+            meta = _ensure_topic_meta(topic)
+            meta["sampleCount"] = int(meta["sampleCount"]) + 1
 
-            first_seen = summary.get("firstSeenAt")
+            first_seen = meta.get("firstSeenAt")
             if first_seen is None or packet.timestamp < float(first_seen):
-                summary["firstSeenAt"] = packet.timestamp
-            last_seen = summary.get("lastSeenAt")
+                meta["firstSeenAt"] = packet.timestamp
+            last_seen = meta.get("lastSeenAt")
             if last_seen is None or packet.timestamp > float(last_seen):
-                summary["lastSeenAt"] = packet.timestamp
+                meta["lastSeenAt"] = packet.timestamp
 
             packet_type = (packet.mqtt_packet_type or "").upper()
             if packet_type:
-                summary["_packet_types"].add(packet_type)
+                meta["_packet_types"].add(packet_type)
             if packet.mqtt_qos is not None and 0 <= packet.mqtt_qos <= 2:
-                summary["_qos_levels"].add(packet.mqtt_qos)
+                meta["_qos_levels"].add(packet.mqtt_qos)
             if packet.mqtt_retain is True:
-                summary["mqttRetainSeen"] = True
+                meta["mqttRetainSeen"] = True
 
             if packet_type == "PUBLISH":
                 is_write = packet.dst_ip == server_ip and packet.dst_port == server_port
                 is_read = packet.src_ip == server_ip and packet.src_port == server_port
+                role = ""
                 if is_write:
-                    summary["writeCount"] = int(summary["writeCount"]) + 1
-                    summary["lastWriteAt"] = packet.timestamp
+                    meta["writeCount"] = int(meta["writeCount"]) + 1
+                    meta["lastWriteAt"] = packet.timestamp
+                    role = "write"
                 elif is_read:
-                    summary["readCount"] = int(summary["readCount"]) + 1
-                    summary["lastReadAt"] = packet.timestamp
+                    meta["readCount"] = int(meta["readCount"]) + 1
+                    meta["lastReadAt"] = packet.timestamp
+                    role = "read"
 
+                for field_name, value in packet.mqtt_payload_values:
+                    signal_key = f"{topic}.{field_name}"
+                    acc = _get_accumulator(signal_key, topic)
+                    acc.observe(value, packet.timestamp, role)
+
+        # Build output: one entry per field across all topics.
         result: Dict[str, Dict[str, object]] = {}
-        for topic, summary in summaries.items():
-            out = {k: v for k, v in summary.items() if not k.startswith("_")}
-            qos_levels = sorted(summary["_qos_levels"])  # type: ignore[index]
-            packet_types = sorted(summary["_packet_types"])  # type: ignore[index]
+        for signal_key, acc in accumulators.items():
+            raw_topic = field_topics[signal_key]
+            meta = topic_meta.get(raw_topic, {})
+            field_name = signal_key[len(raw_topic) + 1 :]
+
+            out: Dict[str, object] = {}
+            for k, v in meta.items():
+                if not k.startswith("_"):
+                    out[k] = v
+
+            qos_levels = sorted(meta.get("_qos_levels", set()))  # type: ignore[arg-type]
+            packet_types = sorted(meta.get("_packet_types", set()))  # type: ignore[arg-type]
             if qos_levels:
                 out["mqttQosLevels"] = ",".join(str(q) for q in qos_levels[:8])
             if packet_types:
                 out["mqttPacketTypes"] = ",".join(packet_types[:8])
-            result[topic] = out
+
+            out["mqttTopic"] = raw_topic
+            out["mqttField"] = field_name
+            out.update(acc.to_properties())
+            result[signal_key] = out
+
         return result
 
     def _collect_opcua_signals(
@@ -2966,6 +3006,7 @@ class MissingTrafficAugmentor:
         to endpoint/secure-channel level metadata.
         """
         summaries: Dict[str, Dict[str, object]] = {}
+        accumulators: Dict[str, _SignalAccumulator] = {}
         # Correlate response messages back to request NodeIds:
         # key = (client_ip, secure_channel_id_or_-1, request_id)
         request_node_ids: Dict[Tuple[str, int, int], Tuple[str, ...]] = {}
@@ -2993,6 +3034,11 @@ class MissingTrafficAugmentor:
                     raw = raw.replace('"."', ".").replace('."', ".").replace('"', "")
                 return raw
             return node_id
+
+        def _get_accumulator(signal_name: str) -> _SignalAccumulator:
+            if signal_name not in accumulators:
+                accumulators[signal_name] = _SignalAccumulator(signal_id=signal_name, protocol="opcua")
+            return accumulators[signal_name]
 
         def _acc(signal_name: str) -> Dict[str, object]:
             if signal_name not in summaries:
@@ -3035,6 +3081,11 @@ class MissingTrafficAugmentor:
                 if key is not None:
                     request_node_ids[key] = explicit_node_ids
                     request_operation[key] = operation
+                # Feed WriteRequest values to accumulators
+                if operation == "write" and packet.opcua_values:
+                    for i, nid in enumerate(explicit_node_ids):
+                        val = packet.opcua_values[i] if i < len(packet.opcua_values) else None
+                        _get_accumulator(nid).observe(val, packet.timestamp, "write")
 
             signal_names: Tuple[str, ...] = ()
             identity_kind = "unknown"
@@ -3057,6 +3108,11 @@ class MissingTrafficAugmentor:
                         if service_type == "ReadResponse" and mapped_op == "read":
                             signal_names = mapped_ids
                             identity_kind = "nodeid"
+                            # Feed ReadResponse values to accumulators
+                            if packet.opcua_values:
+                                for i, nid in enumerate(mapped_ids):
+                                    val = packet.opcua_values[i] if i < len(packet.opcua_values) else None
+                                    _get_accumulator(nid).observe(val, packet.timestamp, "read")
                         elif service_type == "WriteResponse" and mapped_op == "write":
                             signal_names = mapped_ids
                             identity_kind = "nodeid"
@@ -3108,6 +3164,19 @@ class MissingTrafficAugmentor:
 
         result: Dict[str, Dict[str, object]] = {}
         for signal_name, summary in summaries.items():
+            # Skip TypeDefinition schema reads — not physical process signals.
+            if signal_name.startswith("TD_"):
+                continue
+            # Skip numeric-only NodeIds (ns=N;i=NNNN) — these are server
+            # metadata/attribute reads, not physical process variables.
+            if ";i=" in signal_name and ";s=" not in signal_name:
+                continue
+            # Skip signals with no numeric value observations (strings,
+            # datetimes, and other non-numeric OPC UA types).
+            acc = accumulators.get(signal_name)
+            if acc is None or acc.sample_count == 0:
+                continue
+
             out = {k: v for k, v in summary.items() if not k.startswith("_")}
             message_types = sorted(summary["_message_types"])  # type: ignore[index]
             service_types = sorted(summary["_service_types"])  # type: ignore[index]
@@ -3131,6 +3200,7 @@ class MissingTrafficAugmentor:
             out["opcuaIdentityKind"] = identity_kind
             out["opcuaNodeId"] = signal_name
             out["opcuaTag"] = _display_tag(signal_name)
+            out.update(acc.to_properties())
             result[signal_name] = out
         return result
 

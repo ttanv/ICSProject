@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
@@ -57,6 +58,51 @@ class MQTTDetails:
     keepalive: Optional[int] = None
     packet_id: Optional[int] = None
     payload_size: Optional[int] = None
+    payload_values: Tuple[Tuple[str, float], ...] = ()
+
+
+def _parse_payload_fields(payload_bytes: bytes) -> Tuple[Tuple[str, float], ...]:
+    """Extract named numeric fields from an MQTT PUBLISH payload.
+
+    Returns a tuple of (field_name, value) pairs:
+    - Plain numeric string: single pair with field name "value"
+    - JSON object: one pair per numeric field (bools excluded)
+    - Non-parsable payloads: empty tuple
+    """
+    if not payload_bytes or len(payload_bytes) > 4096:
+        return ()
+
+    try:
+        text = payload_bytes.decode("utf-8", errors="strict").strip()
+    except (UnicodeDecodeError, ValueError):
+        return ()
+
+    if not text:
+        return ()
+
+    # Try plain numeric string
+    try:
+        return (("value", float(text)),)
+    except ValueError:
+        pass
+
+    # Try JSON
+    if text.startswith("{"):
+        try:
+            obj = json.loads(text)
+            if not isinstance(obj, dict):
+                return ()
+            fields: list[tuple[str, float]] = []
+            for k, v in obj.items():
+                if isinstance(v, bool):
+                    continue
+                if isinstance(v, (int, float)):
+                    fields.append((k, float(v)))
+            return tuple(fields)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            pass
+
+    return ()
 
 
 def parse_mqtt_details(payload: bytes, src_port: int, dst_port: int) -> MQTTDetails:
@@ -93,6 +139,7 @@ def parse_mqtt_details(payload: bytes, src_port: int, dst_port: int) -> MQTTDeta
     topic: Optional[str] = None
     packet_id: Optional[int] = None
     payload_size: Optional[int] = None
+    payload_values: Tuple[Tuple[str, float], ...] = ()
 
     try:
         if packet_type_code == 1:  # CONNECT
@@ -123,6 +170,9 @@ def parse_mqtt_details(payload: bytes, src_port: int, dst_port: int) -> MQTTDeta
                 packet_id = int.from_bytes(payload[idx : idx + 2], "big")
                 idx += 2
             payload_size = max(0, frame_end - idx)
+            if payload_size > 0:
+                payload_bytes = payload[idx : idx + payload_size]
+                payload_values = _parse_payload_fields(payload_bytes)
         elif packet_type_code in {8, 10}:  # SUBSCRIBE / UNSUBSCRIBE
             idx = start_idx
             if idx + 2 <= frame_end:
@@ -157,6 +207,7 @@ def parse_mqtt_details(payload: bytes, src_port: int, dst_port: int) -> MQTTDeta
         keepalive=keepalive,
         packet_id=packet_id,
         payload_size=payload_size,
+        payload_values=payload_values,
     )
 
 

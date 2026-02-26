@@ -180,6 +180,8 @@ class PacketRecord:
     modbus_write_registers: Tuple[int, ...] = field(default_factory=tuple)
     modbus_register_values: Tuple[int, ...] = field(default_factory=tuple)
     modbus_transaction_id: Optional[int] = None
+    opcua_values: Tuple[Optional[float], ...] = field(default_factory=tuple)
+    mqtt_payload_values: Tuple[Tuple[str, float], ...] = field(default_factory=tuple)
 
     def connection_key(self) -> ConnectionKey:
         """Return the five-tuple key represented by this packet."""
@@ -269,6 +271,14 @@ class PacketRecord:
             modbus_write_registers=tuple(int(reg) for reg in data.get("modbus_write_registers") or []),
             modbus_register_values=tuple(int(val) for val in data.get("modbus_register_values") or []),
             modbus_transaction_id=_optional_int(data.get("modbus_transaction_id")),
+            opcua_values=tuple(
+                None if v is None else float(v)
+                for v in (data.get("opcua_values") or [])
+            ),
+            mqtt_payload_values=tuple(
+                (str(pair[0]), float(pair[1]))
+                for pair in (data.get("mqtt_payload_values") or [])
+            ),
         )
 
 
