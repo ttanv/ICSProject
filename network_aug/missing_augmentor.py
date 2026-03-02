@@ -314,6 +314,7 @@ class MissingTrafficAugmentor:
                 runs_statements,
                 relationship_statements,
                 process_index=process_index,
+                telemetry_index=telemetry_index,
             )
             added = len(relationship_statements) - before_count
             collapsed_relationships += max(added, 0)
@@ -3144,8 +3145,8 @@ class MissingTrafficAugmentor:
                 continue
             # Skip numeric-only NodeIds (ns=N;i=NNNN) — these are server
             # metadata/attribute reads, not physical process variables.
-            if ";i=" in signal_name and ";s=" not in signal_name:
-                continue
+            # if ";i=" in signal_name and ";s=" not in signal_name:
+            #     continue
             # Skip signals with no numeric value observations (strings,
             # datetimes, and other non-numeric OPC UA types).
             acc = accumulators.get(signal_name)
@@ -3237,6 +3238,97 @@ class MissingTrafficAugmentor:
         )
         register_statements[register_guid] = statement
 
+    def _extract_client_source_ports(
+        self,
+        *,
+        packets: Sequence[PacketRecord],
+        client_ip: str,
+        server_ip: str,
+        service_port: int,
+    ) -> List[int]:
+        """Extract client ephemeral source ports observed for a client->server flow."""
+        ports: Set[int] = set()
+        for pkt in packets:
+            if (
+                pkt.src_ip == client_ip
+                and pkt.dst_ip == server_ip
+                and pkt.dst_port == service_port
+                and pkt.src_port > 0
+            ):
+                ports.add(pkt.src_port)
+            elif (
+                pkt.src_ip == server_ip
+                and pkt.dst_ip == client_ip
+                and pkt.src_port == service_port
+                and pkt.dst_port > 0
+            ):
+                ports.add(pkt.dst_port)
+        return sorted(ports)
+
+    def _find_telemetry_process_context(
+        self,
+        *,
+        telemetry_index: Optional["TelemetryConnectionIndex"],
+        client_ip: str,
+        server_ip: str,
+        service_port: int,
+        protocol: str,
+        source_ports: Sequence[int],
+    ) -> Optional["ProcessContext"]:
+        """Resolve process context from telemetry with deterministic source-port matching."""
+        if telemetry_index is None:
+            return None
+
+        candidate_ports = sorted({int(port) for port in source_ports if int(port) > 0})
+        if candidate_ports:
+            matches_by_guid: Dict[str, Tuple[int, int, "ProcessContext"]] = {}
+            for src_port in candidate_ports:
+                process_context = telemetry_index.find_process_for_connection(
+                    src_ip=client_ip,
+                    dst_ip=server_ip,
+                    dst_port=service_port,
+                    protocol=protocol,
+                    src_port=src_port,
+                    require_src_port_match=True,
+                )
+                if (
+                    not process_context
+                    or not process_context.is_valid()
+                    or not process_context.process_guid
+                ):
+                    continue
+
+                current = matches_by_guid.get(process_context.process_guid)
+                if current is None:
+                    matches_by_guid[process_context.process_guid] = (1, src_port, process_context)
+                else:
+                    matches_by_guid[process_context.process_guid] = (
+                        current[0] + 1,
+                        min(current[1], src_port),
+                        current[2],
+                    )
+
+            if matches_by_guid:
+                _, _, best_context = max(
+                    matches_by_guid.values(),
+                    key=lambda value: (value[0], -value[1]),
+                )
+                return best_context
+
+            # Source ports were observed but had no deterministic telemetry match.
+            # Avoid ambiguous endpoint-only attribution in this case.
+            return None
+
+        process_context = telemetry_index.find_process_for_connection(
+            src_ip=client_ip,
+            dst_ip=server_ip,
+            dst_port=service_port,
+            protocol=protocol,
+        )
+        if process_context and process_context.is_valid() and process_context.process_guid:
+            return process_context
+        return None
+
     def _add_modbus_group(
         self,
         group: ModbusGroup,
@@ -3264,14 +3356,22 @@ class MissingTrafficAugmentor:
         process_context: Optional["ProcessContext"] = None
         correlation_source = "pcap_only"
         correlation_confidence = 0.5
+        source_ports = self._extract_client_source_ports(
+            packets=packets,
+            client_ip=group.client_ip,
+            server_ip=group.server_ip,
+            service_port=group.service_port,
+        )
 
         # First, check if telemetry already tells us which process made this connection
         if telemetry_index is not None:
-            process_context = telemetry_index.find_process_for_connection(
-                src_ip=group.client_ip,
-                dst_ip=group.server_ip,
-                dst_port=group.service_port,
+            process_context = self._find_telemetry_process_context(
+                telemetry_index=telemetry_index,
+                client_ip=group.client_ip,
+                server_ip=group.server_ip,
+                service_port=group.service_port,
                 protocol=connection_key.protocol,
+                source_ports=source_ports,
             )
             if process_context and process_context.is_valid():
                 client_node_id = process_context.process_guid
@@ -3408,15 +3508,7 @@ class MissingTrafficAugmentor:
 
         # Add process correlation metadata
         if client_is_process and process_context:
-            # Check if attribution was from telemetry or temporal correlation
-            was_from_telemetry = telemetry_index is not None and telemetry_index.find_process_for_connection(
-                src_ip=group.client_ip,
-                dst_ip=group.server_ip,
-                dst_port=group.service_port,
-                protocol=connection_key.protocol,
-            ) is not None
-
-            if was_from_telemetry:
+            if correlation_source == "telemetry":
                 relationship_properties["correlatedFromTelemetry"] = True
                 relationship_properties["correlatedProcessGuid"] = process_context.process_guid
                 relationship_properties["correlatedProcessImage"] = process_context.process_image
@@ -3461,16 +3553,46 @@ class MissingTrafficAugmentor:
         runs_statements: Dict[str, str],
         relationship_statements: List[str],
         process_index: Optional[TemporalProcessIndex] = None,
+        telemetry_index: Optional["TelemetryConnectionIndex"] = None,
     ) -> str:
         """Add an HTTP monitor group and return the relationship type used."""
         service_name = "Modbus Monitor"
 
-        # Try to find a Process node that matches this traffic temporally
+        # Try to find a Process node that matches this traffic.
+        # Priority: deterministic telemetry match, then temporal fallback.
         client_node_id: Optional[str] = None
         client_is_process = False
+        process_context: Optional["ProcessContext"] = None
+        process_entry: Optional[TemporalProcessEntry] = None
+        correlation_source = "pcap_only"
+        source_ports = self._extract_client_source_ports(
+            packets=packets,
+            client_ip=group.client_ip,
+            server_ip=group.server_ip,
+            service_port=group.service_port,
+        )
 
-        # Temporal correlation for HTTP monitor groups (skip if telemetry_attribution_only)
-        if process_index and packets and not self.config.telemetry_attribution_only:
+        if telemetry_index is not None:
+            process_context = self._find_telemetry_process_context(
+                telemetry_index=telemetry_index,
+                client_ip=group.client_ip,
+                server_ip=group.server_ip,
+                service_port=group.service_port,
+                protocol=connection_key.protocol,
+                source_ports=source_ports,
+            )
+            if process_context and process_context.is_valid():
+                client_node_id = process_context.process_guid
+                client_is_process = True
+                correlation_source = "telemetry"
+                logger.debug(
+                    "Attributed HTTP monitor group to Process %s (%s) from telemetry",
+                    process_context.process_guid,
+                    process_context.process_image,
+                )
+
+        # Temporal correlation fallback (skip if telemetry_attribution_only)
+        if client_node_id is None and process_index and packets and not self.config.telemetry_attribution_only:
             timestamps = [p.timestamp for p in packets]
             range_start = min(timestamps)
             range_end = max(timestamps)
@@ -3481,6 +3603,15 @@ class MissingTrafficAugmentor:
             if process_entry:
                 client_node_id = process_entry.process_guid
                 client_is_process = True
+                from .correlation import ProcessContext
+                process_context = ProcessContext(
+                    process_guid=process_entry.process_guid,
+                    process_image=process_entry.process_image,
+                    process_id=process_entry.process_id,
+                    user="",
+                    computer=process_entry.host,
+                )
+                correlation_source = "temporal"
                 logger.debug(
                     "Attributed HTTP monitor group to Process %s (%s) on %s",
                     process_entry.process_guid,
@@ -3495,6 +3626,15 @@ class MissingTrafficAugmentor:
                 hostname, asset_guid, process_statements, runs_statements
             )
             client_is_process = True
+            if process_context is None:
+                from .correlation import ProcessContext
+                process_context = ProcessContext(
+                    process_guid=client_node_id,
+                    process_image=f"{hostname} Runtime",
+                    process_id=0,
+                    user="",
+                    computer=hostname,
+                )
 
         # Classify destination
         rel_type, dst_label = self._classify_destination(group.server_ip)
@@ -3525,19 +3665,24 @@ class MissingTrafficAugmentor:
                 relationship_properties["totalBytes"] / len(group.connections), 2
             )
 
-        # Add temporal inference metadata if process was matched via temporal index (skip if telemetry_attribution_only)
-        if client_is_process and process_index and not self.config.telemetry_attribution_only:
-            process_entry = process_index.find_process_for_range(
-                group.client_ip, min(p.timestamp for p in packets), max(p.timestamp for p in packets)
-            )
-            if process_entry:
-                relationship_properties["temporallyInferred"] = True
-                relationship_properties["correlatedProcessGuid"] = process_entry.process_guid
-                relationship_properties["correlatedProcessImage"] = process_entry.process_image
-                relationship_properties["correlatedProcessId"] = process_entry.process_id
+        if client_is_process and process_context:
+            if correlation_source == "telemetry":
+                relationship_properties["correlatedFromTelemetry"] = True
+                relationship_properties["correlatedProcessGuid"] = process_context.process_guid
+                relationship_properties["correlatedProcessImage"] = process_context.process_image
+                relationship_properties["correlatedProcessId"] = process_context.process_id
                 relationship_properties["note"] = (
-                    f"HTTP monitor traffic temporally correlated to process {process_entry.process_image} "
-                    f"(PID {process_entry.process_id}) based on host activity overlap"
+                    f"HTTP monitor traffic correlated to process {process_context.process_image} "
+                    f"(PID {process_context.process_id}) from telemetry connection"
+                )
+            elif correlation_source == "temporal" and not self.config.telemetry_attribution_only:
+                relationship_properties["temporallyInferred"] = True
+                relationship_properties["correlatedProcessGuid"] = process_context.process_guid
+                relationship_properties["correlatedProcessImage"] = process_context.process_image
+                relationship_properties["correlatedProcessId"] = process_context.process_id
+                relationship_properties["note"] = (
+                    f"HTTP monitor traffic temporally correlated to process {process_context.process_image} "
+                    f"(PID {process_context.process_id}) based on host activity overlap"
                 )
 
         # Use Process label if we found a matching process, otherwise NetworkService
@@ -3565,13 +3710,37 @@ class MissingTrafficAugmentor:
         runs_statements: Dict[str, str],
         relationship_statements: List[str],
         process_index: Optional[TemporalProcessIndex] = None,
+        telemetry_index: Optional["TelemetryConnectionIndex"] = None,
     ) -> str:
         """Add a collapsed group and return the relationship type used."""
-        # Try to find a Process node that matches this traffic temporally (skip if telemetry_attribution_only)
+        # Try to find a Process node that matches this traffic.
+        # Priority: deterministic telemetry match, then temporal fallback.
         client_node_id: Optional[str] = None
         client_is_process = False
+        process_context: Optional["ProcessContext"] = None
+        process_entry: Optional[TemporalProcessEntry] = None
+        correlation_source = "pcap_only"
 
-        if process_index and packets and not self.config.telemetry_attribution_only:
+        if telemetry_index is not None:
+            process_context = self._find_telemetry_process_context(
+                telemetry_index=telemetry_index,
+                client_ip=group.client_ip,
+                server_ip=group.server_ip,
+                service_port=group.service_port,
+                protocol=connection_key.protocol,
+                source_ports=sorted(group.client_ports),
+            )
+            if process_context and process_context.is_valid():
+                client_node_id = process_context.process_guid
+                client_is_process = True
+                correlation_source = "telemetry"
+                logger.debug(
+                    "Attributed collapsed group to Process %s (%s) from telemetry",
+                    process_context.process_guid,
+                    process_context.process_image,
+                )
+
+        if client_node_id is None and process_index and packets and not self.config.telemetry_attribution_only:
             # Get time range from packets
             timestamps = [p.timestamp for p in packets]
             range_start = min(timestamps)
@@ -3584,6 +3753,15 @@ class MissingTrafficAugmentor:
                 # Use the Process node instead of creating an Ephemeral Client
                 client_node_id = process_entry.process_guid
                 client_is_process = True
+                from .correlation import ProcessContext
+                process_context = ProcessContext(
+                    process_guid=process_entry.process_guid,
+                    process_image=process_entry.process_image,
+                    process_id=process_entry.process_id,
+                    user="",
+                    computer=process_entry.host,
+                )
+                correlation_source = "temporal"
                 logger.debug(
                     "Attributed collapsed group to Process %s (%s) on %s",
                     process_entry.process_guid,
@@ -3598,6 +3776,15 @@ class MissingTrafficAugmentor:
                 hostname, asset_guid, process_statements, runs_statements
             )
             client_is_process = True
+            if process_context is None:
+                from .correlation import ProcessContext
+                process_context = ProcessContext(
+                    process_guid=client_node_id,
+                    process_image=f"{hostname} Runtime",
+                    process_id=0,
+                    user="",
+                    computer=hostname,
+                )
 
         # Classify destination
         rel_type, dst_label = self._classify_destination(group.server_ip)
@@ -3635,19 +3822,24 @@ class MissingTrafficAugmentor:
             if len(sorted_ports) <= 8:
                 relationship_properties["sourcePortSet"] = ",".join(str(port) for port in sorted_ports)
 
-        # Add temporal inference metadata if process was matched via temporal index (skip if telemetry_attribution_only)
-        if client_is_process and process_index and not self.config.telemetry_attribution_only:
-            process_entry = process_index.find_process_for_range(
-                group.client_ip, min(p.timestamp for p in packets), max(p.timestamp for p in packets)
-            )
-            if process_entry:
-                relationship_properties["temporallyInferred"] = True
-                relationship_properties["correlatedProcessGuid"] = process_entry.process_guid
-                relationship_properties["correlatedProcessImage"] = process_entry.process_image
-                relationship_properties["correlatedProcessId"] = process_entry.process_id
+        if client_is_process and process_context:
+            if correlation_source == "telemetry":
+                relationship_properties["correlatedFromTelemetry"] = True
+                relationship_properties["correlatedProcessGuid"] = process_context.process_guid
+                relationship_properties["correlatedProcessImage"] = process_context.process_image
+                relationship_properties["correlatedProcessId"] = process_context.process_id
                 relationship_properties["note"] = (
-                    f"PCAP traffic temporally correlated to process {process_entry.process_image} "
-                    f"(PID {process_entry.process_id}) based on host activity overlap"
+                    f"PCAP traffic correlated to process {process_context.process_image} "
+                    f"(PID {process_context.process_id}) from telemetry connection"
+                )
+            elif correlation_source == "temporal" and not self.config.telemetry_attribution_only:
+                relationship_properties["temporallyInferred"] = True
+                relationship_properties["correlatedProcessGuid"] = process_context.process_guid
+                relationship_properties["correlatedProcessImage"] = process_context.process_image
+                relationship_properties["correlatedProcessId"] = process_context.process_id
+                relationship_properties["note"] = (
+                    f"PCAP traffic temporally correlated to process {process_context.process_image} "
+                    f"(PID {process_context.process_id}) based on host activity overlap"
                 )
 
         # Use Process label if we found a matching process, otherwise NetworkService

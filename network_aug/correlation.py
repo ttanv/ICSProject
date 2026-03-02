@@ -561,6 +561,41 @@ class TelemetryConnectionIndex:
         """Return all anchors associated with a specific process."""
         return self._by_process.get(process_guid, [])
 
+    @staticmethod
+    def _anchor_matches_src_port(anchor: TelemetryAnchor, src_port: int) -> bool:
+        """Return True when anchor evidence deterministically matches a client source port."""
+        if src_port <= 0:
+            return False
+        if anchor.find_session_by_port_only(src_port) is not None:
+            return True
+        if anchor.connection_key.src_port == src_port:
+            return True
+        rel_src_port = _safe_int(
+            anchor.rel_properties.get("SourcePort") or anchor.rel_properties.get("sourcePort")
+        )
+        return rel_src_port == src_port
+
+    def _select_process_context(
+        self,
+        anchors: Sequence[TelemetryAnchor],
+        *,
+        src_port: Optional[int] = None,
+        require_src_port_match: bool = False,
+    ) -> Optional[ProcessContext]:
+        """Pick the best process context from candidate anchors."""
+        valid_anchors = [anchor for anchor in anchors if anchor.process_context.is_valid()]
+        if not valid_anchors:
+            return None
+
+        if src_port is not None and src_port > 0:
+            for anchor in valid_anchors:
+                if self._anchor_matches_src_port(anchor, src_port):
+                    return anchor.process_context
+            if require_src_port_match:
+                return None
+
+        return valid_anchors[0].process_context
+
     def find_process_for_connection(
         self,
         src_ip: str,
@@ -568,6 +603,7 @@ class TelemetryConnectionIndex:
         dst_port: int,
         protocol: str = "tcp",
         src_port: Optional[int] = None,
+        require_src_port_match: bool = False,
     ) -> Optional[ProcessContext]:
         """Find the process context for a connection based on telemetry.
 
@@ -584,7 +620,9 @@ class TelemetryConnectionIndex:
             dst_ip: Destination IP address (server)
             dst_port: Destination port
             protocol: Protocol (tcp/udp)
-            src_port: Source port (optional, enables reverse direction lookup)
+            src_port: Source port (optional, enables deterministic source-port matching)
+            require_src_port_match: When True and src_port is provided, only return
+                contexts with exact source-port evidence (session port or exact key).
 
         Returns:
             ProcessContext if a matching telemetry connection is found, None otherwise.
@@ -596,21 +634,22 @@ class TelemetryConnectionIndex:
         service_key = (src_ip, dst_ip, dst_port, proto)
         anchors = self._by_service_endpoint.get(service_key, [])
 
-        # Return the first anchor with a valid process context
-        for anchor in anchors:
-            proc_ctx = anchor.process_context
-            if proc_ctx.is_valid():
-                return proc_ctx
+        proc_ctx = self._select_process_context(
+            anchors,
+            src_port=src_port,
+            require_src_port_match=require_src_port_match,
+        )
+        if proc_ctx is not None:
+            return proc_ctx
 
         # Try reverse direction (server responding to client)
         # Only possible when src_port is provided, since reverse lookup needs the client's port
         if src_port is not None:
             reverse_service_key = (dst_ip, src_ip, src_port, proto)
             reverse_anchors = self._by_service_endpoint.get(reverse_service_key, [])
-            for anchor in reverse_anchors:
-                proc_ctx = anchor.process_context
-                if proc_ctx.is_valid():
-                    return proc_ctx
+            proc_ctx = self._select_process_context(reverse_anchors)
+            if proc_ctx is not None:
+                return proc_ctx
 
         # PHASE 2: Try normalized hostname lookup
         # This handles multi-IP hosts (e.g., PCAP uses 192.168.44.x inner layer,
@@ -623,20 +662,22 @@ class TelemetryConnectionIndex:
             normalized_key = (src_host, dst_host, dst_port, proto)
             normalized_anchors = self._by_normalized_endpoint.get(normalized_key, [])
 
-            for anchor in normalized_anchors:
-                proc_ctx = anchor.process_context
-                if proc_ctx.is_valid():
-                    return proc_ctx
+            proc_ctx = self._select_process_context(
+                normalized_anchors,
+                src_port=src_port,
+                require_src_port_match=require_src_port_match,
+            )
+            if proc_ctx is not None:
+                return proc_ctx
 
             # Try reverse direction for normalized
             # Only possible when src_port is provided
             if src_port is not None:
                 reverse_normalized_key = (dst_host, src_host, src_port, proto)
                 reverse_normalized_anchors = self._by_normalized_endpoint.get(reverse_normalized_key, [])
-                for anchor in reverse_normalized_anchors:
-                    proc_ctx = anchor.process_context
-                    if proc_ctx.is_valid():
-                        return proc_ctx
+                proc_ctx = self._select_process_context(reverse_normalized_anchors)
+                if proc_ctx is not None:
+                    return proc_ctx
 
         return None
 

@@ -50,6 +50,7 @@ class HttpMonitorHandler:
                 context.runs_statements,
                 context.relationship_statements,
                 process_index=context.process_index,
+                telemetry_index=context.telemetry_index,
             )
             added = len(context.relationship_statements) - before_count
             http_relationships += max(added, 0)
