@@ -125,6 +125,13 @@ class MissingTrafficAugmentor:
         self._placeholder_processes: Dict[str, str] = {}  # hostname -> process_guid cache
         self._load_asset_metadata()
 
+        # Build set of all known hostnames for placeholder-process gating
+        self._known_hostnames: Set[str] = (
+            set(self._asset_metadata.keys())
+            | set(self._asset_ip_map.values())
+            | set(self.config.ip_hostname_map.values())
+        )
+
         # Initialize DuckDB connection for signal storage
         self._signal_db = None
         if config.signal_db_path:
@@ -1139,12 +1146,14 @@ class MissingTrafficAugmentor:
         asset_guid: str,
         process_statements: Dict[str, str],
         runs_statements: Dict[str, str],
-    ) -> str:
+    ) -> Optional[str]:
         """Create/return placeholder Process node for PLC/RTU.
 
         Creates a single Virtual Process node per device (not per protocol).
         Also creates the RUN_ON relationship from Process to NetworkEndpoint.
         """
+        if hostname not in self._known_hostnames:
+            return None
         if hostname in self._placeholder_processes:
             return self._placeholder_processes[hostname]
 
@@ -1848,12 +1857,13 @@ class MissingTrafficAugmentor:
                 process_statements,
                 runs_statements,
             )
-            binds_key = f"{owner_process_guid}|{service_guid}|BINDS"
-            if binds_key not in runs_statements:
-                runs_statements[binds_key] = cypher_emit.create_binds_relationship_statement(
-                    owner_process_guid,
-                    service_guid,
-                )
+            if owner_process_guid is not None:
+                binds_key = f"{owner_process_guid}|{service_guid}|BINDS"
+                if binds_key not in runs_statements:
+                    runs_statements[binds_key] = cypher_emit.create_binds_relationship_statement(
+                        owner_process_guid,
+                        service_guid,
+                    )
 
         return service_guid
 

@@ -1133,8 +1133,10 @@ class StreamingAugmentor:
         asset_statements: Dict[str, str],
         process_statements: Dict[str, str],
         ownership_statements: Dict[str, str],
-    ) -> str:
+    ) -> Optional[str]:
         """Ensure a placeholder Process exists and return its GUID."""
+        if ip not in self._asset_ip_map:
+            return None
         hostname = self._resolve_hostname(ip)
         endpoint_guid = self._ensure_asset_node(ip=ip, asset_statements=asset_statements)
         process_guid = self._placeholder_processes.get(hostname)
@@ -1210,12 +1212,13 @@ class StreamingAugmentor:
                 process_statements=process_statements,
                 ownership_statements=ownership_statements,
             )
-            binds_key = f"{owner_guid}|{service_guid}|BINDS"
-            if binds_key not in ownership_statements:
-                ownership_statements[binds_key] = cypher_emit.create_binds_relationship_statement(
-                    owner_guid,
-                    service_guid,
-                )
+            if owner_guid is not None:
+                binds_key = f"{owner_guid}|{service_guid}|BINDS"
+                if binds_key not in ownership_statements:
+                    ownership_statements[binds_key] = cypher_emit.create_binds_relationship_statement(
+                        owner_guid,
+                        service_guid,
+                    )
 
         return service_guid
 
