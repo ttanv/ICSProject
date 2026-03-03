@@ -74,6 +74,19 @@ def _generate_node_guid(node_type: str, hostname: str, *identifiers: object) -> 
     return f"{{{guid}}}"
 
 
+def _normalize_transport_protocol(protocol: object) -> str:
+    """Normalize transport protocol values used for service identity."""
+    normalized = str(protocol or "").strip().lower()
+    return normalized or "tcp"
+
+
+def _generate_network_service_guid(hostname: str, port: int, protocol: object) -> str:
+    """Generate a NetworkService GUID that is stable across port/protocol collisions."""
+    normalized_port = port if port and port >= 0 else 0
+    normalized_protocol = _normalize_transport_protocol(protocol)
+    return _generate_node_guid("NetworkService", hostname, normalized_port, normalized_protocol)
+
+
 def _generate_signal_guid(protocol: str, host: str, port: int, *identifiers: object) -> str:
     """Generate deterministic ICSSignal GUID (case-preserving identifiers)."""
     components = [
@@ -341,16 +354,33 @@ class MissingTrafficAugmentor:
             if not self.config.policy.is_interesting(connection_key, packets):
                 continue
 
-            # Normalize ephemeral ports to 0 for client-side nodes (same as collapsed groups)
+            # Orient the connection so CONNECT_TO always points from client process to server service.
             src_is_service = _is_service_port(connection_key.src_port)
             dst_is_service = _is_service_port(connection_key.dst_port)
-            src_port = connection_key.src_port if src_is_service else 0
-            dst_port = connection_key.dst_port if dst_is_service else 0
-
-            # If both are ephemeral or both are service ports, use original ports
-            if src_is_service == dst_is_service:
-                src_port = connection_key.src_port
-                dst_port = connection_key.dst_port
+            if dst_is_service and not src_is_service:
+                client_ip = connection_key.src_ip
+                client_port = 0
+                oriented_key = ConnectionKey(
+                    src_ip=connection_key.src_ip,
+                    src_port=connection_key.src_port,
+                    dst_ip=connection_key.dst_ip,
+                    dst_port=connection_key.dst_port,
+                    protocol=connection_key.protocol,
+                )
+            elif src_is_service and not dst_is_service:
+                client_ip = connection_key.dst_ip
+                client_port = 0
+                oriented_key = ConnectionKey(
+                    src_ip=connection_key.dst_ip,
+                    src_port=connection_key.dst_port,
+                    dst_ip=connection_key.src_ip,
+                    dst_port=connection_key.src_port,
+                    protocol=connection_key.protocol,
+                )
+            else:
+                client_ip = connection_key.src_ip
+                client_port = connection_key.src_port
+                oriented_key = connection_key
 
             # Try to find a Process node that matches this traffic temporally (for client side)
             # Skip if telemetry_attribution_only is set
@@ -358,13 +388,13 @@ class MissingTrafficAugmentor:
             src_is_process = False
             matched_process_entry: Optional[TemporalProcessEntry] = None
 
-            if process_index and packets and src_port == 0 and not self.config.telemetry_attribution_only:
+            if process_index and packets and client_port == 0 and not self.config.telemetry_attribution_only:
                 timestamps = [p.timestamp for p in packets]
                 range_start = min(timestamps)
                 range_end = max(timestamps)
 
                 process_entry = process_index.find_process_for_range(
-                    connection_key.src_ip, range_start, range_end
+                    client_ip, range_start, range_end
                 )
                 if process_entry:
                     src_node_id = process_entry.process_guid
@@ -372,7 +402,7 @@ class MissingTrafficAugmentor:
                     matched_process_entry = process_entry
 
             if src_node_id is None:
-                hostname, ip_address = self._resolve_host(connection_key.src_ip)
+                hostname, ip_address = self._resolve_host(client_ip)
                 asset_guid = self._ensure_asset_node(hostname, ip_address, asset_statements)
                 src_node_id = self._ensure_placeholder_process(
                     hostname, asset_guid, process_statements, runs_statements
@@ -380,23 +410,22 @@ class MissingTrafficAugmentor:
                 src_is_process = True
 
             # Classify destination
-            rel_type, dst_label = self._classify_destination(connection_key.dst_ip)
+            rel_type, dst_label = self._classify_destination(oriented_key.dst_ip)
             dst_node_id = self._ensure_network_service_node(
-                ip=connection_key.dst_ip,
-                port=dst_port,
-                protocol=connection_key.protocol,
+                ip=oriented_key.dst_ip,
+                port=oriented_key.dst_port,
+                protocol=oriented_key.protocol,
                 asset_statements=asset_statements,
                 service_statements=service_statements,
                 process_statements=process_statements,
                 runs_statements=runs_statements,
-                service_name="Ephemeral Client" if dst_port == 0 else None,
             )
 
             if not src_node_id or not dst_node_id:
                 continue
 
             # Build relationship properties with temporal inference metadata if applicable
-            rel_props = self._relationship_properties(connection_key, packets)
+            rel_props = self._relationship_properties(oriented_key, packets)
             if src_is_process and matched_process_entry:
                 rel_props["temporallyInferred"] = True
                 rel_props["correlatedProcessGuid"] = matched_process_entry.process_guid
@@ -693,13 +722,13 @@ class MissingTrafficAugmentor:
 
         existing_update_count, corr_stats = self._count_existing_relationship_updates(existing_connections, connections)
 
-        def _record_service(ip: str, port: int) -> Tuple[str, str, int]:
+        def _record_service(ip: str, port: int, protocol: str = "tcp") -> Tuple[str, str, int]:
             hostname, ip_address = self._resolve_host(ip)
             if ip_address and ip_address not in self._asset_ip_map:
                 self._asset_ip_map[ip_address] = hostname
             asset_guids.add(_generate_node_guid("NetworkEndpoint", hostname))
             normalized_port = port if port and port >= 0 else 0
-            service_guids.add(_generate_node_guid("NetworkService", hostname, normalized_port))
+            service_guids.add(_generate_network_service_guid(hostname, normalized_port, protocol))
             return hostname, ip_address, normalized_port
 
         # Aggregate Modbus groups
@@ -726,8 +755,8 @@ class MissingTrafficAugmentor:
             if not self.config.policy.is_interesting(connection_key, packets):
                 continue
 
-            _record_service(group.client_ip, group.service_port)
-            server_hostname, server_ip, _ = _record_service(group.server_ip, group.service_port)
+            _record_service(group.client_ip, group.service_port, group.protocol)
+            server_hostname, server_ip, _ = _record_service(group.server_ip, group.service_port, group.protocol)
 
             register_summaries = self._collect_modbus_registers(packets, server_ip, group.service_port)
             for (register_address, unit_id, register_type) in register_summaries.keys():
@@ -772,8 +801,8 @@ class MissingTrafficAugmentor:
             if not self.config.policy.is_interesting(connection_key, packets):
                 continue
 
-            _record_service(group.client_ip, group.service_port)
-            _record_service(group.server_ip, group.service_port)
+            _record_service(group.client_ip, group.service_port, group.protocol)
+            _record_service(group.server_ip, group.service_port, group.protocol)
 
             processed_cids.update(group.canonical_ids())
             http_relationships += 1
@@ -811,8 +840,8 @@ class MissingTrafficAugmentor:
             if not self.config.policy.is_interesting(connection_key, indexed.records):
                 continue
 
-            _record_service(client_ip, 0)
-            server_hostname, _, _ = _record_service(server_ip, service_port)
+            _record_service(client_ip, 0, protocol)
+            server_hostname, _, _ = _record_service(server_ip, service_port, protocol)
             mqtt_signal_summaries = self._collect_mqtt_signals(
                 packets=indexed.records,
                 server_ip=server_ip,
@@ -856,8 +885,8 @@ class MissingTrafficAugmentor:
             if not self.config.policy.is_interesting(connection_key, indexed.records):
                 continue
 
-            _record_service(client_ip, 0)
-            server_hostname, _, _ = _record_service(server_ip, service_port)
+            _record_service(client_ip, 0, protocol)
+            server_hostname, _, _ = _record_service(server_ip, service_port, protocol)
             opcua_signal_summaries = self._collect_opcua_signals(
                 packets=indexed.records,
                 server_ip=server_ip,
@@ -900,8 +929,8 @@ class MissingTrafficAugmentor:
             if not self.config.policy.is_interesting(connection_key, packets):
                 continue
 
-            _record_service(group.client_ip, 0)
-            _record_service(group.server_ip, group.service_port)
+            _record_service(group.client_ip, 0, group.protocol)
+            _record_service(group.server_ip, group.service_port, group.protocol)
 
             processed_cids.update(group.canonical_ids())
             collapsed_relationships += 1
@@ -929,8 +958,8 @@ class MissingTrafficAugmentor:
             if not self.config.policy.is_interesting(connection_key, packets):
                 continue
 
-            _record_service(connection_key.src_ip, connection_key.src_port)
-            _record_service(connection_key.dst_ip, connection_key.dst_port)
+            _record_service(connection_key.src_ip, connection_key.src_port, connection_key.protocol)
+            _record_service(connection_key.dst_ip, connection_key.dst_port, connection_key.protocol)
             individual_relationships += 1
 
         aggregated_relationships = (
@@ -1787,14 +1816,15 @@ class MissingTrafficAugmentor:
         hostname, ip_address = self._resolve_host(ip)
         asset_guid = self._ensure_asset_node(hostname, ip_address, asset_statements)
         normalized_port = port if port and port >= 0 else 0
-        service_guid = _generate_node_guid("NetworkService", hostname, normalized_port)
+        normalized_protocol = _normalize_transport_protocol(protocol)
+        service_guid = _generate_network_service_guid(hostname, normalized_port, normalized_protocol)
 
         if service_guid not in service_statements:
             props: Dict[str, object] = {
                 "guid": service_guid,
                 "host": hostname,
                 "port": normalized_port,
-                "protocol": protocol.upper(),
+                "protocol": normalized_protocol.upper(),
                 "serviceName": service_name or self._service_name_for_port(normalized_port),
                 "ipAddress": ip_address,
                 "source": "pcap",
@@ -1975,31 +2005,33 @@ class MissingTrafficAugmentor:
         correlation_confidence = 0.5
         process_image: Optional[str] = None
         process_id: Optional[int] = None
+        correlation_source = "pcap_only"
+
+        source_ports = self._extract_client_source_ports(
+            packets=packets,
+            client_ip=client_ip,
+            server_ip=server_ip,
+            service_port=service_port,
+        )
 
         if telemetry_index is not None:
-            process_context = telemetry_index.find_process_for_connection(
-                src_ip=client_ip,
-                dst_ip=server_ip,
-                dst_port=service_port,
+            process_context = self._find_telemetry_process_context(
+                telemetry_index=telemetry_index,
+                client_ip=client_ip,
+                server_ip=server_ip,
+                service_port=service_port,
                 protocol=protocol,
+                source_ports=source_ports,
             )
             if process_context and process_context.is_valid():
                 client_node_id = process_context.process_guid
                 client_is_process = True
                 correlation_confidence = 1.0
+                correlation_source = "telemetry"
                 process_image = process_context.process_image
                 process_id = process_context.process_id
 
-        if client_node_id is None and process_index and packets and not self.config.telemetry_attribution_only:
-            timestamps = [p.timestamp for p in packets]
-            range_start = min(timestamps)
-            range_end = max(timestamps)
-            process_entry = process_index.find_process_for_range(client_ip, range_start, range_end)
-            if process_entry:
-                client_node_id = process_entry.process_guid
-                client_is_process = True
-                process_image = process_entry.process_image
-                process_id = process_entry.process_id
+        # No temporal fallback for MQTT — same rationale as OPC UA.
 
         if client_node_id is None:
             hostname, ip_address = self._resolve_host(client_ip)
@@ -2185,31 +2217,36 @@ class MissingTrafficAugmentor:
         correlation_confidence = 0.5
         process_image: Optional[str] = None
         process_id: Optional[int] = None
+        correlation_source = "pcap_only"
+
+        source_ports = self._extract_client_source_ports(
+            packets=packets,
+            client_ip=client_ip,
+            server_ip=server_ip,
+            service_port=service_port,
+        )
 
         if telemetry_index is not None:
-            process_context = telemetry_index.find_process_for_connection(
-                src_ip=client_ip,
-                dst_ip=server_ip,
-                dst_port=service_port,
+            process_context = self._find_telemetry_process_context(
+                telemetry_index=telemetry_index,
+                client_ip=client_ip,
+                server_ip=server_ip,
+                service_port=service_port,
                 protocol=protocol,
+                source_ports=source_ports,
             )
             if process_context and process_context.is_valid():
                 client_node_id = process_context.process_guid
                 client_is_process = True
                 correlation_confidence = 1.0
+                correlation_source = "telemetry"
                 process_image = process_context.process_image
                 process_id = process_context.process_id
 
-        if client_node_id is None and process_index and packets and not self.config.telemetry_attribution_only:
-            timestamps = [p.timestamp for p in packets]
-            range_start = min(timestamps)
-            range_end = max(timestamps)
-            process_entry = process_index.find_process_for_range(client_ip, range_start, range_end)
-            if process_entry:
-                client_node_id = process_entry.process_guid
-                client_is_process = True
-                process_image = process_entry.process_image
-                process_id = process_entry.process_id
+        # No temporal fallback for OPC UA — use deterministic source-port
+        # telemetry match or placeholder.  Temporal correlation picks long-lived
+        # system processes (e.g. taskhostw.exe) that are never correct for ICS
+        # protocol traffic.
 
         if client_node_id is None:
             hostname, ip_address = self._resolve_host(client_ip)
@@ -3143,10 +3180,6 @@ class MissingTrafficAugmentor:
             # Skip TypeDefinition schema reads — not physical process signals.
             if signal_name.startswith("TD_"):
                 continue
-            # Skip numeric-only NodeIds (ns=N;i=NNNN) — these are server
-            # metadata/attribute reads, not physical process variables.
-            # if ";i=" in signal_name and ";s=" not in signal_name:
-            #     continue
             # Skip signals with no numeric value observations (strings,
             # datetimes, and other non-numeric OPC UA types).
             acc = accumulators.get(signal_name)

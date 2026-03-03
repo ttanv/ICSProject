@@ -86,6 +86,52 @@ hosts:
     description: Programmable Logic Controller for field device control
     os: Embedded Linux
 
+  FT-PLC-01:
+    hostname: FT-PLC-01
+    ip_address: 192.168.0.1
+    role: PLC
+    zone: Fishertechnik
+    has_logs: false
+    is_managed: false
+    description: Fishertechnik PLC providing OPC UA (4840) and S7 (102) services
+    os: Embedded
+  FT-GW-01:
+    hostname: FT-GW-01
+    ip_address: 192.168.0.5
+    role: Gateway
+    zone: Fishertechnik
+    has_logs: false
+    is_managed: false
+    description: Fishertechnik gateway providing Node-RED, Grafana, SSH, and web services
+    os: Embedded Linux
+  FT-MQTT-01:
+    hostname: FT-MQTT-01
+    ip_address: 192.168.0.10
+    role: Controller
+    zone: Fishertechnik
+    has_logs: false
+    is_managed: false
+    description: Fishertechnik MQTT broker (port 1883)
+    os: Embedded
+  FT-CLIENT-01:
+    hostname: FT-CLIENT-01
+    ip_address: 192.168.0.12
+    role: HMI
+    zone: Fishertechnik
+    has_logs: false
+    is_managed: false
+    description: Fishertechnik client device
+    os: Unknown
+  FT-ROUTER:
+    hostname: FT-ROUTER
+    ip_address: 192.168.0.252
+    role: Network Infrastructure
+    zone: Fishertechnik
+    has_logs: false
+    is_managed: false
+    description: Fishertechnik network router providing DNS, DHCP, and NTP
+    os: Embedded
+
 # Network zone definitions
 zones:
   Corporate:
@@ -104,3 +150,7 @@ zones:
     name: Demilitarized Zone
     description: Security buffer zone between external networks and ICS infrastructure
     subnet: 172.16.142.0/24
+  Fishertechnik:
+    name: Fishertechnik Process Network
+    description: Fishertechnik factory model network with PLCs, MQTT brokers, and HMI devices
+    subnet: 192.168.0.0/24

@@ -77,6 +77,19 @@ def _generate_node_guid_v2_braced(node_type: str, hostname: str, *identifiers: o
     return f"{{{_generate_node_guid_v2(node_type, hostname, *identifiers)}}}"
 
 
+def _normalize_transport_protocol(protocol: object) -> str:
+    """Normalize transport protocol values used for service identity."""
+    normalized = str(protocol or "").strip().lower()
+    return normalized or "tcp"
+
+
+def _generate_network_service_guid(hostname: str, port: int, protocol: object) -> str:
+    """Generate a protocol-aware NetworkService GUID."""
+    normalized_port = port if port and port >= 0 else 0
+    normalized_protocol = _normalize_transport_protocol(protocol)
+    return _generate_node_guid("NetworkService", hostname, normalized_port, normalized_protocol)
+
+
 @dataclass
 class CorrelationStats:
     """Statistics about the correlation process."""
@@ -1168,19 +1181,21 @@ class StreamingAugmentor:
         """Ensure NetworkEndpoint and NetworkService nodes exist, return NetworkService GUID."""
         hostname = self._resolve_hostname(ip)
         asset_guid = self._ensure_asset_node(ip=ip, asset_statements=asset_statements)
+        normalized_port = port if port and port >= 0 else 0
+        normalized_protocol = _normalize_transport_protocol(protocol)
 
-        service_guid = _generate_node_guid("NetworkService", hostname, port)
+        service_guid = _generate_network_service_guid(hostname, normalized_port, normalized_protocol)
         if service_guid not in service_statements:
             svc_props: Dict[str, object] = {
-                "port": port,
-                "protocol": protocol,
+                "port": normalized_port,
+                "protocol": normalized_protocol.upper(),
                 "pcapAugmented": True,
             }
 
             if service_name:
                 svc_props["serviceName"] = service_name
-            elif port in self.config.service_map:
-                svc_props["serviceName"] = self.config.service_map[port]
+            elif normalized_port in self.config.service_map:
+                svc_props["serviceName"] = self.config.service_map[normalized_port]
 
             service_statements[service_guid] = cypher_emit.create_network_service_statement(
                 service_guid,

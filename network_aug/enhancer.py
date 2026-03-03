@@ -78,6 +78,11 @@ class AugmentationConfig:
             "192.168.43.10": "PLC-02",
             "192.168.43.11": "PLC-03",
             "192.168.44.11": "PLC-03",  # Secondary network interface
+            "192.168.0.1": "FT-PLC-01",
+            "192.168.0.5": "FT-GW-01",
+            "192.168.0.10": "FT-MQTT-01",
+            "192.168.0.12": "FT-CLIENT-01",
+            "192.168.0.252": "FT-ROUTER",
         }
     )
     service_map: Dict[int, str] = field(
