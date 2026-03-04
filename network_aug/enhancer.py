@@ -10,12 +10,11 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Set, Tuple
 
 from . import cypher_emit
 from .correlation import (
+    BindsIndex,
     CorrelatedConnection,
     CorrelationConfig,
     CorrelationEngine,
     TelemetryConnectionIndex,
-    TemporalProcessEntry,
-    TemporalProcessIndex,
 )
 from .cypher_reader import (
     CypherConnectionExtractor,
@@ -119,9 +118,7 @@ class AugmentationConfig:
     # Correlation configuration
     min_correlation_confidence: float = 0.5
     temporal_tolerance_seconds: float = 60.0
-    require_temporal_overlap: bool = False
     enable_process_attribution: bool = True
-    telemetry_attribution_only: bool = False  # Only attribute when telemetry evidence exists (no temporal fallback)
     pcap_time_offset_seconds: float = 0.0  # Offset to apply to PCAP timestamps (e.g., -10800 for UTC+3 -> UTC)
 
     # Signal database configuration

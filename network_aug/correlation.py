@@ -1,15 +1,14 @@
-"""Temporal-anchored correlation between telemetry connections and PCAP flows.
+"""Deterministic correlation between telemetry connections and PCAP flows.
 
 This module provides the correlation engine that matches PCAP-derived network
-flows to telemetry-derived connections using multiple scoring factors:
-- Temporal overlap (PCAP timestamps within telemetry time windows)
-- 5-tuple matching (IP, port, protocol)
-- Protocol fingerprinting
-- Host consistency
+flows to telemetry-derived connections using two modes:
 
-The correlation enables process attribution: PCAP features (Modbus registers,
-flow statistics) can be traced back to the specific process that initiated
-the connection according to host telemetry.
+1. IT->OT (managed host initiates): Match PCAP src_port against sessionPorts[]
+   on existing CONNECT_TO edges for deterministic, confidence-1.0 matching.
+2. OT->IT (unmanaged device initiates): Look up which process BINDS to the
+   destination NetworkService for structural attribution.
+
+No heuristic/temporal correlation is needed.
 """
 
 from __future__ import annotations
@@ -121,146 +120,26 @@ class ProcessContext:
         return bool(self.process_guid or self.process_image)
 
 
-@dataclass
-class TemporalProcessEntry:
-    """A process with its time window for temporal matching.
+class BindsIndex:
+    """Maps (host, port) -> ProcessContext from BINDS edges in the base graph.
 
-    Used to map PCAP traffic to the correct Process node based on
-    when the process was active.
-    """
-    process_guid: str
-    process_label: str  # "Process"
-    host: str
-    ip_address: str  # Resolved from host via assets
-    created_at: Optional[float]  # epoch seconds
-    terminated_at: Optional[float]  # epoch seconds, None if still running
-    process_image: str
-    process_id: int
-
-    def overlaps_timestamp(self, timestamp: float, tolerance: float = 60.0) -> bool:
-        """Check if a timestamp falls within this process's lifetime (with tolerance)."""
-        start = (self.created_at - tolerance) if self.created_at else float("-inf")
-        end = (self.terminated_at + tolerance) if self.terminated_at else float("inf")
-        return start <= timestamp <= end
-
-    def overlaps_range(
-        self,
-        range_start: float,
-        range_end: float,
-        tolerance: float = 60.0
-    ) -> bool:
-        """Check if a time range overlaps with this process's lifetime."""
-        proc_start = (self.created_at - tolerance) if self.created_at else float("-inf")
-        proc_end = (self.terminated_at + tolerance) if self.terminated_at else float("inf")
-        # Ranges overlap if neither ends before the other starts
-        return proc_start <= range_end and range_start <= proc_end
-
-
-class TemporalProcessIndex:
-    """Index of Process nodes by IP address for temporal matching.
-
-    Enables looking up which Process was active on a given IP at a given time,
-    so that PCAP traffic can be attributed to the correct Process node.
+    Used for OT->IT attribution: when an unmanaged device sends traffic
+    to a managed host's service port, we find the listening process
+    via the BINDS relationship.
     """
 
-    def __init__(self, tolerance_seconds: float = 60.0):
-        self._tolerance = tolerance_seconds
-        # Map: ip_address -> List[TemporalProcessEntry] sorted by created_at
-        self._by_ip: Dict[str, List[TemporalProcessEntry]] = defaultdict(list)
-        # Map: process_guid -> TemporalProcessEntry
-        self._by_guid: Dict[str, TemporalProcessEntry] = {}
+    def __init__(self) -> None:
+        self._by_service: Dict[Tuple[str, int], ProcessContext] = {}
 
-    def add_entry(self, entry: TemporalProcessEntry) -> None:
-        """Add a process entry to the index."""
-        if entry.ip_address:
-            self._by_ip[entry.ip_address].append(entry)
-        self._by_guid[entry.process_guid] = entry
+    def add(self, host: str, port: int, process_context: ProcessContext) -> None:
+        self._by_service[(host.lower(), port)] = process_context
 
-    def finalize(self) -> None:
-        """Sort entries by created_at for efficient lookup."""
-        for entries in self._by_ip.values():
-            entries.sort(key=lambda e: e.created_at or 0)
-
-    def find_process_for_timestamp(
-        self,
-        ip_address: str,
-        timestamp: float
-    ) -> Optional[TemporalProcessEntry]:
-        """Find the Process that was active on this IP at the given timestamp."""
-        entries = self._by_ip.get(ip_address, [])
-        for entry in entries:
-            if entry.overlaps_timestamp(timestamp, self._tolerance):
-                return entry
-        return None
-
-    def find_process_for_range(
-        self,
-        ip_address: str,
-        range_start: float,
-        range_end: float,
-    ) -> Optional[TemporalProcessEntry]:
-        """Find the Process that was active on this IP during the given time range.
-
-        If multiple processes overlap, returns the one with the most overlap.
-        When overlap durations are equal, prefers:
-        1. Processes with defined start times (not system processes with None)
-        2. Shorter-lived processes (more specific attribution)
-        3. Processes that started closer to the traffic window
-        """
-        entries = self._by_ip.get(ip_address, [])
-        best_match: Optional[TemporalProcessEntry] = None
-        best_score = (0.0, 0.0, float("inf"))  # (overlap, specificity, start_distance)
-
-        for entry in entries:
-            if not entry.overlaps_range(range_start, range_end, self._tolerance):
-                continue
-
-            # Calculate overlap duration
-            proc_start = entry.created_at or float("-inf")
-            proc_end = entry.terminated_at or float("inf")
-            overlap_start = max(range_start, proc_start)
-            overlap_end = min(range_end, proc_end)
-            overlap_duration = max(0, overlap_end - overlap_start)
-
-            # Calculate specificity (shorter-lived processes are more specific)
-            # Processes without defined times get 0 specificity (least preferred)
-            if entry.created_at is not None:
-                if entry.terminated_at is not None:
-                    # Terminated process: specificity based on inverse lifetime
-                    lifetime = entry.terminated_at - entry.created_at
-                    specificity = 1.0 / max(1.0, lifetime)
-                else:
-                    # Still running: use time since creation as proxy for lifetime
-                    running_time = range_end - entry.created_at
-                    specificity = 1.0 / max(1.0, running_time)
-            else:
-                # No start time (e.g., System process): lowest specificity
-                specificity = 0.0
-
-            # Distance from traffic window start to process start (closer is better)
-            start_distance = abs(range_start - proc_start) if proc_start != float("-inf") else float("inf")
-
-            score = (overlap_duration, specificity, -start_distance)  # Negative distance so larger is better
-
-            if score > best_score:
-                best_score = score
-                best_match = entry
-
-        return best_match
-
-    def get_by_guid(self, guid: str) -> Optional[TemporalProcessEntry]:
-        """Get a process entry by its GUID."""
-        return self._by_guid.get(guid)
+    def find_process(self, host: str, port: int) -> Optional[ProcessContext]:
+        return self._by_service.get((host.lower(), port))
 
     @property
     def entry_count(self) -> int:
-        """Total number of process entries."""
-        return len(self._by_guid)
-
-    @property
-    def ip_count(self) -> int:
-        """Number of unique IPs with process entries."""
-        return len(self._by_ip)
+        return len(self._by_service)
 
 
 def _safe_int(value: object) -> int:
@@ -711,18 +590,8 @@ class CorrelationConfig:
     # Minimum confidence score to accept a correlation (0.0 - 1.0)
     min_confidence: float = 0.5
 
-    # Temporal tolerance in seconds for time window matching
-    # PCAP timestamps within [firstSeen - tolerance, lastSeen + tolerance] match
+    # Temporal tolerance in seconds for session port temporal proximity check
     temporal_tolerance_seconds: float = 60.0
-
-    # Weight factors for scoring components (should sum to ~1.0)
-    temporal_weight: float = 0.4
-    port_match_weight: float = 0.2
-    protocol_weight: float = 0.2
-    host_consistency_weight: float = 0.2
-
-    # Whether to require temporal overlap (False allows 5-tuple only matching)
-    require_temporal_overlap: bool = False
 
     # Time offset to apply to PCAP timestamps (in seconds)
     # Use negative values to shift PCAP times earlier (e.g., -10800 for UTC+3 -> UTC)
@@ -730,15 +599,10 @@ class CorrelationConfig:
 
 
 class CorrelationEngine:
-    """Correlates PCAP flows to telemetry connections with confidence scoring.
+    """Correlates PCAP flows to telemetry connections via deterministic session-port matching.
 
-    This is the core correlation logic that matches PCAP-derived connections
-    to telemetry anchors using multiple factors:
-
-    1. Temporal overlap: PCAP packet timestamps fall within telemetry time window
-    2. Exact port match: Source port matches exactly (not just service port)
-    3. Protocol fingerprint: PCAP-detected protocol matches expected service
-    4. Host consistency: MAC addresses consistent with known mappings
+    Matches PCAP src_port against sessionPorts[] on telemetry CONNECT_TO edges.
+    No heuristic/temporal fallback is used.
     """
 
     def __init__(
@@ -754,10 +618,7 @@ class CorrelationEngine:
             "total_attempts": 0,
             "successful_correlations": 0,
             "session_port_matches": 0,  # Deterministic matches via sessionPorts
-            "temporal_matches": 0,
-            "exact_port_matches": 0,
             "no_candidates": 0,
-            "below_threshold": 0,
         }
 
     def correlate(
@@ -765,12 +626,12 @@ class CorrelationEngine:
         pcap_conn: IndexedConnection,
         telemetry_index: TelemetryConnectionIndex,
     ) -> Optional[CorrelatedConnection]:
-        """Correlate a PCAP connection to the best matching telemetry anchor.
+        """Correlate a PCAP connection to a telemetry anchor via session-port matching.
 
-        Tries deterministic session-based matching first (using sessionPorts metadata),
-        then falls back to temporal correlation if no session match is found.
+        Uses deterministic session-based matching (sessionPorts metadata) only.
+        No temporal/heuristic fallback.
 
-        Returns a CorrelatedConnection if a match above threshold is found,
+        Returns a CorrelatedConnection if a session-port match is found,
         otherwise None.
         """
         self._stats["total_attempts"] += 1
@@ -788,8 +649,7 @@ class CorrelationEngine:
         # Get time offset for PCAP timestamp adjustment
         time_offset = self.config.pcap_time_offset_seconds
 
-        # PHASE 1: Try deterministic session-based matching first
-        # This uses the sessionPorts metadata from telemetry for exact port correlation
+        # Deterministic session-based matching via sessionPorts metadata
         for anchor, base_score in candidates:
             if anchor.has_session_metadata():
                 session_idx = anchor.find_session_by_port_only(pcap_src_port)
@@ -826,33 +686,8 @@ class CorrelationEngine:
                             packets=list(pcap_conn.records),
                         )
 
-        # PHASE 2: Fall back to temporal correlation
-        # Score each candidate using temporal overlap
-        scored: List[Tuple[TelemetryAnchor, float, str]] = []
-        for anchor, base_score in candidates:
-            score, method = self._compute_correlation_score(pcap_conn, anchor, base_score)
-            scored.append((anchor, score, method))
-
-        # Select best match above threshold
-        if not scored:
-            self._stats["no_candidates"] += 1
-            return None
-
-        best_anchor, best_score, best_method = max(scored, key=lambda x: x[1])
-
-        if best_score < self.config.min_confidence:
-            self._stats["below_threshold"] += 1
-            return None
-
-        self._stats["successful_correlations"] += 1
-
-        return CorrelatedConnection(
-            telemetry_anchor=best_anchor,
-            pcap_connection=pcap_conn,
-            confidence=best_score,
-            correlation_method=best_method,
-            packets=list(pcap_conn.records),
-        )
+        # No session-port match found
+        return None
 
     def correlate_batch(
         self,
@@ -872,200 +707,6 @@ class CorrelationEngine:
                 results[pcap_conn.canonical_id] = correlated
 
         return results
-
-    def _compute_correlation_score(
-        self,
-        pcap: IndexedConnection,
-        anchor: TelemetryAnchor,
-        base_score: float,
-    ) -> Tuple[float, str]:
-        """Compute correlation score based on temporal overlap.
-
-        Returns (score, method_description) tuple.
-        Correlation requires temporal overlap - no overlap means no correlation.
-        """
-        # Temporal overlap is required
-        temporal_score = self._temporal_overlap_score(pcap, anchor)
-
-        if temporal_score == 0:
-            # No temporal overlap = no correlation
-            return 0.0, "no_temporal_overlap"
-
-        self._stats["temporal_matches"] += 1
-
-        # Score is purely based on temporal overlap quality
-        # base_score (0.3-0.5) from 5-tuple matching is ignored for scoring
-        # but was used to find candidates
-        score = temporal_score
-
-        return score, "temporal"
-
-    def _temporal_overlap_score(
-        self,
-        pcap: IndexedConnection,
-        anchor: TelemetryAnchor,
-    ) -> float:
-        """Score based on temporal overlap between PCAP and telemetry windows.
-
-        Returns 0.0-1.0 based on how well PCAP timestamps fit the telemetry window.
-        """
-        if not pcap.records:
-            return 0.0
-
-        first_seen, last_seen = anchor.time_window
-        if first_seen is None and last_seen is None:
-            # No telemetry timestamps - can't score temporally
-            return 0.0
-
-        # Get PCAP time range (with timezone offset applied)
-        time_offset = self.config.pcap_time_offset_seconds
-        pcap_timestamps = [p.timestamp + time_offset for p in pcap.records]
-        pcap_first = min(pcap_timestamps)
-        pcap_last = max(pcap_timestamps)
-
-        # Expand telemetry window by tolerance
-        tolerance = self.config.temporal_tolerance_seconds
-        window_start = (first_seen - tolerance) if first_seen else float("-inf")
-        window_end = (last_seen + tolerance) if last_seen else float("inf")
-
-        # Check overlap
-        if pcap_last < window_start or pcap_first > window_end:
-            # No overlap at all
-            return 0.0
-
-        # Calculate overlap ratio
-        overlap_start = max(pcap_first, window_start)
-        overlap_end = min(pcap_last, window_end)
-        overlap_duration = max(0, overlap_end - overlap_start)
-
-        pcap_duration = max(pcap_last - pcap_first, 1.0)  # Avoid division by zero
-        overlap_ratio = overlap_duration / pcap_duration
-
-        # Count packets within window
-        packets_in_window = sum(
-            1 for ts in pcap_timestamps
-            if window_start <= ts <= window_end
-        )
-        packet_ratio = packets_in_window / len(pcap_timestamps)
-
-        # Combined score (average of overlap ratio and packet ratio)
-        return (overlap_ratio + packet_ratio) / 2.0
-
-    def _port_match_score(
-        self,
-        pcap: IndexedConnection,
-        anchor: TelemetryAnchor,
-    ) -> float:
-        """Score based on exact port matching.
-
-        Higher score if source port matches exactly (not just destination/service port).
-        """
-        pcap_key = pcap.origin
-        tele_key = anchor.connection_key
-
-        # Check exact match in either direction
-        forward_match = (
-            pcap_key.src_ip == tele_key.src_ip and
-            pcap_key.src_port == tele_key.src_port and
-            pcap_key.dst_ip == tele_key.dst_ip and
-            pcap_key.dst_port == tele_key.dst_port
-        )
-
-        reverse_match = (
-            pcap_key.src_ip == tele_key.dst_ip and
-            pcap_key.src_port == tele_key.dst_port and
-            pcap_key.dst_ip == tele_key.src_ip and
-            pcap_key.dst_port == tele_key.src_port
-        )
-
-        if forward_match or reverse_match:
-            return 1.0
-
-        # Partial match: service port matches but not source port
-        service_port_match = (
-            pcap_key.dst_port == tele_key.dst_port or
-            pcap_key.src_port == tele_key.dst_port or
-            pcap_key.dst_port == tele_key.src_port
-        )
-
-        if service_port_match:
-            return 0.5
-
-        return 0.0
-
-    def _protocol_fingerprint_score(
-        self,
-        pcap: IndexedConnection,
-        anchor: TelemetryAnchor,
-    ) -> float:
-        """Score based on protocol fingerprint matching.
-
-        Uses PCAP-detected high-level protocol vs expected service port.
-        """
-        if not pcap.records:
-            return 0.0
-
-        # Get dominant protocol from PCAP
-        protocol_counts: Dict[str, int] = defaultdict(int)
-        for pkt in pcap.records:
-            if pkt.high_level_protocol and pkt.high_level_protocol != "UNKNOWN":
-                protocol_counts[pkt.high_level_protocol.upper()] += 1
-
-        if not protocol_counts:
-            return 0.0
-
-        dominant = max(protocol_counts, key=protocol_counts.get)
-
-        # Map destination port to expected protocol
-        port_protocol_map = {
-            22: "SSH",
-            80: "HTTP",
-            443: "HTTPS",
-            502: "MODBUS",
-            102: "S7COMM",
-            44818: "ENIP",
-            8080: "HTTP",
-        }
-
-        tele_key = anchor.connection_key
-        expected = port_protocol_map.get(tele_key.dst_port)
-
-        if expected and dominant == expected:
-            return 1.0
-
-        # Partial match for related protocols
-        if dominant == "HTTP" and expected in ("HTTPS", "HTTP"):
-            return 0.7
-        if dominant == "MODBUS" and tele_key.dst_port == 502:
-            return 1.0
-
-        return 0.0
-
-    def _host_consistency_score(
-        self,
-        pcap: IndexedConnection,
-        anchor: TelemetryAnchor,
-    ) -> float:
-        """Score based on host consistency checks.
-
-        Validates that the hosts involved make sense together.
-        """
-        # Basic check: IPs are consistent
-        pcap_key = pcap.origin
-        tele_key = anchor.connection_key
-
-        pcap_ips = {pcap_key.src_ip, pcap_key.dst_ip}
-        tele_ips = {tele_key.src_ip, tele_key.dst_ip}
-
-        # All IPs should match
-        if pcap_ips == tele_ips:
-            return 1.0
-
-        # Partial overlap is suspicious but not disqualifying
-        if pcap_ips & tele_ips:
-            return 0.5
-
-        return 0.0
 
     def get_statistics(self) -> Dict[str, int]:
         """Return correlation statistics for reporting."""

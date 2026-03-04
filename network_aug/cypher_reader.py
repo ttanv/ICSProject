@@ -135,6 +135,83 @@ class CypherConnectionExtractor:
         )
         return connections
 
+    def load_binds_index(self) -> "BindsIndex":
+        """Build a BindsIndex from BINDS relationships in the Cypher export.
+
+        Scans for [:BINDS] edges, extracts the source Process and destination
+        NetworkService nodes, and maps (host, port) -> ProcessContext.
+        """
+        from .correlation import BindsIndex, ProcessContext
+
+        index = BindsIndex()
+
+        if not self.cypher_path.exists():
+            return index
+
+        text = self.cypher_path.read_text(encoding="utf-8")
+        statements = _split_statements(text)
+        self._ensure_caches(statements)
+
+        binds_regex = re.compile(r"\[\s*\w*\s*:\s*BINDS", re.IGNORECASE)
+
+        for stmt in statements:
+            if not binds_regex.search(stmt):
+                continue
+
+            alias_map = self._extract_match_aliases(stmt)
+            if not alias_map:
+                continue
+
+            src_alias, dst_alias = self._extract_merge_aliases(stmt)
+            if not src_alias or not dst_alias:
+                continue
+
+            src_info = alias_map.get(src_alias, {})
+            dst_info = alias_map.get(dst_alias, {})
+            src_guid = str(src_info.get("guid") or "")
+            dst_guid = str(dst_info.get("guid") or "")
+
+            if not src_guid or not dst_guid:
+                continue
+
+            # Look up Process node (source of BINDS)
+            src_node = self._node_cache.get(src_guid)
+            if not src_node or str(src_node.get("label") or "").lower() != "process":
+                continue
+
+            # Look up NetworkService node (destination of BINDS)
+            dst_node = self._node_cache.get(dst_guid)
+            if not dst_node or str(dst_node.get("label") or "").lower() != "networkservice":
+                continue
+
+            src_props = src_node.get("props", {})
+            dst_props = dst_node.get("props", {})
+
+            # Extract service host and port
+            service_host = str(dst_props.get("host") or dst_props.get("hostname") or "").strip()
+            service_port = self._coerce_port(dst_props.get("port") or dst_props.get("localPort"))
+
+            if not service_host or service_port <= 0:
+                continue
+
+            # Build ProcessContext from the Process node
+            proc_ctx = ProcessContext(
+                process_guid=src_guid,
+                process_image=str(src_props.get("image") or src_props.get("Image") or ""),
+                process_id=self._coerce_port(src_props.get("processId") or src_props.get("ProcessId")),
+                user=str(src_props.get("user") or src_props.get("User") or ""),
+                computer=str(src_props.get("host") or src_props.get("computer") or ""),
+            )
+
+            index.add(service_host, service_port, proc_ctx)
+
+        logger.info(
+            "Built BINDS index with %d service entries from %s",
+            index.entry_count,
+            self.cypher_path,
+        )
+        return index
+
     @property
     def ip_to_hostname_map(self) -> Dict[str, str]:
         """Return mapping of ALL IPs to hostnames for normalization."""
