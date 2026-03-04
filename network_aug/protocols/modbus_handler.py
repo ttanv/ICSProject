@@ -24,12 +24,16 @@ class ModbusProtocolHandler:
             if context.show_progress
             else modbus_groups
         )
+        asset_ips = getattr(context.augmentor, '_asset_ips', set())
         for group in group_iterable:
             # Skip groups fully represented by base telemetry or already-correlated flows.
             if all(
                 cid in context.base_connection_ids or cid in context.correlated_cids
                 for cid in group.canonical_ids()
             ):
+                continue
+            # Asset-IP scope filter
+            if asset_ips and group.client_ip not in asset_ips and group.server_ip not in asset_ips:
                 continue
 
             packets = group.packets()
@@ -59,7 +63,7 @@ class ModbusProtocolHandler:
                 runs_statements=context.runs_statements,
                 relationship_statements=context.relationship_statements,
                 process_register_statements=context.process_register_statements,
-                process_index=context.process_index,
+                binds_index=context.binds_index,
                 telemetry_index=context.telemetry_index,
             )
             relationship_count += max(len(context.relationship_statements) - before_count, 0)

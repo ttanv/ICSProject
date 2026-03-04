@@ -17,6 +17,7 @@ class MqttProtocolHandler:
     def build_artifacts(self, context: ProtocolBuildContext) -> ProtocolBuildResult:
         relationship_count = 0
         consumed = set()
+        asset_ips = getattr(context.augmentor, '_asset_ips', set())
 
         iterable = (
             tqdm(context.connections, desc="Processing MQTT connections", unit="connection")
@@ -29,6 +30,9 @@ class MqttProtocolHandler:
             if indexed.canonical_id in context.correlated_cids:
                 continue
             if indexed.canonical_id in context.processed_cids:
+                continue
+            # Asset-IP scope filter
+            if asset_ips and indexed.origin.src_ip not in asset_ips and indexed.origin.dst_ip not in asset_ips:
                 continue
             if not indexed.records:
                 continue
@@ -64,7 +68,7 @@ class MqttProtocolHandler:
                 register_statements=context.register_statements,
                 relationship_statements=context.relationship_statements,
                 process_register_statements=context.process_register_statements,
-                process_index=context.process_index,
+                binds_index=context.binds_index,
                 telemetry_index=context.telemetry_index,
             )
             relationship_count += max(len(context.relationship_statements) - before_count, 0)
