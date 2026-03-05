@@ -620,16 +620,21 @@ class CorrelationEngine:
             self._stats["no_candidates"] += 1
             return None
 
-        # Get PCAP connection's source port for session matching
-        pcap_src_port = pcap_conn.origin.src_port
+        # Try both origin ports: the first captured packet may be a server response,
+        # making origin.src_port the service port instead of the ephemeral client port.
+        pcap_port_candidates = [pcap_conn.origin.src_port]
+        if pcap_conn.origin.dst_port != pcap_conn.origin.src_port:
+            pcap_port_candidates.append(pcap_conn.origin.dst_port)
 
-        # Get time offset for PCAP timestamp adjustment
         time_offset = self.config.pcap_time_offset_seconds
 
-        # Deterministic session-based matching via sessionPorts metadata
         for anchor, base_score in candidates:
             if anchor.has_session_metadata():
-                session_idx = anchor.find_session_by_port_only(pcap_src_port)
+                session_idx = None
+                for port in pcap_port_candidates:
+                    session_idx = anchor.find_session_by_port_only(port)
+                    if session_idx is not None:
+                        break
                 if session_idx is not None:
                     # Found deterministic match via session port!
                     # Verify temporal proximity for extra confidence

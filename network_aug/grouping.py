@@ -307,7 +307,7 @@ def group_collapsed_connections(
         if not connection.records:
             continue
 
-        orientation = _infer_client_server(connection)
+        orientation = orient_connection(connection.origin, connection.records)
         if orientation is None:
             continue
 
@@ -337,72 +337,54 @@ def group_collapsed_connections(
     return aggregated_groups, consumed
 
 
-def _infer_client_server(connection: IndexedConnection) -> Optional[Tuple[str, int, str, int, str]]:
-    """Derive a stable (client, server) orientation for aggregation heuristics."""
-    if not connection.records:
-        return None
-
-    first_packet = min(connection.records, key=lambda pkt: pkt.timestamp)
-    orientation = _orient(first_packet.src_ip, first_packet.src_port, first_packet.dst_ip, first_packet.dst_port, first_packet.protocol)
-    if orientation:
-        return orientation
-
-    origin = connection.origin
-    orientation = _orient(origin.src_ip, origin.src_port, origin.dst_ip, origin.dst_port, origin.protocol)
-    if orientation:
-        return orientation
-
-    return None
-
-
-def _orient(
-    src_ip: str,
-    src_port: int,
-    dst_ip: str,
-    dst_port: int,
-    protocol: str,
+def orient_connection(
+    origin: "ConnectionKey",
+    records: Sequence[PacketRecord],
 ) -> Optional[Tuple[str, int, str, int, str]]:
-    """Determine client/server orientation based on port characteristics.
+    """Determine client/server orientation for a connection.
 
-    Returns (client_ip, client_port, server_ip, server_port, protocol) if
-    orientation can be determined, None otherwise.
+    Returns (client_ip, client_port, server_ip, server_port, protocol) or None.
+
+    Strategy (in priority order):
+      1. TCP SYN detection — the SYN sender is the client.
+      2. Ephemeral vs non-ephemeral port — a port >= 32768 is ephemeral.
+      3. Well-known service port list — for the 1024-32767 range.
     """
+    protocol = origin.protocol.lower()
+
+    # 1. Find a TCP SYN (not SYN-ACK) — definitive client indicator.
+    for pkt in records:
+        flags = pkt.tcp_flags or ""
+        if "S" in flags and "A" not in flags:
+            return pkt.src_ip, pkt.src_port, pkt.dst_ip, pkt.dst_port, protocol
+
+    # 2–3. Fall back to port-based heuristics.
+    src_port, dst_port = origin.src_port, origin.dst_port
     if src_port <= 0 or dst_port <= 0:
         return None
 
     src_is_service = _is_service_port(src_port)
     dst_is_service = _is_service_port(dst_port)
-
-    # If both are service ports or neither is, we can't determine orientation
     if src_is_service == dst_is_service:
         return None
 
-    # The service port side is the server, the other side is the client
     if dst_is_service and not src_is_service:
-        # src is client, dst is server
-        return src_ip, src_port, dst_ip, dst_port, protocol.lower()
-    elif src_is_service and not dst_is_service:
-        # dst is client, src is server
-        return dst_ip, dst_port, src_ip, src_port, protocol.lower()
+        return origin.src_ip, src_port, origin.dst_ip, dst_port, protocol
+    if src_is_service and not dst_is_service:
+        return origin.dst_ip, dst_port, origin.src_ip, src_port, protocol
 
     return None
 
 
-def _is_service_port(port: int) -> bool:
-    """Check if a port is a known service port (i.e., NOT ephemeral).
+# Ports >= this threshold are always considered ephemeral (client) ports.
+# Linux default: 32768-60999, Windows: 49152-65535.
+EPHEMERAL_PORT_THRESHOLD = 32768
 
-    A port is considered a service port if:
-    1. It's in the well-known service ports list, OR
-    2. It's a privileged port (< 1024)
-    """
+
+def _is_service_port(port: int) -> bool:
+    """Check if a port is a known service port (i.e., NOT ephemeral)."""
     if port < PRIVILEGED_PORT_THRESHOLD:
         return True
+    if port >= EPHEMERAL_PORT_THRESHOLD:
+        return False
     return port in WELL_KNOWN_SERVICE_PORTS
-
-
-def _is_ephemeral_port(port: int) -> bool:
-    """Check if a port is likely an ephemeral/client port.
-
-    This is the inverse of _is_service_port.
-    """
-    return not _is_service_port(port)

@@ -57,7 +57,7 @@ from .grouping import (
     group_collapsed_connections,
     group_http_monitor_connections,
     group_modbus_connections,
-    _is_service_port,
+    orient_connection,
 )
 
 logger = logging.getLogger(__name__)
@@ -367,27 +367,16 @@ class MissingTrafficAugmentor:
                 continue
 
             # Orient the connection so CONNECT_TO always points from client process to server service.
-            src_is_service = _is_service_port(connection_key.src_port)
-            dst_is_service = _is_service_port(connection_key.dst_port)
-            if dst_is_service and not src_is_service:
-                client_ip = connection_key.src_ip
+            orientation = orient_connection(connection_key, packets)
+            if orientation is not None:
+                client_ip, _, server_ip, server_port, proto = orientation
                 client_port = 0
                 oriented_key = ConnectionKey(
-                    src_ip=connection_key.src_ip,
-                    src_port=connection_key.src_port,
-                    dst_ip=connection_key.dst_ip,
-                    dst_port=connection_key.dst_port,
-                    protocol=connection_key.protocol,
-                )
-            elif src_is_service and not dst_is_service:
-                client_ip = connection_key.dst_ip
-                client_port = 0
-                oriented_key = ConnectionKey(
-                    src_ip=connection_key.dst_ip,
-                    src_port=connection_key.dst_port,
-                    dst_ip=connection_key.src_ip,
-                    dst_port=connection_key.src_port,
-                    protocol=connection_key.protocol,
+                    src_ip=client_ip,
+                    src_port=0,
+                    dst_ip=server_ip,
+                    dst_port=server_port,
+                    protocol=proto,
                 )
             else:
                 client_ip = connection_key.src_ip
@@ -1715,6 +1704,7 @@ class MissingTrafficAugmentor:
     ) -> str:
         """Ensure a NetworkEndpoint MERGE statement exists for the given host."""
         guid = _generate_node_guid("NetworkEndpoint", hostname)
+        known = self._is_known_host(ip_address)
         if ip_address and ip_address not in self._asset_ip_map:
             self._asset_ip_map[ip_address] = hostname
         if guid not in asset_statements:
@@ -1723,8 +1713,8 @@ class MissingTrafficAugmentor:
                 "hostname": hostname,
                 "ipAddress": ip_address,
                 "ipAddresses": [ip_address] if ip_address else [],
-                "isExternal": False if self._is_known_host(ip_address) else True,
-                "isManaged": self._is_known_host(ip_address),
+                "isExternal": not known,
+                "isManaged": known,
                 "source": "pcap",
             }
             asset_statements[guid] = cypher_emit.create_asset_statement(guid, props)
@@ -3540,14 +3530,7 @@ class MissingTrafficAugmentor:
             # Avoid ambiguous endpoint-only attribution in this case.
             return None
 
-        process_context = telemetry_index.find_process_for_connection(
-            src_ip=client_ip,
-            dst_ip=server_ip,
-            dst_port=service_port,
-            protocol=protocol,
-        )
-        if process_context and process_context.is_valid() and process_context.process_guid:
-            return process_context
+        # No source ports available — no deterministic evidence to attribute.
         return None
 
     def _add_modbus_group(

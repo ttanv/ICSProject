@@ -48,7 +48,6 @@ from .grouping import (
     group_collapsed_connections,
     group_http_monitor_connections,
     group_modbus_connections,
-    _is_service_port,
 )
 from .models import ConnectionKey, IndexedConnection, PacketRecord
 
