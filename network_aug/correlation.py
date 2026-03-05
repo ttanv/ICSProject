@@ -5,8 +5,6 @@ flows to telemetry-derived connections using two modes:
 
 1. IT->OT (managed host initiates): Match PCAP src_port against sessionPorts[]
    on existing CONNECT_TO edges for deterministic, confidence-1.0 matching.
-2. OT->IT (unmanaged device initiates): Look up which process BINDS to the
-   destination NetworkService for structural attribution.
 
 No heuristic/temporal correlation is needed.
 """
@@ -119,27 +117,6 @@ class ProcessContext:
         """Return True if this context has meaningful process information."""
         return bool(self.process_guid or self.process_image)
 
-
-class BindsIndex:
-    """Maps (host, port) -> ProcessContext from BINDS edges in the base graph.
-
-    Used for OT->IT attribution: when an unmanaged device sends traffic
-    to a managed host's service port, we find the listening process
-    via the BINDS relationship.
-    """
-
-    def __init__(self) -> None:
-        self._by_service: Dict[Tuple[str, int], ProcessContext] = {}
-
-    def add(self, host: str, port: int, process_context: ProcessContext) -> None:
-        self._by_service[(host.lower(), port)] = process_context
-
-    def find_process(self, host: str, port: int) -> Optional[ProcessContext]:
-        return self._by_service.get((host.lower(), port))
-
-    @property
-    def entry_count(self) -> int:
-        return len(self._by_service)
 
 
 def _safe_int(value: object) -> int:

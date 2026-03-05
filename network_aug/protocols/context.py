@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Set, TYPE_CHECKING
 
-from ..correlation import BindsIndex, TelemetryConnectionIndex
+from ..correlation import TelemetryConnectionIndex
 from ..models import IndexedConnection
 
 if TYPE_CHECKING:
@@ -22,7 +22,6 @@ class ProtocolBuildContext:
     correlated_cids: Set[str]
     processed_cids: Set[str]
     show_progress: bool
-    binds_index: Optional[BindsIndex]
     telemetry_index: Optional[TelemetryConnectionIndex]
 
     asset_statements: Dict[str, str]

@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Set, Tuple
 
 from . import cypher_emit
 from .correlation import (
-    BindsIndex,
     CorrelatedConnection,
     CorrelationConfig,
     CorrelationEngine,
@@ -123,6 +122,7 @@ class AugmentationConfig:
 
     # Signal database configuration
     signal_db_path: Optional[Path] = None  # Path to DuckDB file for raw signal observations
+
 
 
 @dataclass

@@ -63,7 +63,6 @@ class ModbusProtocolHandler:
                 runs_statements=context.runs_statements,
                 relationship_statements=context.relationship_statements,
                 process_register_statements=context.process_register_statements,
-                binds_index=context.binds_index,
                 telemetry_index=context.telemetry_index,
             )
             relationship_count += max(len(context.relationship_statements) - before_count, 0)

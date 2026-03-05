@@ -174,14 +174,6 @@ class StreamingAugmentor:
         extractor = CypherConnectionExtractor(self.config.base_cypher, asset_file=asset_file)
         existing = extractor.load_connections()
 
-        # Load BINDS index for OT->IT process attribution
-        binds_extractor = CypherConnectionExtractor(
-            self.config.base_cypher,
-            relationship_types=["BINDS"],
-            asset_file=asset_file,
-        )
-        self._binds_index = binds_extractor.load_binds_index()
-
         # Build asset-IP set for scope filtering
         self._asset_ips: Set[str] = set(self._asset_ip_map.keys())
 

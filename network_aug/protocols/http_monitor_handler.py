@@ -53,7 +53,6 @@ class HttpMonitorHandler:
                 context.process_statements,
                 context.runs_statements,
                 context.relationship_statements,
-                binds_index=context.binds_index,
                 telemetry_index=context.telemetry_index,
             )
             added = len(context.relationship_statements) - before_count
