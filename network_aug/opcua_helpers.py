@@ -235,30 +235,6 @@ def _extract_read_request_node_ids(payload: bytes, idx: int, end: int) -> List[s
     return result
 
 
-def _extract_write_request_node_ids(payload: bytes, idx: int, end: int) -> List[str]:
-    result: List[str] = []
-    idx = _skip_request_header(payload, idx, end)
-    if idx is None:
-        return result
-    count, idx = _read_int32(payload, idx, end)
-    if count is None or count <= 0:
-        return result
-    count = min(count, _MAX_ARRAY_ITEMS)
-    for _ in range(count):
-        node_id, idx = _read_node_id(payload, idx, end)
-        if node_id is None:
-            return result
-        result.append(node_id.canonical)
-        if idx + 4 > end:
-            return result
-        idx += 4  # AttributeId UInt32
-        _, idx = _read_ua_string(payload, idx, end)  # IndexRange
-        idx = _skip_data_value(payload, idx, end)
-        if idx is None:
-            return result
-    return result
-
-
 def _skip_request_header(payload: bytes, idx: int, end: int) -> Optional[int]:
     """Skip RequestHeader and return new index."""
     _, idx = _read_node_id(payload, idx, end)  # authenticationToken

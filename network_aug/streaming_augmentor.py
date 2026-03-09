@@ -209,10 +209,7 @@ class StreamingAugmentor:
             temporal_tolerance_seconds=self.config.temporal_tolerance_seconds,
             pcap_time_offset_seconds=self.config.pcap_time_offset_seconds,
         )
-        correlation_engine = CorrelationEngine(
-            config=correlation_config,
-            ip_hostname_map=self._asset_ip_map,
-        )
+        correlation_engine = CorrelationEngine(config=correlation_config)
 
         print("Processing PCAP files in streaming mode...")
         pcap_index = StreamingPCAPIndex(

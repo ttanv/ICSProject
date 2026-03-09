@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass, field
-from typing import Iterable, Sequence, Set
+from typing import Sequence, Set
 
 from .models import ConnectionKey, PacketRecord
 
@@ -132,6 +132,3 @@ class AugmentationPolicy:
             if low <= port <= high:
                 return True
         return False
-
-
-DEFAULT_POLICY = AugmentationPolicy()

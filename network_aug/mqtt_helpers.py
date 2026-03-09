@@ -211,24 +211,6 @@ def parse_mqtt_details(payload: bytes, src_port: int, dst_port: int) -> MQTTDeta
     )
 
 
-def _looks_like_mqtt(payload: bytes) -> bool:
-    """Return True if payload looks like a plausible MQTT control packet."""
-    if len(payload) < 2:
-        return False
-    packet_type_code = (payload[0] >> 4) & 0x0F
-    if packet_type_code <= 0 or packet_type_code > 15:
-        return False
-    flags = payload[0] & 0x0F
-    if not _has_valid_fixed_header_flags(packet_type_code, flags):
-        return False
-    if packet_type_code == 3 and ((flags >> 1) & 0x03) == 3:
-        return False
-    remaining_length, start_idx = _decode_remaining_length(payload, 1)
-    if remaining_length is None or start_idx is None:
-        return False
-    return start_idx + remaining_length <= len(payload)
-
-
 def _decode_remaining_length(payload: bytes, start: int) -> Tuple[Optional[int], Optional[int]]:
     """Decode MQTT variable-length remaining length value."""
     multiplier = 1

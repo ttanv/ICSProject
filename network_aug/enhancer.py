@@ -6,55 +6,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
-from . import cypher_emit
-from .correlation import (
-    CorrelatedConnection,
-    CorrelationConfig,
-    CorrelationEngine,
-    TelemetryConnectionIndex,
-)
-from .cypher_reader import (
-    CypherConnectionExtractor,
-    ExistingConnection,
-    _consume_brace_block,
-    _parse_property_block,
-)
-from .features import (
-    PreSortedPackets,
-    aggregate_tcp_flags,
-    average_packet_size,
-    count_tcp_retransmits,
-    dominant_protocol,
-    duration_seconds,
-    directional_totals,
-    directionality_ratio,
-    extract_http_features,
-    extract_tls_sni,
-    mean_interarrival_time,
-    mean_rtt_ms,
-    packet_count,
-    resolve_mac_addresses,
-    total_bytes,
-)
 from .filters import AugmentationPolicy
-from tqdm import tqdm
-
-from .grouping import (
-    CollapsedConnectionGroup,
-    HTTPMonitorGroup,
-    ModbusGroup,
-    group_collapsed_connections,
-    group_http_monitor_connections,
-    group_modbus_connections,
-)
-from .models import ConnectionKey, IndexedConnection, PacketRecord
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:  # pragma: no cover - import for typing only
-    from .pcap_index import PCAPConnectionIndex
 
 
 @dataclass
@@ -148,10 +104,6 @@ class AggregationMetrics:
     temporal_matches: int = 0
     process_attributed_registers: int = 0  # READ/WRITE register attribution
     process_attributed_signals: int = 0  # SignalContainer-based attribution (optional)
-
-    @property
-    def raw_node_count(self) -> int:
-        return self.raw_asset_nodes + self.raw_service_nodes
 
     @property
     def aggregated_node_count(self) -> int:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -76,12 +76,6 @@ class ConnectionKey:
     dst_ip: str
     dst_port: int
     protocol: str
-
-    def normalized_tuple(self) -> Tuple[str, int, str, int, str]:
-        """Return a bidirectional canonical tuple for comparison."""
-        left = (self.src_ip, self.src_port, self.dst_ip, self.dst_port, self.protocol)
-        right = (self.dst_ip, self.dst_port, self.src_ip, self.src_port, self.protocol)
-        return min(left, right)
 
     def bidirectional_id(self) -> str:
         """Return a stable identifier used across modules."""
@@ -280,12 +274,6 @@ class PacketRecord:
                 for pair in (data.get("mqtt_payload_values") or [])
             ),
         )
-
-
-def iter_connection_ids(records: Iterable[PacketRecord]) -> Iterable[str]:
-    """Yield bidirectional identifiers for a sequence of packet records."""
-    for record in records:
-        yield record.connection_key().bidirectional_id()
 
 
 @dataclass

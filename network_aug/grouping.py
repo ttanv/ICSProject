@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Sequence, Set, Tuple
+from typing import List, Optional, Sequence, Set, Tuple
 
 from .models import IndexedConnection, PacketRecord
-from .orientation import is_service_port, orient_connection
+from .orientation import orient_connection
 
 SERVICE_MODBUS_PORT = 502
 HTTP_MONITOR_PORT = 8080

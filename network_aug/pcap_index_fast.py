@@ -7,7 +7,6 @@ import os
 import pickle
 import socket
 import struct
-from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
@@ -71,9 +70,6 @@ WELL_KNOWN_PROTOCOLS: Dict[int, str] = {
     8443: "HTTPS",
     44818: "EtherNet/IP",
 }
-
-# Ports that need detailed protocol extraction
-INTERESTING_PORTS = frozenset({80, 443, 502, 1883, 4840, 8080, 8443, 8883})
 
 
 def _tcp_flags_to_str(flags: int) -> str:

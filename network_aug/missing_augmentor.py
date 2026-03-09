@@ -41,7 +41,6 @@ from .features import (
     extract_tls_sni,
     mean_interarrival_time,
     mean_rtt_ms,
-    packet_count,
     resolve_mac_addresses,
     total_bytes,
 )
@@ -666,10 +665,7 @@ class MissingTrafficAugmentor:
             temporal_tolerance_seconds=self.config.temporal_tolerance_seconds,
             pcap_time_offset_seconds=self.config.pcap_time_offset_seconds,
         )
-        correlation_engine = CorrelationEngine(
-            config=correlation_config,
-            ip_hostname_map=self._asset_ip_map,
-        )
+        correlation_engine = CorrelationEngine(config=correlation_config)
 
         # Build telemetry index with IP-to-hostname map for multi-IP host normalization
         telemetry_index = TelemetryConnectionIndex(
@@ -1207,10 +1203,7 @@ class MissingTrafficAugmentor:
             temporal_tolerance_seconds=self.config.temporal_tolerance_seconds,
             pcap_time_offset_seconds=self.config.pcap_time_offset_seconds,
         )
-        correlation_engine = CorrelationEngine(
-            config=correlation_config,
-            ip_hostname_map=self._asset_ip_map,
-        )
+        correlation_engine = CorrelationEngine(config=correlation_config)
 
         # Build telemetry index with IP-to-hostname map for multi-IP host normalization
         telemetry_index = TelemetryConnectionIndex(

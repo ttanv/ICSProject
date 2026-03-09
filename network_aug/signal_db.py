@@ -4,7 +4,7 @@ This module provides storage for Modbus signal observations in DuckDB,
 replacing the compressed in-Neo4j storage (SDT/RLE/duty cycle).
 """
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 import logging

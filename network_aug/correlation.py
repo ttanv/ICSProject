@@ -72,17 +72,6 @@ class ProcessContext:
     computer: str
 
     @classmethod
-    def from_properties(cls, props: Dict[str, object]) -> "ProcessContext":
-        """Extract process context from telemetry connection properties."""
-        return cls(
-            process_guid=str(props.get("ProcessGuid") or props.get("processGuid") or ""),
-            process_image=str(props.get("Image") or props.get("image") or ""),
-            process_id=int(props.get("ProcessId") or props.get("processId") or 0),
-            user=str(props.get("User") or props.get("user") or ""),
-            computer=str(props.get("Computer") or props.get("computer") or ""),
-        )
-
-    @classmethod
     def from_connection(cls, conn: "ExistingConnection") -> "ProcessContext":
         """Extract process context from an ExistingConnection.
 
@@ -196,29 +185,9 @@ class TelemetryAnchor:
             session_timestamps=session_timestamps,
         )
 
-    def has_time_window(self) -> bool:
-        """Return True if this anchor has valid timestamp information."""
-        return self.time_window[0] is not None or self.time_window[1] is not None
-
     def has_session_metadata(self) -> bool:
         """Return True if this anchor has session port metadata for deterministic correlation."""
         return len(self.session_ports) > 0 and len(self.session_ports) == len(self.session_timestamps)
-
-    def find_session_by_port(self, port: int, timestamp: float, tolerance: float = 60.0) -> Optional[int]:
-        """Find the index of a session matching the given port and timestamp.
-
-        Returns the index into session_ports/session_timestamps if found, None otherwise.
-        Uses tolerance (in seconds) to allow for clock skew between telemetry and PCAP.
-        """
-        if not self.has_session_metadata():
-            return None
-
-        for i, (sess_port, sess_ts) in enumerate(zip(self.session_ports, self.session_timestamps)):
-            if sess_port == port:
-                # Port matches - check if timestamp is within tolerance
-                if abs(timestamp - sess_ts) <= tolerance:
-                    return i
-        return None
 
     def find_session_by_port_only(self, port: int) -> Optional[int]:
         """Find the index of a session matching the given port (ignoring timestamp).
@@ -255,10 +224,6 @@ class CorrelatedConnection:
         """Return the process context inherited from the telemetry anchor."""
         return self.telemetry_anchor.process_context
 
-    @property
-    def has_process_attribution(self) -> bool:
-        """Return True if this correlation has valid process attribution."""
-        return self.process_context.is_valid()
 
 
 class TelemetryConnectionIndex:
@@ -291,9 +256,6 @@ class TelemetryConnectionIndex:
         self._by_exact_key: Dict[
             Tuple[str, int, str, int, str], List[TelemetryAnchor]
         ] = defaultdict(list)
-
-        # Index by process GUID for direct process-context lookups
-        self._by_process: Dict[str, List[TelemetryAnchor]] = defaultdict(list)
 
         # Track anchors with session metadata for deterministic correlation
         self._anchors_with_sessions = 0
@@ -341,11 +303,6 @@ class TelemetryConnectionIndex:
             # Exact key index
             exact_key = (key.src_ip, key.src_port, key.dst_ip, key.dst_port, key.protocol.lower())
             self._by_exact_key[exact_key].append(anchor)
-
-            # Process index
-            proc_guid = anchor.process_context.process_guid
-            if proc_guid:
-                self._by_process[proc_guid].append(anchor)
 
     def find_candidates(
         self,
@@ -395,10 +352,6 @@ class TelemetryConnectionIndex:
                 candidates.append((anchor, 0.25))
 
         return candidates
-
-    def get_anchors_for_process(self, process_guid: str) -> List[TelemetryAnchor]:
-        """Return all anchors associated with a specific process."""
-        return self._by_process.get(process_guid, [])
 
     @staticmethod
     def _anchor_matches_src_port(anchor: TelemetryAnchor, src_port: int) -> bool:
@@ -517,12 +470,6 @@ class TelemetryConnectionIndex:
         """Return the total number of session ports across all anchors."""
         return self._total_session_ports
 
-    @property
-    def session_metadata_coverage(self) -> float:
-        """Return the fraction of anchors that have session metadata (0.0-1.0)."""
-        if len(self._anchors) == 0:
-            return 0.0
-        return self._anchors_with_sessions / len(self._anchors)
 
 
 @dataclass
@@ -550,10 +497,8 @@ class CorrelationEngine:
     def __init__(
         self,
         config: Optional[CorrelationConfig] = None,
-        ip_hostname_map: Optional[Dict[str, str]] = None,
     ) -> None:
         self.config = config or CorrelationConfig()
-        self._ip_hostname_map = ip_hostname_map or {}
 
         # Statistics for reporting
         self._stats = {
@@ -641,57 +586,6 @@ class CorrelationEngine:
         # No session-port match found
         return None
 
-    def correlate_batch(
-        self,
-        pcap_connections: Sequence[IndexedConnection],
-        telemetry_index: TelemetryConnectionIndex,
-    ) -> Dict[str, CorrelatedConnection]:
-        """Correlate multiple PCAP connections, returning a map by canonical_id.
-
-        This is more efficient than calling correlate() repeatedly as it
-        can potentially optimize batch lookups.
-        """
-        results: Dict[str, CorrelatedConnection] = {}
-
-        for pcap_conn in pcap_connections:
-            correlated = self.correlate(pcap_conn, telemetry_index)
-            if correlated:
-                results[pcap_conn.canonical_id] = correlated
-
-        return results
-
     def get_statistics(self) -> Dict[str, int]:
         """Return correlation statistics for reporting."""
         return dict(self._stats)
-
-    def reset_statistics(self) -> None:
-        """Reset correlation statistics."""
-        for key in self._stats:
-            self._stats[key] = 0
-
-
-def build_correlation_index(
-    existing_connections: Sequence[ExistingConnection],
-) -> TelemetryConnectionIndex:
-    """Convenience function to build a TelemetryConnectionIndex."""
-    return TelemetryConnectionIndex(existing_connections)
-
-
-def correlate_pcap_to_telemetry(
-    pcap_connections: Sequence[IndexedConnection],
-    existing_connections: Sequence[ExistingConnection],
-    config: Optional[CorrelationConfig] = None,
-    ip_hostname_map: Optional[Dict[str, str]] = None,
-) -> Tuple[Dict[str, CorrelatedConnection], Dict[str, int]]:
-    """High-level function to correlate PCAP connections to telemetry.
-
-    Returns:
-        Tuple of (correlations_by_canonical_id, statistics)
-    """
-    index = TelemetryConnectionIndex(existing_connections)
-    engine = CorrelationEngine(config=config, ip_hostname_map=ip_hostname_map)
-
-    correlations = engine.correlate_batch(pcap_connections, index)
-    stats = engine.get_statistics()
-
-    return correlations, stats

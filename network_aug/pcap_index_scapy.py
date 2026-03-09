@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import gc
 import pickle
-from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, Iterator, List, MutableMapping, NamedTuple, Optional, Tuple
 

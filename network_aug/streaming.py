@@ -577,25 +577,6 @@ class StreamingPCAPIndex:
         from .pcap_index_fast import _parse_packet_fast
         return _parse_packet_fast(buf, timestamp, pcap_file, packet_index, set(self._IGNORED_IPS))
 
-    def iter_connections(self) -> Iterator[IndexedConnection]:
-        """Yield IndexedConnection objects for compatibility with existing code."""
-        for stats in self._stats.values():
-            yield stats.to_indexed_connection()
-
     def iter_stats(self) -> Iterator[ConnectionStats]:
         """Yield ConnectionStats objects for streaming processing."""
         yield from self._stats.values()
-
-    def get_stats(self, conn_id: str) -> Optional[ConnectionStats]:
-        """Get statistics for a specific connection."""
-        return self._stats.get(conn_id)
-
-    @property
-    def connection_count(self) -> int:
-        """Return total number of unique connections."""
-        return len(self._stats)
-
-    @property
-    def total_packet_count(self) -> int:
-        """Return total packets processed."""
-        return self._total_packets
