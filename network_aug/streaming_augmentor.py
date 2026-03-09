@@ -52,7 +52,7 @@ from .features import (
     resolve_mac_addresses,
     total_bytes,
 )
-from .grouping import _is_service_port
+from .orientation import oriented_connection_key
 from .models import ConnectionKey, PacketRecord
 from .streaming import ConnectionStats, StreamingPCAPIndex
 
@@ -183,6 +183,13 @@ class StreamingAugmentor:
         existing_ids = {conn.key.bidirectional_id() for conn in filtered}
         return existing_ids, filtered
 
+    @staticmethod
+    def _oriented_stats_key(stats: ConnectionStats) -> Optional[ConnectionKey]:
+        """Return a client->server key for sampled packets, or None if ambiguous."""
+        if not stats._sample_packets:
+            return None
+        return oriented_connection_key(stats.origin, stats._sample_packets)
+
     def run(self) -> Tuple[int, int]:
         """Execute streaming augmentation with correlation and return (node_count, relationship_count)."""
         print("Loading base graph...")
@@ -259,14 +266,9 @@ class StreamingAugmentor:
                 if self._is_interesting(stats):
                     self._correlation_stats.pcap_only_connections += 1
 
-                    # Determine server endpoint for grouping
-                    src_is_service = _is_service_port(stats.origin.src_port)
-                    dst_is_service = _is_service_port(stats.origin.dst_port)
-
-                    if dst_is_service and not src_is_service:
-                        server_key = f"{stats.origin.dst_ip}:{stats.origin.dst_port}"
-                    elif src_is_service and not dst_is_service:
-                        server_key = f"{stats.origin.src_ip}:{stats.origin.src_port}"
+                    oriented_key = self._oriented_stats_key(stats)
+                    if oriented_key is not None:
+                        server_key = f"{oriented_key.dst_ip}:{oriented_key.dst_port}"
                     else:
                         server_key = stats.canonical_id
 
@@ -550,18 +552,12 @@ class StreamingAugmentor:
         ownership_statements: Dict[str, str],
     ) -> Optional[str]:
         """Emit Cypher statements for a single connection."""
-        src_is_service = _is_service_port(stats.origin.src_port)
-        dst_is_service = _is_service_port(stats.origin.dst_port)
+        oriented_key = self._oriented_stats_key(stats)
+        if oriented_key is None:
+            return None
 
-        if dst_is_service and not src_is_service:
-            client_ip, client_port = stats.origin.src_ip, 0
-            server_ip, server_port = stats.origin.dst_ip, stats.origin.dst_port
-        elif src_is_service and not dst_is_service:
-            client_ip, client_port = stats.origin.dst_ip, 0
-            server_ip, server_port = stats.origin.src_ip, stats.origin.src_port
-        else:
-            client_ip, client_port = stats.origin.src_ip, stats.origin.src_port
-            server_ip, server_port = stats.origin.dst_ip, stats.origin.dst_port
+        client_ip, client_port = oriented_key.src_ip, 0
+        server_ip, server_port = oriented_key.dst_ip, oriented_key.dst_port
 
         src_node_id = self._ensure_placeholder_process(
             ip=client_ip,
@@ -573,7 +569,7 @@ class StreamingAugmentor:
         dst_node_id = self._ensure_network_service_node(
             ip=server_ip,
             port=server_port,
-            protocol=stats.origin.protocol,
+            protocol=oriented_key.protocol,
             asset_statements=asset_statements,
             service_statements=service_statements,
             process_statements=process_statements,
@@ -627,16 +623,8 @@ class StreamingAugmentor:
             return None
 
         first = group_stats[0]
-        src_is_service = _is_service_port(first.origin.src_port)
-        dst_is_service = _is_service_port(first.origin.dst_port)
-
-        if dst_is_service and not src_is_service:
-            server_ip, server_port = first.origin.dst_ip, first.origin.dst_port
-            client_ip = first.origin.src_ip
-        elif src_is_service and not dst_is_service:
-            server_ip, server_port = first.origin.src_ip, first.origin.src_port
-            client_ip = first.origin.dst_ip
-        else:
+        first_key = self._oriented_stats_key(first)
+        if first_key is None:
             return self._emit_connection(
                 first,
                 asset_statements,
@@ -646,20 +634,23 @@ class StreamingAugmentor:
                 ownership_statements,
             )
 
+        server_ip, server_port = first_key.dst_ip, first_key.dst_port
+        client_ip = first_key.src_ip
+
         client_ips: Set[str] = set()
         for stats in group_stats:
-            if stats.origin.dst_port == server_port:
-                client_ips.add(stats.origin.src_ip)
-            elif stats.origin.src_port == server_port:
-                client_ips.add(stats.origin.dst_ip)
+            oriented_key = self._oriented_stats_key(stats)
+            if oriented_key is None or oriented_key.dst_port != server_port or oriented_key.dst_ip != server_ip:
+                continue
+            client_ips.add(oriented_key.src_ip)
 
         if len(client_ips) > 1:
             client_groups: Dict[str, List[ConnectionStats]] = defaultdict(list)
             for stats in group_stats:
-                if stats.origin.dst_port == server_port:
-                    client_groups[stats.origin.src_ip].append(stats)
-                elif stats.origin.src_port == server_port:
-                    client_groups[stats.origin.dst_ip].append(stats)
+                oriented_key = self._oriented_stats_key(stats)
+                if oriented_key is None or oriented_key.dst_port != server_port or oriented_key.dst_ip != server_ip:
+                    continue
+                client_groups[oriented_key.src_ip].append(stats)
 
             first_client = next(iter(client_groups.keys()))
             group_stats = client_groups[first_client]

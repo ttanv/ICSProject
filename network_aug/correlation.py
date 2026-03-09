@@ -1,13 +1,4 @@
-"""Deterministic correlation between telemetry connections and PCAP flows.
-
-This module provides the correlation engine that matches PCAP-derived network
-flows to telemetry-derived connections using two modes:
-
-1. IT->OT (managed host initiates): Match PCAP src_port against sessionPorts[]
-   on existing CONNECT_TO edges for deterministic, confidence-1.0 matching.
-
-No heuristic/temporal correlation is needed.
-"""
+"""Deterministic correlation between telemetry connections and PCAP flows."""
 
 from __future__ import annotations
 
@@ -19,6 +10,7 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 from .cypher_reader import ExistingConnection
 from .models import ConnectionKey, IndexedConnection, PacketRecord
+from .orientation import oriented_connection_key
 
 logger = logging.getLogger(__name__)
 
@@ -285,14 +277,12 @@ class TelemetryConnectionIndex:
         self._anchors: List[TelemetryAnchor] = []
         self._ip_to_hostname = ip_to_hostname or {}
 
-        # Index by service endpoint (ignoring ephemeral src_port)
-        # Key: (src_ip, dst_ip, dst_port, protocol)
+        # Index by forward service endpoint (client_ip, server_ip, server_port, protocol)
         self._by_service_endpoint: Dict[
             Tuple[str, str, int, str], List[TelemetryAnchor]
         ] = defaultdict(list)
 
-        # Index by NORMALIZED hostname endpoint for multi-IP matching
-        # Key: (src_host, dst_host, dst_port, protocol)
+        # Index by normalized forward endpoint for multi-IP matching.
         self._by_normalized_endpoint: Dict[
             Tuple[str, str, int, str], List[TelemetryAnchor]
         ] = defaultdict(list)
@@ -302,7 +292,7 @@ class TelemetryConnectionIndex:
             Tuple[str, int, str, int, str], List[TelemetryAnchor]
         ] = defaultdict(list)
 
-        # Index by process GUID for reverse lookups
+        # Index by process GUID for direct process-context lookups
         self._by_process: Dict[str, List[TelemetryAnchor]] = defaultdict(list)
 
         # Track anchors with session metadata for deterministic correlation
@@ -338,26 +328,15 @@ class TelemetryConnectionIndex:
 
             key = anchor.connection_key
 
-            # Service endpoint index (ignores ephemeral source port)
+            # Forward service endpoint index (client_ip, server_ip, server_port, protocol).
             service_key = (key.src_ip, key.dst_ip, key.dst_port, key.protocol.lower())
             self._by_service_endpoint[service_key].append(anchor)
 
-            # Also index the reverse direction for bidirectional matching
-            reverse_service_key = (key.dst_ip, key.src_ip, key.src_port, key.protocol.lower())
-            if key.src_port > 0:  # Only if src_port is meaningful
-                self._by_service_endpoint[reverse_service_key].append(anchor)
-
             # Normalized endpoint index (hostname-based for multi-IP matching)
-            # This allows matching when PCAP uses different IP than telemetry for same host
             src_host = self._normalize_ip(key.src_ip)
             dst_host = self._normalize_ip(key.dst_ip)
             normalized_key = (src_host, dst_host, key.dst_port, key.protocol.lower())
             self._by_normalized_endpoint[normalized_key].append(anchor)
-
-            # Also index reverse direction for normalized
-            reverse_normalized_key = (dst_host, src_host, key.src_port, key.protocol.lower())
-            if key.src_port > 0:
-                self._by_normalized_endpoint[reverse_normalized_key].append(anchor)
 
             # Exact key index
             exact_key = (key.src_ip, key.src_port, key.dst_ip, key.dst_port, key.protocol.lower())
@@ -370,9 +349,9 @@ class TelemetryConnectionIndex:
 
     def find_candidates(
         self,
-        pcap_conn: IndexedConnection,
+        connection_key: ConnectionKey,
     ) -> List[Tuple[TelemetryAnchor, float]]:
-        """Find telemetry anchors that could correlate with this PCAP connection.
+        """Find telemetry anchors that could correlate with this oriented PCAP flow.
 
         Returns list of (anchor, base_score) tuples where base_score reflects
         how well the 5-tuple matched (exact match scores higher than service-only).
@@ -380,36 +359,40 @@ class TelemetryConnectionIndex:
         candidates: List[Tuple[TelemetryAnchor, float]] = []
         seen_anchors: Set[int] = set()  # Track by id() to avoid duplicates
 
-        origin = pcap_conn.origin
-        proto = origin.protocol.lower()
+        proto = connection_key.protocol.lower()
 
         # Try exact 5-tuple match first (highest base score)
-        exact_key = (origin.src_ip, origin.src_port, origin.dst_ip, origin.dst_port, proto)
+        exact_key = (
+            connection_key.src_ip,
+            connection_key.src_port,
+            connection_key.dst_ip,
+            connection_key.dst_port,
+            proto,
+        )
         for anchor in self._by_exact_key.get(exact_key, []):
             if id(anchor) not in seen_anchors:
                 seen_anchors.add(id(anchor))
                 candidates.append((anchor, 0.5))  # Base score for exact match
 
-        # Try reverse exact match
-        reverse_exact_key = (origin.dst_ip, origin.dst_port, origin.src_ip, origin.src_port, proto)
-        for anchor in self._by_exact_key.get(reverse_exact_key, []):
-            if id(anchor) not in seen_anchors:
-                seen_anchors.add(id(anchor))
-                candidates.append((anchor, 0.5))
-
         # Try service endpoint match (lower base score)
-        service_key = (origin.src_ip, origin.dst_ip, origin.dst_port, proto)
+        service_key = (
+            connection_key.src_ip,
+            connection_key.dst_ip,
+            connection_key.dst_port,
+            proto,
+        )
         for anchor in self._by_service_endpoint.get(service_key, []):
             if id(anchor) not in seen_anchors:
                 seen_anchors.add(id(anchor))
                 candidates.append((anchor, 0.3))  # Lower base for service-only match
 
-        # Try reverse service endpoint
-        reverse_service_key = (origin.dst_ip, origin.src_ip, origin.src_port, proto)
-        for anchor in self._by_service_endpoint.get(reverse_service_key, []):
+        src_host = self._normalize_ip(connection_key.src_ip)
+        dst_host = self._normalize_ip(connection_key.dst_ip)
+        normalized_key = (src_host, dst_host, connection_key.dst_port, proto)
+        for anchor in self._by_normalized_endpoint.get(normalized_key, []):
             if id(anchor) not in seen_anchors:
                 seen_anchors.add(id(anchor))
-                candidates.append((anchor, 0.3))
+                candidates.append((anchor, 0.25))
 
         return candidates
 
@@ -486,7 +469,7 @@ class TelemetryConnectionIndex:
         proto = protocol.lower()
 
         # PHASE 1: Try direct IP match
-        # Try service endpoint match (ignores ephemeral source port)
+        # Try forward service endpoint match (ignores ephemeral source port)
         service_key = (src_ip, dst_ip, dst_port, proto)
         anchors = self._by_service_endpoint.get(service_key, [])
 
@@ -497,15 +480,6 @@ class TelemetryConnectionIndex:
         )
         if proc_ctx is not None:
             return proc_ctx
-
-        # Try reverse direction (server responding to client)
-        # Only possible when src_port is provided, since reverse lookup needs the client's port
-        if src_port is not None:
-            reverse_service_key = (dst_ip, src_ip, src_port, proto)
-            reverse_anchors = self._by_service_endpoint.get(reverse_service_key, [])
-            proc_ctx = self._select_process_context(reverse_anchors)
-            if proc_ctx is not None:
-                return proc_ctx
 
         # PHASE 2: Try normalized hostname lookup
         # This handles multi-IP hosts (e.g., PCAP uses 192.168.44.x inner layer,
@@ -525,15 +499,6 @@ class TelemetryConnectionIndex:
             )
             if proc_ctx is not None:
                 return proc_ctx
-
-            # Try reverse direction for normalized
-            # Only possible when src_port is provided
-            if src_port is not None:
-                reverse_normalized_key = (dst_host, src_host, src_port, proto)
-                reverse_normalized_anchors = self._by_normalized_endpoint.get(reverse_normalized_key, [])
-                proc_ctx = self._select_process_context(reverse_normalized_anchors)
-                if proc_ctx is not None:
-                    return proc_ctx
 
         return None
 
@@ -595,7 +560,9 @@ class CorrelationEngine:
             "total_attempts": 0,
             "successful_correlations": 0,
             "session_port_matches": 0,  # Deterministic matches via sessionPorts
+            "below_threshold": 0,
             "no_candidates": 0,
+            "unoriented_connections": 0,
         }
 
     def correlate(
@@ -613,28 +580,23 @@ class CorrelationEngine:
         """
         self._stats["total_attempts"] += 1
 
-        # Find candidate anchors
-        candidates = telemetry_index.find_candidates(pcap_conn)
+        pcap_key = oriented_connection_key(pcap_conn.origin, pcap_conn.records)
+        if pcap_key is None:
+            self._stats["unoriented_connections"] += 1
+            return None
+
+        # Find candidate anchors using the forward-oriented client->server flow.
+        candidates = telemetry_index.find_candidates(pcap_key)
 
         if not candidates:
             self._stats["no_candidates"] += 1
             return None
 
-        # Try both origin ports: the first captured packet may be a server response,
-        # making origin.src_port the service port instead of the ephemeral client port.
-        pcap_port_candidates = [pcap_conn.origin.src_port]
-        if pcap_conn.origin.dst_port != pcap_conn.origin.src_port:
-            pcap_port_candidates.append(pcap_conn.origin.dst_port)
-
         time_offset = self.config.pcap_time_offset_seconds
 
-        for anchor, base_score in candidates:
+        for anchor, _base_score in candidates:
             if anchor.has_session_metadata():
-                session_idx = None
-                for port in pcap_port_candidates:
-                    session_idx = anchor.find_session_by_port_only(port)
-                    if session_idx is not None:
-                        break
+                session_idx = anchor.find_session_by_port_only(pcap_key.src_port)
                 if session_idx is not None:
                     # Found deterministic match via session port!
                     # Verify temporal proximity for extra confidence
@@ -646,24 +608,32 @@ class CorrelationEngine:
                     temporal_diff = abs(pcap_first - session_ts)
                     if temporal_diff <= self.config.temporal_tolerance_seconds:
                         # Perfect match: port + temporal proximity
+                        confidence = 1.0
+                        if confidence < self.config.min_confidence:
+                            self._stats["below_threshold"] += 1
+                            return None
                         self._stats["session_port_matches"] += 1
                         self._stats["successful_correlations"] += 1
                         return CorrelatedConnection(
                             telemetry_anchor=anchor,
                             pcap_connection=pcap_conn,
-                            confidence=1.0,  # Deterministic match = full confidence
+                            confidence=confidence,
                             correlation_method="session_port_exact",
                             packets=list(pcap_conn.records),
                         )
                     else:
                         # Port matches but temporal is off - still a good match
                         # Could be clock skew or longer-lived connection
+                        confidence = 0.9
+                        if confidence < self.config.min_confidence:
+                            self._stats["below_threshold"] += 1
+                            return None
                         self._stats["session_port_matches"] += 1
                         self._stats["successful_correlations"] += 1
                         return CorrelatedConnection(
                             telemetry_anchor=anchor,
                             pcap_connection=pcap_conn,
-                            confidence=0.9,  # High confidence, slight temporal uncertainty
+                            confidence=confidence,
                             correlation_method="session_port_match",
                             packets=list(pcap_conn.records),
                         )

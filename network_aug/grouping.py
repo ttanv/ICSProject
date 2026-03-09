@@ -6,89 +6,11 @@ from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Sequence, Set, Tuple
 
 from .models import IndexedConnection, PacketRecord
+from .orientation import is_service_port, orient_connection
 
 SERVICE_MODBUS_PORT = 502
 HTTP_MONITOR_PORT = 8080
 HTTP_MONITOR_KEYWORDS = ("monitor", "mb_port")
-
-# Well-known service ports that should never be considered ephemeral.
-# This is the authoritative list for client/server orientation.
-WELL_KNOWN_SERVICE_PORTS: frozenset[int] = frozenset({
-    # Standard services
-    20, 21,       # FTP
-    22,           # SSH
-    23,           # Telnet
-    25,           # SMTP
-    53,           # DNS
-    67, 68,       # DHCP
-    69,           # TFTP
-    80,           # HTTP
-    88,           # Kerberos
-    110,          # POP3
-    111,          # RPC
-    123,          # NTP
-    135,          # MS-RPC
-    137, 138, 139,  # NetBIOS
-    143,          # IMAP
-    161, 162,     # SNMP
-    389,          # LDAP
-    443,          # HTTPS
-    445,          # SMB
-    465,          # SMTPS
-    500,          # IKE/IPsec
-    502,          # Modbus
-    514,          # Syslog
-    515,          # LPD
-    520,          # RIP
-    587,          # SMTP submission
-    636,          # LDAPS
-    873,          # rsync
-    993,          # IMAPS
-    995,          # POP3S
-    1080,         # SOCKS
-    1433,         # MSSQL
-    1434,         # MSSQL Browser
-    1521,         # Oracle
-    1883,         # MQTT
-    2049,         # NFS
-    2222,         # SSH alternate
-    3306,         # MySQL
-    3389,         # RDP
-    4443,         # HTTPS alternate
-    5044,         # Logstash Beats
-    5060, 5061,   # SIP
-    5432,         # PostgreSQL
-    5672,         # AMQP
-    5900,         # VNC
-    6379,         # Redis
-    6443,         # Kubernetes API
-    7474,         # Neo4j HTTP
-    7687,         # Neo4j Bolt
-    8000,         # HTTP alternate
-    8008,         # HTTP alternate
-    8080,         # HTTP proxy/alternate
-    8081,         # HTTP alternate
-    8088,         # Ignition Gateway / HTTP alternate
-    8443,         # HTTPS alternate
-    8880,         # HTTP alternate
-    8883,         # MQTT TLS
-    9000,         # Various services
-    9090,         # Prometheus
-    9092,         # Kafka
-    9200, 9300,   # Elasticsearch
-    9418,         # Git
-    9999,         # Various services
-    10000,        # Webmin / various
-    11211,        # Memcached
-    27017,        # MongoDB
-    44818,        # EtherNet/IP
-    4840,         # OPC UA
-    47808,        # BACnet
-})
-
-# Threshold below which ports are always considered service ports
-# (privileged ports on Unix systems)
-PRIVILEGED_PORT_THRESHOLD = 1024
 
 
 @dataclass
@@ -335,56 +257,3 @@ def group_collapsed_connections(
         consumed.update(group.canonical_ids())
 
     return aggregated_groups, consumed
-
-
-def orient_connection(
-    origin: "ConnectionKey",
-    records: Sequence[PacketRecord],
-) -> Optional[Tuple[str, int, str, int, str]]:
-    """Determine client/server orientation for a connection.
-
-    Returns (client_ip, client_port, server_ip, server_port, protocol) or None.
-
-    Strategy (in priority order):
-      1. TCP SYN detection — the SYN sender is the client.
-      2. Ephemeral vs non-ephemeral port — a port >= 32768 is ephemeral.
-      3. Well-known service port list — for the 1024-32767 range.
-    """
-    protocol = origin.protocol.lower()
-
-    # 1. Find a TCP SYN (not SYN-ACK) — definitive client indicator.
-    for pkt in records:
-        flags = pkt.tcp_flags or ""
-        if "S" in flags and "A" not in flags:
-            return pkt.src_ip, pkt.src_port, pkt.dst_ip, pkt.dst_port, protocol
-
-    # 2–3. Fall back to port-based heuristics.
-    src_port, dst_port = origin.src_port, origin.dst_port
-    if src_port <= 0 or dst_port <= 0:
-        return None
-
-    src_is_service = _is_service_port(src_port)
-    dst_is_service = _is_service_port(dst_port)
-    if src_is_service == dst_is_service:
-        return None
-
-    if dst_is_service and not src_is_service:
-        return origin.src_ip, src_port, origin.dst_ip, dst_port, protocol
-    if src_is_service and not dst_is_service:
-        return origin.dst_ip, dst_port, origin.src_ip, src_port, protocol
-
-    return None
-
-
-# Ports >= this threshold are always considered ephemeral (client) ports.
-# Linux default: 32768-60999, Windows: 49152-65535.
-EPHEMERAL_PORT_THRESHOLD = 32768
-
-
-def _is_service_port(port: int) -> bool:
-    """Check if a port is a known service port (i.e., NOT ephemeral)."""
-    if port < PRIVILEGED_PORT_THRESHOLD:
-        return True
-    if port >= EPHEMERAL_PORT_THRESHOLD:
-        return False
-    return port in WELL_KNOWN_SERVICE_PORTS

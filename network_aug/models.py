@@ -290,7 +290,12 @@ def iter_connection_ids(records: Iterable[PacketRecord]) -> Iterable[str]:
 
 @dataclass
 class IndexedConnection:
-    """Aggregated view of packets grouped by canonical connection ID."""
+    """Aggregated view of packets grouped by canonical connection ID.
+
+    `origin` is the first-observed packet direction for the canonical flow. It is
+    not guaranteed to be the semantic client->server orientation; callers that
+    need client/server semantics must explicitly orient the flow from packets.
+    """
 
     canonical_id: str
     origin: ConnectionKey
