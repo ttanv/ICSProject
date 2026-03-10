@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import hashlib
 import logging
 from pathlib import Path
-import shutil
+import re
 from typing import Tuple, Optional, Dict, Set, List, Sequence
 from tqdm import tqdm
 import uuid
@@ -60,6 +60,8 @@ from .grouping import (
 from .orientation import orient_connection
 
 logger = logging.getLogger(__name__)
+
+_SESSION_METADATA_KEYS = {"sessionPorts", "sessionTimestamps"}
 
 def _modbus_transaction_key(packet: PacketRecord, service_port: int) -> Optional[Tuple[str, int, str, Optional[int], int]]:
     return modbus_transaction_key(packet, service_port)
@@ -3947,22 +3949,29 @@ class MissingTrafficAugmentor:
         relationship_statements: List[str],
     ) -> None:
         """Write augmented Cypher file, preserving the original content."""
-        if (
-            not asset_statements
-            and not service_statements
-            and not host_statements
-            and not register_statements
-            and not signal_statements
-            and not process_statements
-            and not runs_statements
-            and not relationship_statements
-        ):
-            shutil.copyfile(self.config.base_cypher, self.config.output_cypher)
-            return
-
         base_text = Path(self.config.base_cypher).read_text(encoding="utf-8")
+        sanitized_base_text, stripped_blocks = self._strip_session_metadata_from_cypher(base_text)
+        if stripped_blocks > 0:
+            logger.info(
+                "Stripped session metadata from %d base relationship property maps in final output",
+                stripped_blocks,
+            )
+
         with Path(self.config.output_cypher).open("w", encoding="utf-8") as handle:
-            handle.write(base_text)
+            handle.write(sanitized_base_text)
+
+            if (
+                not asset_statements
+                and not service_statements
+                and not host_statements
+                and not register_statements
+                and not signal_statements
+                and not process_statements
+                and not runs_statements
+                and not relationship_statements
+            ):
+                return
+
             handle.write("\n\n// === PCAP Augmentation (Missing Traffic) ===\n\n")
 
             if asset_statements:
@@ -4011,3 +4020,100 @@ class MissingTrafficAugmentor:
                 handle.write("// PCAP-Inferred Network Relationships\n")
                 for statement in relationship_statements:
                     handle.write(statement + ";\n")
+
+    def _strip_session_metadata_from_cypher(self, text: str) -> Tuple[str, int]:
+        """Remove transient session correlation properties from Cypher maps."""
+        parts: List[str] = []
+        cursor = 0
+        stripped_blocks = 0
+
+        while True:
+            brace_start = text.find("{", cursor)
+            if brace_start == -1:
+                parts.append(text[cursor:])
+                break
+
+            block_content, brace_end = _consume_brace_block(text, brace_start)
+            if brace_end == -1:
+                parts.append(text[cursor:])
+                break
+
+            parts.append(text[cursor:brace_start])
+            sanitized_block_content, removed = self._strip_session_metadata_from_block(block_content)
+            if removed:
+                stripped_blocks += 1
+            parts.append("{" + sanitized_block_content + "}")
+            cursor = brace_end + 1
+
+        return "".join(parts), stripped_blocks
+
+    def _strip_session_metadata_from_block(self, block_content: str) -> Tuple[str, bool]:
+        """Remove session metadata keys from a single Cypher property block body."""
+        if not any(key in block_content for key in _SESSION_METADATA_KEYS):
+            return block_content, False
+
+        entries = self._split_cypher_map_entries(block_content)
+        kept_entries = [
+            entry for entry in entries
+            if self._entry_key(entry) not in _SESSION_METADATA_KEYS
+        ]
+        if len(kept_entries) == len(entries):
+            return block_content, False
+        return ", ".join(kept_entries), True
+
+    def _split_cypher_map_entries(self, content: str) -> List[str]:
+        """Split a Cypher map body on top-level commas."""
+        entries: List[str] = []
+        current: List[str] = []
+        depth_braces = 0
+        depth_brackets = 0
+        depth_parens = 0
+        in_string = False
+        escaped = False
+
+        for char in content:
+            if in_string:
+                current.append(char)
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == "'":
+                    in_string = False
+                continue
+
+            if char == "'":
+                in_string = True
+                current.append(char)
+                continue
+            if char == "{":
+                depth_braces += 1
+            elif char == "}":
+                depth_braces = max(0, depth_braces - 1)
+            elif char == "[":
+                depth_brackets += 1
+            elif char == "]":
+                depth_brackets = max(0, depth_brackets - 1)
+            elif char == "(":
+                depth_parens += 1
+            elif char == ")":
+                depth_parens = max(0, depth_parens - 1)
+
+            if char == "," and depth_braces == 0 and depth_brackets == 0 and depth_parens == 0:
+                entry = "".join(current).strip()
+                if entry:
+                    entries.append(entry)
+                current = []
+                continue
+
+            current.append(char)
+
+        tail = "".join(current).strip()
+        if tail:
+            entries.append(tail)
+        return entries
+
+    def _entry_key(self, entry: str) -> str:
+        """Extract a top-level Cypher map entry key."""
+        match = re.match(r"\s*([A-Za-z_][A-Za-z0-9_]*)\s*:", entry)
+        return match.group(1) if match else ""
