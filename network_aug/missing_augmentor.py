@@ -62,6 +62,7 @@ from .orientation import orient_connection
 logger = logging.getLogger(__name__)
 
 _SESSION_METADATA_KEYS = {"sessionPorts", "sessionTimestamps"}
+_CORRELATED_EDGE_NOTE = "Augmented with PCAP-derived metrics via correlation"
 
 def _modbus_transaction_key(packet: PacketRecord, service_port: int) -> Optional[Tuple[str, int, str, Optional[int], int]]:
     return modbus_transaction_key(packet, service_port)
@@ -1347,8 +1348,7 @@ class MissingTrafficAugmentor:
             feature_props["pcapAugmented"] = True
             feature_props["inferredFrom"] = "pcap"
             feature_props.setdefault("Initiated", anchor.rel_properties.get("Initiated") or "true")
-            if not feature_props.get("note"):
-                feature_props["note"] = "Augmented with PCAP-derived metrics via temporal correlation"
+            feature_props["note"] = _CORRELATED_EDGE_NOTE
 
             cypher_props = cypher_emit.format_properties(feature_props)
             src_label = anchor.src_label or "Process"

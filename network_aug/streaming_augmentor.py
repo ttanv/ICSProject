@@ -362,8 +362,7 @@ class StreamingAugmentor:
             feature_props["pcapAugmented"] = True
             feature_props["inferredFrom"] = "pcap"
             feature_props.setdefault("Initiated", anchor.rel_properties.get("Initiated") or "true")
-            if not feature_props.get("note"):
-                feature_props["note"] = "Augmented with PCAP-derived metrics via session-port correlation"
+            feature_props["note"] = "Augmented with PCAP-derived metrics via correlation"
 
             cypher_props = cypher_emit.format_properties(feature_props)
             src_label = anchor.src_label or "Process"
