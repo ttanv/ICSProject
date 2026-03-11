@@ -17,10 +17,14 @@ class HttpMonitorHandler:
             tqdm(monitor_groups, desc="Processing HTTP monitor groups", unit="group") if context.show_progress else monitor_groups
         )
         
+        asset_ips = getattr(context.augmentor, '_asset_ips', set())
         http_relationships = 0
         for group in monitor_iterable:
             # Skip if all connections are either in base telemetry OR already correlated
             if all(cid in context.base_connection_ids or cid in context.correlated_cids for cid in group.canonical_ids()):
+                continue
+            # Asset-IP scope filter
+            if asset_ips and group.client_ip not in asset_ips and group.server_ip not in asset_ips:
                 continue
 
             packets = group.packets()
@@ -49,7 +53,6 @@ class HttpMonitorHandler:
                 context.process_statements,
                 context.runs_statements,
                 context.relationship_statements,
-                process_index=context.process_index,
                 telemetry_index=context.telemetry_index,
             )
             added = len(context.relationship_statements) - before_count

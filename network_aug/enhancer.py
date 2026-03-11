@@ -14,8 +14,6 @@ from .correlation import (
     CorrelationConfig,
     CorrelationEngine,
     TelemetryConnectionIndex,
-    TemporalProcessEntry,
-    TemporalProcessIndex,
 )
 from .cypher_reader import (
     CypherConnectionExtractor,
@@ -50,7 +48,6 @@ from .grouping import (
     group_collapsed_connections,
     group_http_monitor_connections,
     group_modbus_connections,
-    _is_service_port,
 )
 from .models import ConnectionKey, IndexedConnection, PacketRecord
 
@@ -78,6 +75,11 @@ class AugmentationConfig:
             "192.168.43.10": "PLC-02",
             "192.168.43.11": "PLC-03",
             "192.168.44.11": "PLC-03",  # Secondary network interface
+            "192.168.0.1": "FT-PLC-01",
+            "192.168.0.5": "FT-GW-01",
+            "192.168.0.10": "FT-MQTT-01",
+            "192.168.0.12": "FT-CLIENT-01",
+            "192.168.0.252": "FT-ROUTER",
         }
     )
     service_map: Dict[int, str] = field(
@@ -114,13 +116,12 @@ class AugmentationConfig:
     # Correlation configuration
     min_correlation_confidence: float = 0.5
     temporal_tolerance_seconds: float = 60.0
-    require_temporal_overlap: bool = False
     enable_process_attribution: bool = True
-    telemetry_attribution_only: bool = False  # Only attribute when telemetry evidence exists (no temporal fallback)
     pcap_time_offset_seconds: float = 0.0  # Offset to apply to PCAP timestamps (e.g., -10800 for UTC+3 -> UTC)
 
     # Signal database configuration
     signal_db_path: Optional[Path] = None  # Path to DuckDB file for raw signal observations
+
 
 
 @dataclass

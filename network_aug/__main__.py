@@ -59,19 +59,9 @@ def parse_args() -> argparse.Namespace:
         help="Temporal tolerance in seconds for correlation time window matching (default: 60.0).",
     )
     parser.add_argument(
-        "--require-temporal-overlap",
-        action="store_true",
-        help="Require PCAP packets to temporally overlap with telemetry time windows for correlation.",
-    )
-    parser.add_argument(
         "--disable-process-attribution",
         action="store_true",
         help="Disable generation of READ_SIGNAL/WRITE_SIGNAL relationships linking processes to ICSSignal nodes.",
-    )
-    parser.add_argument(
-        "--telemetry-attribution-only",
-        action="store_true",
-        help="Only attribute processes when telemetry evidence exists. Disables temporal/heuristic fallback.",
     )
     parser.add_argument(
         "--pcap-time-offset",
@@ -106,9 +96,7 @@ def main() -> None:
         # Correlation configuration
         min_correlation_confidence=args.min_correlation_confidence,
         temporal_tolerance_seconds=args.temporal_tolerance,
-        require_temporal_overlap=args.require_temporal_overlap,
         enable_process_attribution=not args.disable_process_attribution,
-        telemetry_attribution_only=args.telemetry_attribution_only,
         pcap_time_offset_seconds=args.pcap_time_offset * 3600.0,  # Convert hours to seconds
         # Signal database configuration
         signal_db_path=args.signal_db,
@@ -159,7 +147,6 @@ def main() -> None:
             corr_rate = 100.0 * metrics.successful_correlations / metrics.correlation_attempts
             print(f"PCAP connections attempted: {metrics.correlation_attempts}")
             print(f"Successful correlations: {metrics.successful_correlations} ({corr_rate:.1f}%)")
-            print(f"Temporal matches: {metrics.temporal_matches}")
             if metrics.process_attributed_registers > 0:
                 print(f"Process-attributed registers: {metrics.process_attributed_registers}")
         return

@@ -77,6 +77,18 @@ def _generate_node_guid_v2_braced(node_type: str, hostname: str, *identifiers: o
     return f"{{{_generate_node_guid_v2(node_type, hostname, *identifiers)}}}"
 
 
+def _normalize_transport_protocol(protocol: object) -> str:
+    """Normalize transport protocol values used for service identity."""
+    normalized = str(protocol or "").strip().lower()
+    return normalized or "tcp"
+
+
+def _generate_network_service_guid(hostname: str, port: int, protocol: object) -> str:
+    """Generate a NetworkService GUID matching the base graph: (type, host, port) only."""
+    normalized_port = port if port and port >= 0 else 0
+    return _generate_node_guid_v2_braced("NetworkService", hostname, normalized_port)
+
+
 @dataclass
 class CorrelationStats:
     """Statistics about the correlation process."""
@@ -84,7 +96,6 @@ class CorrelationStats:
     correlation_attempts: int = 0
     successful_correlations: int = 0
     session_port_matches: int = 0
-    temporal_matches: int = 0
     pcap_only_connections: int = 0
     process_attributed_registers: int = 0
 
@@ -101,6 +112,7 @@ class StreamingAugmentor:
 
     def __init__(self, config: AugmentationConfig) -> None:
         self.config = config
+        self._managed_hosts: Set[str] = set()  # hosts with log telemetry
         self._asset_ip_map = self._load_asset_lookup()
         self._correlation_stats = CorrelationStats()
         self._placeholder_processes: Dict[str, str] = {}
@@ -129,6 +141,9 @@ class StreamingAugmentor:
                             ip_text = str(ip or "").strip()
                             if ip_text:
                                 mapping[ip_text] = hostname
+                        # Track managed hosts (those with log telemetry)
+                        if details.get("is_managed", details.get("has_logs", True)):
+                            self._managed_hosts.add(hostname)
             except Exception:
                 pass
 
@@ -159,6 +174,9 @@ class StreamingAugmentor:
         extractor = CypherConnectionExtractor(self.config.base_cypher, asset_file=asset_file)
         existing = extractor.load_connections()
 
+        # Build asset-IP set for scope filtering
+        self._asset_ips: Set[str] = set(self._asset_ip_map.keys())
+
         # Filter for target relationship type
         target_rels = {self.config.relationship_name.upper()}
         filtered = [conn for conn in existing if conn.rel_type in target_rels]
@@ -182,7 +200,6 @@ class StreamingAugmentor:
         correlation_config = CorrelationConfig(
             min_confidence=self.config.min_correlation_confidence,
             temporal_tolerance_seconds=self.config.temporal_tolerance_seconds,
-            require_temporal_overlap=self.config.require_temporal_overlap,
             pcap_time_offset_seconds=self.config.pcap_time_offset_seconds,
         )
         correlation_engine = CorrelationEngine(
@@ -222,6 +239,10 @@ class StreamingAugmentor:
         for stats in tqdm(pcap_index.iter_stats(), desc="Correlating", unit="conn"):
             self._correlation_stats.total_pcap_connections += 1
 
+            # Asset-IP scope filter: skip connections where neither IP is a known asset
+            if self._asset_ips and stats.origin.src_ip not in self._asset_ips and stats.origin.dst_ip not in self._asset_ips:
+                continue
+
             # Try to correlate this PCAP connection
             indexed_conn = stats.to_indexed_connection()
             correlated = correlation_engine.correlate(indexed_conn, telemetry_index)
@@ -255,12 +276,10 @@ class StreamingAugmentor:
         engine_stats = correlation_engine.get_statistics()
         self._correlation_stats.correlation_attempts = engine_stats.get("total_attempts", 0)
         self._correlation_stats.session_port_matches = engine_stats.get("session_port_matches", 0)
-        self._correlation_stats.temporal_matches = engine_stats.get("temporal_matches", 0)
 
         print(f"Correlation: {self._correlation_stats.successful_correlations}/{self._correlation_stats.total_pcap_connections} "
               f"({100.0 * self._correlation_stats.successful_correlations / max(1, self._correlation_stats.total_pcap_connections):.1f}%)")
         print(f"  - Session port matches: {self._correlation_stats.session_port_matches}")
-        print(f"  - Temporal matches: {self._correlation_stats.temporal_matches}")
         print(f"  - PCAP-only connections: {self._correlation_stats.pcap_only_connections}")
 
         # Phase 2: Generate edge update statements for correlated connections
@@ -345,7 +364,7 @@ class StreamingAugmentor:
             feature_props["inferredFrom"] = "pcap"
             feature_props.setdefault("Initiated", anchor.rel_properties.get("Initiated") or "true")
             if not feature_props.get("note"):
-                feature_props["note"] = "Augmented with PCAP-derived metrics via temporal correlation"
+                feature_props["note"] = "Augmented with PCAP-derived metrics via session-port correlation"
 
             cypher_props = cypher_emit.format_properties(feature_props)
             src_label = anchor.src_label or "Process"
@@ -1120,9 +1139,14 @@ class StreamingAugmentor:
         asset_statements: Dict[str, str],
         process_statements: Dict[str, str],
         ownership_statements: Dict[str, str],
-    ) -> str:
+    ) -> Optional[str]:
         """Ensure a placeholder Process exists and return its GUID."""
+        if ip not in self._asset_ip_map:
+            return None
         hostname = self._resolve_hostname(ip)
+        # Skip runtime for managed hosts that have Sysmon/log telemetry
+        if hostname in self._managed_hosts:
+            return None
         endpoint_guid = self._ensure_asset_node(ip=ip, asset_statements=asset_statements)
         process_guid = self._placeholder_processes.get(hostname)
         if process_guid:
@@ -1168,19 +1192,21 @@ class StreamingAugmentor:
         """Ensure NetworkEndpoint and NetworkService nodes exist, return NetworkService GUID."""
         hostname = self._resolve_hostname(ip)
         asset_guid = self._ensure_asset_node(ip=ip, asset_statements=asset_statements)
+        normalized_port = port if port and port >= 0 else 0
+        normalized_protocol = _normalize_transport_protocol(protocol)
 
-        service_guid = _generate_node_guid("NetworkService", hostname, port)
+        service_guid = _generate_network_service_guid(hostname, normalized_port, normalized_protocol)
         if service_guid not in service_statements:
             svc_props: Dict[str, object] = {
-                "port": port,
-                "protocol": protocol,
+                "port": normalized_port,
+                "protocol": normalized_protocol.upper(),
                 "pcapAugmented": True,
             }
 
             if service_name:
                 svc_props["serviceName"] = service_name
-            elif port in self.config.service_map:
-                svc_props["serviceName"] = self.config.service_map[port]
+            elif normalized_port in self.config.service_map:
+                svc_props["serviceName"] = self.config.service_map[normalized_port]
 
             service_statements[service_guid] = cypher_emit.create_network_service_statement(
                 service_guid,
@@ -1195,12 +1221,13 @@ class StreamingAugmentor:
                 process_statements=process_statements,
                 ownership_statements=ownership_statements,
             )
-            binds_key = f"{owner_guid}|{service_guid}|BINDS"
-            if binds_key not in ownership_statements:
-                ownership_statements[binds_key] = cypher_emit.create_binds_relationship_statement(
-                    owner_guid,
-                    service_guid,
-                )
+            if owner_guid is not None:
+                binds_key = f"{owner_guid}|{service_guid}|BINDS"
+                if binds_key not in ownership_statements:
+                    ownership_statements[binds_key] = cypher_emit.create_binds_relationship_statement(
+                        owner_guid,
+                        service_guid,
+                    )
 
         return service_guid
 
@@ -1284,6 +1311,5 @@ class StreamingAugmentor:
         else:
             print(f"Successful correlations: {self._correlation_stats.successful_correlations}")
         print(f"  - Session port matches: {self._correlation_stats.session_port_matches}")
-        print(f"  - Temporal matches: {self._correlation_stats.temporal_matches}")
         print(f"PCAP-only connections: {self._correlation_stats.pcap_only_connections}")
         print(f"Process-attributed signals: {self._correlation_stats.process_attributed_registers}")
