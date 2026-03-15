@@ -38,7 +38,6 @@ from .enhancer import (
 )
 from .features import (
     PreSortedPackets,
-    aggregate_tcp_flags,
     average_packet_size,
     count_tcp_retransmits,
     directional_totals,
@@ -50,7 +49,6 @@ from .features import (
     mean_interarrival_time,
     mean_rtt_ms,
     resolve_mac_addresses,
-    total_bytes,
 )
 from .orientation import oriented_connection_key
 from .models import ConnectionKey, PacketRecord
@@ -291,7 +289,6 @@ class StreamingAugmentor:
             # Combine sampled packets from correlated PCAP connections for edge features
             all_packets: List[PacketRecord] = []
             best_confidence = 0.0
-            best_method = "unknown"
             representative_anchor: Optional[TelemetryAnchor] = None
             representative_corr: Optional[CorrelatedConnection] = None
 
@@ -299,7 +296,6 @@ class StreamingAugmentor:
                 all_packets.extend(stats._sample_packets)
                 if corr.confidence > best_confidence:
                     best_confidence = corr.confidence
-                    best_method = corr.correlation_method
                     representative_anchor = corr.telemetry_anchor
                     representative_corr = corr
 
@@ -335,17 +331,9 @@ class StreamingAugmentor:
             # Compute feature properties from packets
             feature_props = self._relationship_properties(connection_view, all_packets)
 
-            # Add correlation metadata
-            feature_props["correlationConfidence"] = round(best_confidence, 4)
-            feature_props["correlationMethod"] = best_method
             feature_props["correlatedPcapConnections"] = len(correlations)
 
-            # Preserve process context reference
             proc_ctx = representative_corr.process_context
-
-            if proc_ctx and proc_ctx.is_valid():
-                feature_props["correlatedProcessGuid"] = proc_ctx.process_guid
-                feature_props["correlatedProcessImage"] = proc_ctx.process_image
 
             # Fill in missing network properties
             if not anchor.rel_properties.get("SourceIp"):
@@ -361,7 +349,6 @@ class StreamingAugmentor:
 
             feature_props["pcapAugmented"] = True
             feature_props["inferredFrom"] = "pcap"
-            feature_props.setdefault("Initiated", anchor.rel_properties.get("Initiated") or "true")
             feature_props["note"] = "Augmented with PCAP-derived metrics via correlation"
 
             cypher_props = cypher_emit.format_properties(feature_props)
@@ -479,10 +466,9 @@ class StreamingAugmentor:
         """Compute relationship properties from packets."""
         sorted_packets = PreSortedPackets.from_packets(packets)
         timestamps = [pkt.timestamp for pkt in sorted_packets]
-        bytes_out, bytes_in, packets_out, packets_in = directional_totals(connection, sorted_packets)
+        bytes_out, bytes_in, _, _ = directional_totals(connection, sorted_packets)
         dir_index = directionality_ratio(bytes_out, bytes_in)
         inter_arrival = mean_interarrival_time(sorted_packets)
-        tcp_flags = aggregate_tcp_flags(sorted_packets)
         retransmits = count_tcp_retransmits(sorted_packets)
         src_mac, dst_mac = resolve_mac_addresses(connection, sorted_packets)
         http_features = extract_http_features(sorted_packets)
@@ -495,11 +481,9 @@ class StreamingAugmentor:
             "DestinationIp": connection.dst_ip,
             "DestinationPort": connection.dst_port,
             "Protocol": connection.protocol.lower(),
-            "Initiated": "true",
             "inferredFrom": "pcap",
             "pcapAugmented": True,
             "note": "Observed in PCAP but missing from host telemetry",
-            "totalBytes": total_bytes(sorted_packets),
             "packetCount": len(sorted_packets),
             "durationSeconds": duration_seconds(sorted_packets),
             "avgPacketSize": round(average_packet_size(sorted_packets), 2),
@@ -510,11 +494,8 @@ class StreamingAugmentor:
             "dstMac": dst_mac or None,
             "bytesOut": bytes_out,
             "bytesIn": bytes_in,
-            "packetsOut": packets_out,
-            "packetsIn": packets_in,
             "directionalityIndex": round(dir_index, 6) if dir_index is not None else None,
             "meanInterArrivalPacketTime": round(inter_arrival, 6),
-            "tcpFlags": tcp_flags or None,
             "retransmits": retransmits,
             "tlsSNI": tls_sni or None,
             "httpMethod": http_features.get("method"),
@@ -552,7 +533,7 @@ class StreamingAugmentor:
         if oriented_key is None:
             return None
 
-        client_ip, client_port = oriented_key.src_ip, 0
+        client_ip = oriented_key.src_ip
         server_ip, server_port = oriented_key.dst_ip, oriented_key.dst_port
 
         src_node_id = self._ensure_placeholder_process(
@@ -594,7 +575,7 @@ class StreamingAugmentor:
                     register_summary=summary,
                 )
 
-        rel_props = stats.to_properties()
+        rel_props = stats.to_properties(oriented_key)
 
         return cypher_emit.create_connection_statement(
             src_node_id,
@@ -653,16 +634,22 @@ class StreamingAugmentor:
             client_ip = first_client
 
         total_packets = sum(s.packet_count for s in group_stats)
-        total_bytes = sum(s.total_bytes for s in group_stats)
         first_seen = min(s.first_seen for s in group_stats if s.first_seen != float('inf'))
         last_seen = max(s.last_seen for s in group_stats if s.last_seen > 0)
         unique_client_ports = len(set().union(*(s.client_ports_seen for s in group_stats)))
+        bytes_out = 0
+        bytes_in = 0
 
         all_function_codes: Set[int] = set()
         all_unit_ids: Set[int] = set()
         all_registers: Set[int] = set()
         total_transactions = 0
         for stats in group_stats:
+            oriented_key = self._oriented_stats_key(stats)
+            if oriented_key is not None:
+                conn_bytes_out, conn_bytes_in = stats.directional_bytes(oriented_key)
+                bytes_out += conn_bytes_out
+                bytes_in += conn_bytes_in
             all_function_codes.update(stats.modbus_function_codes)
             all_unit_ids.update(stats.modbus_unit_ids)
             all_registers.update(stats.modbus_registers_seen)
@@ -719,8 +706,12 @@ class StreamingAugmentor:
             "aggregatedConnections": len(group_stats),
             "uniqueClientPorts": unique_client_ports,
             "packetCount": total_packets,
-            "totalBytes": total_bytes,
+            "bytesOut": bytes_out,
+            "bytesIn": bytes_in,
         }
+
+        if total_packets > 0 and (bytes_out > 0 or bytes_in > 0):
+            rel_props["avgPacketSize"] = round((bytes_out + bytes_in) / total_packets, 2)
 
         if first_seen != float('inf') and last_seen > 0:
             rel_props["durationSeconds"] = round(last_seen - first_seen, 3)

@@ -24,7 +24,7 @@ WELL_KNOWN_SERVICE_PORTS: frozenset[int] = frozenset({
     137, 138, 139,
     143,
     161, 162,
-    389, 5353, 5355,
+    389,
     443,
     445,
     465,

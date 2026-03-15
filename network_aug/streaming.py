@@ -42,12 +42,9 @@ class ConnectionStats:
 
     # Packet counts and sizes
     packet_count: int = 0
-    total_bytes: int = 0
 
     # Directional stats (based on origin direction)
-    forward_packets: int = 0
     forward_bytes: int = 0
-    reverse_packets: int = 0
     reverse_bytes: int = 0
 
     # Timing
@@ -57,14 +54,6 @@ class ConnectionStats:
     # Protocol detection
     protocols_seen: Set[str] = field(default_factory=set)
     high_level_protocol: str = "UNKNOWN"
-
-    # TCP flags (for TCP connections)
-    has_syn: bool = False
-    has_fin: bool = False
-    has_rst: bool = False
-    syn_count: int = 0
-    fin_count: int = 0
-    rst_count: int = 0
 
     # Payload tracking
     packets_with_payload: int = 0
@@ -275,7 +264,6 @@ class ConnectionStats:
     def add_packet(self, packet: PacketRecord) -> None:
         """Update statistics with a new packet."""
         self.packet_count += 1
-        self.total_bytes += packet.size
 
         # Track timing
         if packet.timestamp < self.first_seen:
@@ -287,10 +275,8 @@ class ConnectionStats:
         is_forward = (packet.src_ip == self.origin.src_ip and
                       packet.src_port == self.origin.src_port)
         if is_forward:
-            self.forward_packets += 1
             self.forward_bytes += packet.size
         else:
-            self.reverse_packets += 1
             self.reverse_bytes += packet.size
 
         # Track protocol
@@ -301,18 +287,6 @@ class ConnectionStats:
                 self.high_level_protocol = packet.high_level_protocol
             elif packet.high_level_protocol not in ("TCP", "UDP", "UNKNOWN"):
                 self.high_level_protocol = packet.high_level_protocol
-
-        # Track TCP flags
-        if packet.tcp_flags:
-            if 'S' in packet.tcp_flags and 'A' not in packet.tcp_flags:
-                self.has_syn = True
-                self.syn_count += 1
-            if 'F' in packet.tcp_flags:
-                self.has_fin = True
-                self.fin_count += 1
-            if 'R' in packet.tcp_flags:
-                self.has_rst = True
-                self.rst_count += 1
 
         # Track payload
         if packet.payload_len > 0:
@@ -388,37 +362,41 @@ class ConnectionStats:
             return 0.0
         return self.last_seen - self.first_seen
 
-    def to_properties(self) -> Dict[str, object]:
+    def directional_bytes(self, oriented_origin: ConnectionKey) -> Tuple[int, int]:
+        """Return bytes as (out, in) for an oriented flow."""
+        same_direction = (
+            oriented_origin.src_ip == self.origin.src_ip
+            and oriented_origin.src_port == self.origin.src_port
+            and oriented_origin.dst_ip == self.origin.dst_ip
+            and oriented_origin.dst_port == self.origin.dst_port
+            and oriented_origin.protocol.lower() == self.origin.protocol.lower()
+        )
+        if same_direction:
+            return self.forward_bytes, self.reverse_bytes
+        return self.reverse_bytes, self.forward_bytes
+
+    def to_properties(self, oriented_origin: ConnectionKey) -> Dict[str, object]:
         """Generate relationship properties from accumulated stats."""
+        bytes_out, bytes_in = self.directional_bytes(oriented_origin)
+        total_observed_bytes = bytes_out + bytes_in
         props: Dict[str, object] = {
             "pcapAugmented": True,
             "packetCount": self.packet_count,
-            "totalBytes": self.total_bytes,
+            "bytesOut": bytes_out,
+            "bytesIn": bytes_in,
         }
 
         if self.duration_seconds() > 0:
             props["durationSeconds"] = round(self.duration_seconds(), 3)
 
-        if self.forward_packets > 0 or self.reverse_packets > 0:
-            total = self.forward_packets + self.reverse_packets
-            props["forwardPackets"] = self.forward_packets
-            props["reversePackets"] = self.reverse_packets
-            if total > 0:
-                props["directionalityRatio"] = round(self.forward_packets / total, 3)
+        if self.packet_count > 0 and total_observed_bytes > 0:
+            props["avgPacketSize"] = round(total_observed_bytes / self.packet_count, 2)
 
         if self.high_level_protocol != "UNKNOWN":
             props["dominantProtocol"] = self.high_level_protocol
 
         if self.protocols_seen:
             props["protocolsSeen"] = ",".join(sorted(self.protocols_seen))
-
-        # TCP flag stats
-        if self.syn_count > 0:
-            props["synPackets"] = self.syn_count
-        if self.fin_count > 0:
-            props["finPackets"] = self.fin_count
-        if self.rst_count > 0:
-            props["rstPackets"] = self.rst_count
 
         # Payload stats
         if self.packets_with_payload > 0:

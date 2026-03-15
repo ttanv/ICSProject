@@ -28,7 +28,6 @@ from .cypher_reader import (
 )
 from .features import (
     PreSortedPackets,
-    aggregate_tcp_flags,
     average_packet_size,
     count_tcp_retransmits,
     dominant_protocol,
@@ -42,7 +41,6 @@ from .features import (
     mean_interarrival_time,
     mean_rtt_ms,
     resolve_mac_addresses,
-    total_bytes,
 )
 from .modbus_helpers import modbus_transaction_key, register_type_from_function
 from .mqtt_helpers import MQTT_PORTS
@@ -1280,14 +1278,12 @@ class MissingTrafficAugmentor:
             # Combine all packets from correlated PCAP connections
             all_packets: List[PacketRecord] = []
             best_confidence = 0.0
-            best_method = "unknown"
             representative_anchor: Optional[CorrelatedConnection] = None
 
             for corr in edge_correlations:
                 all_packets.extend(corr.packets)
                 if corr.confidence > best_confidence:
                     best_confidence = corr.confidence
-                    best_method = corr.correlation_method
                     representative_anchor = corr
 
             if not all_packets or representative_anchor is None:
@@ -1322,16 +1318,9 @@ class MissingTrafficAugmentor:
 
             feature_props = self._relationship_properties(connection_view, all_packets)
 
-            # Add correlation metadata
-            feature_props["correlationConfidence"] = round(best_confidence, 4)
-            feature_props["correlationMethod"] = best_method
             feature_props["correlatedPcapConnections"] = len(edge_correlations)
 
-            # Preserve process context reference
             proc_ctx = representative_anchor.process_context
-            if proc_ctx.is_valid():
-                feature_props["correlatedProcessGuid"] = proc_ctx.process_guid
-                feature_props["correlatedProcessImage"] = proc_ctx.process_image
 
             # Fill in missing network properties from telemetry
             if not anchor.rel_properties.get("SourceIp"):
@@ -1347,7 +1336,6 @@ class MissingTrafficAugmentor:
 
             feature_props["pcapAugmented"] = True
             feature_props["inferredFrom"] = "pcap"
-            feature_props.setdefault("Initiated", anchor.rel_properties.get("Initiated") or "true")
             feature_props["note"] = _CORRELATED_EDGE_NOTE
 
             cypher_props = cypher_emit.format_properties(feature_props)
@@ -1787,10 +1775,9 @@ class MissingTrafficAugmentor:
         # Pre-sort once to avoid redundant sorting in each feature function
         sorted_packets = PreSortedPackets.from_packets(packets)
         timestamps = [pkt.timestamp for pkt in sorted_packets]
-        bytes_out, bytes_in, packets_out, packets_in = directional_totals(connection, sorted_packets)
+        bytes_out, bytes_in, _, _ = directional_totals(connection, sorted_packets)
         dir_index = directionality_ratio(bytes_out, bytes_in)
         inter_arrival = mean_interarrival_time(sorted_packets)
-        tcp_flags = aggregate_tcp_flags(sorted_packets)
         retransmits = count_tcp_retransmits(sorted_packets)
         src_mac, dst_mac = resolve_mac_addresses(connection, sorted_packets)
         http_features = extract_http_features(sorted_packets)
@@ -1804,11 +1791,9 @@ class MissingTrafficAugmentor:
             "DestinationIp": connection.dst_ip,
             "DestinationPort": connection.dst_port,
             "Protocol": connection.protocol.lower(),
-            "Initiated": "true",
             "inferredFrom": "pcap",
             "pcapAugmented": True,
             "note": "Observed in PCAP but missing from host telemetry",
-            "totalBytes": total_bytes(sorted_packets),
             "packetCount": len(sorted_packets),
             "durationSeconds": duration_seconds(sorted_packets),
             "avgPacketSize": round(average_packet_size(sorted_packets), 2),
@@ -1819,11 +1804,8 @@ class MissingTrafficAugmentor:
             "dstMac": dst_mac or None,
             "bytesOut": bytes_out,
             "bytesIn": bytes_in,
-            "packetsOut": packets_out,
-            "packetsIn": packets_in,
             "directionalityIndex": round(dir_index, 6) if dir_index is not None else None,
             "meanInterArrivalPacketTime": round(inter_arrival, 6),
-            "tcpFlags": tcp_flags or None,
             "retransmits": retransmits,
             "tlsSNI": tls_sni or None,
             "httpMethod": http_features.get("method"),
@@ -1861,6 +1843,18 @@ class MissingTrafficAugmentor:
             return float(text)
         except ValueError:
             return None
+
+    def _combined_bytes(self, properties: Dict[str, object]) -> Optional[int]:
+        """Return total observed bytes from directional counters when present."""
+        total = 0
+        seen = False
+        for key in ("bytesOut", "bytesIn"):
+            value = self._as_number(properties.get(key))
+            if value is None:
+                continue
+            total += int(value)
+            seen = True
+        return total if seen else None
 
     def _extract_source_ports_from_properties(self, properties: Dict[str, object]) -> Set[int]:
         """Extract observed source ports from relationship properties."""
@@ -1907,12 +1901,9 @@ class MissingTrafficAugmentor:
         """Merge duplicate CONNECT_TO payloads deterministically."""
         merged = dict(existing)
         sum_fields = {
-            "totalBytes",
             "packetCount",
             "bytesIn",
             "bytesOut",
-            "packetsIn",
-            "packetsOut",
             "canonicalCount",
         }
         min_fields = {"firstSeen"}
@@ -1999,7 +1990,7 @@ class MissingTrafficAugmentor:
         if first_seen is not None and last_seen is not None and last_seen >= first_seen:
             props["durationSeconds"] = last_seen - first_seen
 
-        total_bytes_value = self._as_number(props.get("totalBytes"))
+        total_bytes_value = self._combined_bytes(props)
         packet_count_value = self._as_number(props.get("packetCount"))
         if (
             total_bytes_value is not None
@@ -2021,20 +2012,6 @@ class MissingTrafficAugmentor:
         if bytes_out_value is not None and bytes_in_value is not None:
             ratio = directionality_ratio(int(bytes_out_value), int(bytes_in_value))
             props["directionalityIndex"] = round(ratio, 6) if ratio is not None else None
-
-        telemetry_correlated = bool(props.get("telemetryCorrelated")) or bool(props.get("correlatedFromTelemetry"))
-        if telemetry_correlated:
-            note = str(props.get("note") or "").lower()
-            if "missing from host telemetry" in note:
-                process_image = str(props.get("correlatedProcessImage") or "unknown process")
-                process_id = props.get("correlatedProcessId")
-                if process_id not in (None, ""):
-                    props["note"] = (
-                        f"PCAP traffic correlated to process {process_image} "
-                        f"(PID {process_id}) via Sysmon telemetry"
-                    )
-                else:
-                    props["note"] = f"PCAP traffic correlated to process {process_image} via Sysmon telemetry"
 
         props["pcapAugmented"] = True
 
@@ -2294,9 +2271,6 @@ class MissingTrafficAugmentor:
             relationship_properties["SourcePort"] = "aggregated"
 
         if client_is_process and process_image:
-            relationship_properties["correlatedProcessGuid"] = client_node_id
-            relationship_properties["correlatedProcessImage"] = process_image
-            relationship_properties["correlatedProcessId"] = process_id
             if correlation_confidence >= 1.0:
                 relationship_properties["telemetryCorrelated"] = True
                 relationship_properties["note"] = (
@@ -2510,9 +2484,6 @@ class MissingTrafficAugmentor:
             relationship_properties["SourcePort"] = "aggregated"
 
         if client_is_process and process_image:
-            relationship_properties["correlatedProcessGuid"] = client_node_id
-            relationship_properties["correlatedProcessImage"] = process_image
-            relationship_properties["correlatedProcessId"] = process_id
             if correlation_confidence >= 1.0:
                 relationship_properties["telemetryCorrelated"] = True
                 relationship_properties["note"] = (
@@ -3667,18 +3638,16 @@ class MissingTrafficAugmentor:
                 "uniqueSourcePorts": len({pkt.src_port for pkt in packets}),
             }
         )
-        if group.connections:
+        combined_bytes = self._combined_bytes(relationship_properties)
+        if group.connections and combined_bytes is not None:
             relationship_properties["meanBytesPerConnection"] = round(
-                relationship_properties["totalBytes"] / len(group.connections), 2
+                combined_bytes / len(group.connections), 2
             )
 
         # Add process correlation metadata
         if client_is_process and process_context:
             if correlation_source == "telemetry":
                 relationship_properties["correlatedFromTelemetry"] = True
-                relationship_properties["correlatedProcessGuid"] = process_context.process_guid
-                relationship_properties["correlatedProcessImage"] = process_context.process_image
-                relationship_properties["correlatedProcessId"] = process_context.process_id
                 relationship_properties["note"] = (
                     f"Modbus traffic correlated to process {process_context.process_image} "
                     f"(PID {process_context.process_id}) from telemetry connection"
@@ -3787,17 +3756,15 @@ class MissingTrafficAugmentor:
                 "uniqueSourcePorts": len({pkt.src_port for pkt in packets}),
             }
         )
-        if group.connections:
+        combined_bytes = self._combined_bytes(relationship_properties)
+        if group.connections and combined_bytes is not None:
             relationship_properties["meanBytesPerConnection"] = round(
-                relationship_properties["totalBytes"] / len(group.connections), 2
+                combined_bytes / len(group.connections), 2
             )
 
         if client_is_process and process_context:
             if correlation_source == "telemetry":
                 relationship_properties["correlatedFromTelemetry"] = True
-                relationship_properties["correlatedProcessGuid"] = process_context.process_guid
-                relationship_properties["correlatedProcessImage"] = process_context.process_image
-                relationship_properties["correlatedProcessId"] = process_context.process_id
                 relationship_properties["note"] = (
                     f"HTTP monitor traffic correlated to process {process_context.process_image} "
                     f"(PID {process_context.process_id}) from telemetry connection"
@@ -3900,9 +3867,10 @@ class MissingTrafficAugmentor:
                 "uniqueSourcePorts": len(group.client_ports),
             }
         )
-        if group.connections:
+        combined_bytes = self._combined_bytes(relationship_properties)
+        if group.connections and combined_bytes is not None:
             relationship_properties["meanBytesPerConnection"] = round(
-                relationship_properties["totalBytes"] / len(group.connections), 2
+                combined_bytes / len(group.connections), 2
             )
         if collapsed_source_ports:
             relationship_properties["sourcePortMin"] = collapsed_source_ports[0]
@@ -3915,9 +3883,6 @@ class MissingTrafficAugmentor:
         if client_is_process and process_context:
             if correlation_source == "telemetry":
                 relationship_properties["correlatedFromTelemetry"] = True
-                relationship_properties["correlatedProcessGuid"] = process_context.process_guid
-                relationship_properties["correlatedProcessImage"] = process_context.process_image
-                relationship_properties["correlatedProcessId"] = process_context.process_id
                 relationship_properties["note"] = (
                     f"PCAP traffic correlated to process {process_context.process_image} "
                     f"(PID {process_context.process_id}) from telemetry connection"
