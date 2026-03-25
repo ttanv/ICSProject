@@ -49,17 +49,21 @@ def signal_db():
     """)
 
     # Register 1: values in [100, 200], Register 2: values = 2 * register_1
+    # Both on same server/unit — should correlate
     base_ts = 1000.0
     rows = []
     for i in range(200):
         ts = base_ts + i * 0.5
         val1 = 100 + (i % 101)  # 100..200
         val2 = val1 * 2          # 200..400
-        for reg, val in [(1, val1), (2, val2)]:
+        for reg, val, guid in [
+            (1, val1, "guid-server2-unit1-reg1"),
+            (2, val2, "guid-server2-unit1-reg2"),
+        ]:
             rows.append((
                 ts, reg, val, "read", 3, 1,
-                "client", "server", "10.0.0.1", "10.0.0.2",
-                i, ts, ts + 0.01, None, "guid1", "test.pcap",
+                "client", "server-a", "10.0.0.1", "10.0.0.2",
+                i, ts, ts + 0.01, None, guid, "test.pcap",
             ))
 
     # Register 3: different unit_id, constant value
@@ -67,8 +71,8 @@ def signal_db():
         ts = base_ts + i * 0.5
         rows.append((
             ts, 3, 42, "read", 3, 2,
-            "client", "server", "10.0.0.1", "10.0.0.3",
-            1000 + i, ts, ts + 0.01, None, "guid2", "test.pcap",
+            "client", "server-b", "10.0.0.1", "10.0.0.3",
+            1000 + i, ts, ts + 0.01, None, "guid-server3-unit2-reg3", "test.pcap",
         ))
 
     conn.executemany(
@@ -193,6 +197,111 @@ class TestMiners:
         invariants = mine_value_ranges(signal_db, 0.0, 2000.0, min_observations=100)
         reg3 = [inv for inv in invariants if inv.registers == [3]]
         assert len(reg3) == 0  # Only 50 observations, should be filtered
+
+    def test_cross_server_isolation(self):
+        """Registers with same address/unit_id on different servers must not merge."""
+        conn = duckdb.connect(":memory:")
+        conn.execute("""
+            CREATE TABLE signal_observations (
+                timestamp DOUBLE NOT NULL,
+                register_address INTEGER NOT NULL,
+                value INTEGER NOT NULL,
+                access_type VARCHAR NOT NULL,
+                function_code INTEGER NOT NULL,
+                unit_id INTEGER,
+                client_host VARCHAR NOT NULL,
+                server_host VARCHAR NOT NULL,
+                client_ip VARCHAR NOT NULL,
+                server_ip VARCHAR NOT NULL,
+                transaction_id INTEGER,
+                request_timestamp DOUBLE,
+                response_timestamp DOUBLE,
+                write_acknowledged BOOLEAN,
+                signal_container_guid VARCHAR NOT NULL,
+                pcap_file VARCHAR NOT NULL
+            )
+        """)
+        rows = []
+        # Same register_address=1, unit_id=1 on TWO different servers
+        # Server A: values ~100, Server B: values ~50000
+        for i in range(100):
+            ts = 1000.0 + i * 0.5
+            rows.append((
+                ts, 1, 100 + i, "read", 3, 1,
+                "client", "plc-a", "10.0.0.1", "10.0.0.2",
+                i, ts, ts + 0.01, None, "guid-plc-a-reg1", "test.pcap",
+            ))
+            rows.append((
+                ts, 1, 50000 + i, "read", 3, 1,
+                "client", "plc-b", "10.0.0.1", "10.0.0.3",
+                i, ts, ts + 0.01, None, "guid-plc-b-reg1", "test.pcap",
+            ))
+        conn.executemany(
+            "INSERT INTO signal_observations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+
+        invariants = mine_value_ranges(conn, 0.0, 2000.0, min_observations=10)
+        # Should produce TWO separate invariants, not one merged range
+        reg1_invs = [inv for inv in invariants if inv.registers == [1]]
+        assert len(reg1_invs) == 2
+
+        ranges = sorted((inv.parameters["min"], inv.parameters["max"]) for inv in reg1_invs)
+        assert ranges[0][1] < 300    # Server A: 100..199
+        assert ranges[1][0] >= 50000  # Server B: 50000..50099
+
+        conn.close()
+
+    def test_cross_server_no_correlation(self):
+        """Registers on different servers should not be correlated even if values track."""
+        conn = duckdb.connect(":memory:")
+        conn.execute("""
+            CREATE TABLE signal_observations (
+                timestamp DOUBLE NOT NULL,
+                register_address INTEGER NOT NULL,
+                value INTEGER NOT NULL,
+                access_type VARCHAR NOT NULL,
+                function_code INTEGER NOT NULL,
+                unit_id INTEGER,
+                client_host VARCHAR NOT NULL,
+                server_host VARCHAR NOT NULL,
+                client_ip VARCHAR NOT NULL,
+                server_ip VARCHAR NOT NULL,
+                transaction_id INTEGER,
+                request_timestamp DOUBLE,
+                response_timestamp DOUBLE,
+                write_acknowledged BOOLEAN,
+                signal_container_guid VARCHAR NOT NULL,
+                pcap_file VARCHAR NOT NULL
+            )
+        """)
+        rows = []
+        # Two registers with identical values but on different servers
+        for i in range(100):
+            ts = 1000.0 + i * 0.5
+            val = 100 + i
+            rows.append((
+                ts, 1, val, "read", 3, 1,
+                "client", "plc-a", "10.0.0.1", "10.0.0.2",
+                i, ts, ts + 0.01, None, "guid-plc-a-reg1", "test.pcap",
+            ))
+            rows.append((
+                ts, 2, val * 2, "read", 3, 1,
+                "client", "plc-b", "10.0.0.1", "10.0.0.3",
+                i, ts, ts + 0.01, None, "guid-plc-b-reg2", "test.pcap",
+            ))
+        conn.executemany(
+            "INSERT INTO signal_observations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+
+        invariants = mine_inter_register_correlations(
+            conn, 0.0, 2000.0, min_observations=10, correlation_threshold=0.7
+        )
+        # Should find NO correlations — registers are on different servers
+        assert len(invariants) == 0
+
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -325,11 +434,14 @@ class TestPipeline:
             ts = base_ts + i * 0.5
             val1 = 100 + (i % 101)
             val2 = val1 * 2
-            for reg, val in [(1, val1), (2, val2)]:
+            for reg, val, guid in [
+                (1, val1, "guid-reg1"),
+                (2, val2, "guid-reg2"),
+            ]:
                 rows.append((
                     ts, reg, val, "read", 3, 1,
                     "client", "server", "10.0.0.1", "10.0.0.2",
-                    i, ts, ts + 0.01, None, "guid1", "test.pcap",
+                    i, ts, ts + 0.01, None, guid, "test.pcap",
                 ))
         file_conn.executemany(
             "INSERT INTO signal_observations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

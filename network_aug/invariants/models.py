@@ -26,6 +26,9 @@ class Invariant:
     unit_id: Optional[int]
     """Modbus unit ID, if applicable."""
 
+    signal_container_guid: Optional[str] = None
+    """Unique signal identifier encoding host|port|unitId|registerType|address."""
+
     state_id: Optional[int] = None
     """FSM state ID when state-aware, None for state-agnostic."""
 

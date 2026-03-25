@@ -10,11 +10,11 @@ add variable names, pre-seed correlation pairs.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Tuple
 
 from .miners import mine_inter_register_correlations, mine_value_ranges
 from .models import Invariant
-from .st_parser import STProgramInfo, STVariable
+from .st_parser import STProgramInfo
 
 if TYPE_CHECKING:
     import duckdb
@@ -25,17 +25,6 @@ logger = logging.getLogger(__name__)
 def _build_register_name_map(program: STProgramInfo) -> Dict[int, str]:
     """Map resolved register addresses to ST variable names."""
     return {var.resolved_register: var.name for var in program.variables}
-
-
-def _build_register_limit_map(
-    program: STProgramInfo,
-) -> Dict[str, Tuple[Optional[float], Optional[float]]]:
-    """Map LIMIT output variables to (low, high) bounds."""
-    return {
-        lb.variable: (lb.low, lb.high)
-        for lb in program.limit_bounds
-        if lb.low is not None or lb.high is not None
-    }
 
 
 def _find_state_intervals(
