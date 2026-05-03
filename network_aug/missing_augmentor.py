@@ -10,7 +10,7 @@ from typing import Tuple, Optional, Dict, Set, List, Sequence
 from tqdm import tqdm
 import uuid
 from .models import SignalContainerData, ConnectionKey, IndexedConnection, PacketRecord
-from .enhancer import AugmentationConfig, AggregationMetrics, AugmentationArtifacts, AssetMetadata, _PendingModbusRequest, _RegisterAccumulator, _SignalAccumulator
+from .enhancer import AugmentationConfig, AggregationMetrics, AugmentationArtifacts, AssetMetadata, _PendingModbusRequest, _RegisterAccumulator, _SignalAccumulator, _SDTCompressor
 
 from . import cypher_emit
 from .correlation import (
@@ -56,6 +56,8 @@ from .grouping import (
     group_modbus_connections,
 )
 from .orientation import orient_connection
+from . import protocol_utils
+from .streaming import ConnectionStats
 
 logger = logging.getLogger(__name__)
 
@@ -88,29 +90,42 @@ def _generate_network_service_guid(hostname: str, port: int, protocol: object) -
 
 def _generate_signal_guid(protocol: str, host: str, port: int, *identifiers: object) -> str:
     """Generate deterministic ICSSignal GUID (case-preserving identifiers)."""
-    components = [
-        "ICSSignal",
-        protocol.strip().lower(),
-        host.strip().lower(),
-        str(port),
-    ] + [str(value) for value in identifiers if value not in (None, "")]
-    combined = "|".join(components)
-    guid_hash = hashlib.md5(combined.encode("utf-8")).digest()
-    guid = uuid.UUID(bytes=guid_hash)
-    return f"{{{guid}}}"
+    return protocol_utils.generate_signal_guid(protocol, host, port, *identifiers)
 
 
 def _generate_signal_key(protocol: str, host: str, port: int, *identifiers: object) -> str:
     """Generate canonical ICSSignal identity key."""
-    components = [
-        protocol.strip().lower(),
-        host.strip().lower(),
-        str(port),
-    ] + [str(value) for value in identifiers if value not in (None, "")]
-    return "|".join(components)
+    return protocol_utils.generate_signal_key(protocol, host, port, *identifiers)
 
 def _register_type_from_function(function_code: Optional[int]) -> Optional[str]:
     return register_type_from_function(function_code)
+
+
+@dataclass
+class _ModbusGroupPayload:
+    """Fork-safe computation result for a Modbus group.
+
+    Produced by _compute_modbus_group_payload() with no shared-state mutation.
+    Intentionally omits the group itself so result-pickle cost stays small when
+    workers send payloads back to the main process; the group is re-associated
+    by the caller in _apply_modbus_group_payload().
+    """
+
+    connection_key: "ConnectionKey"
+    source_ports: Set[int]
+    protocol_counts: Dict[str, int]
+    total_packets: int
+    bytes_out: int
+    bytes_in: int
+    first_seen: float
+    last_seen: float
+    all_function_codes: Set[int]
+    all_unit_ids: Set[int]
+    all_registers: Set[int]
+    total_transactions: int
+    src_mac: str
+    dst_mac: str
+    register_summaries: Dict[Tuple[int, Optional[int], str], Dict[str, object]]
 
 
 @dataclass
@@ -2085,50 +2100,14 @@ class MissingTrafficAugmentor:
 
     def _is_mqtt_indexed_connection(self, connection: IndexedConnection) -> bool:
         """Return True if this connection appears to carry MQTT traffic."""
-        if connection.origin.src_port in MQTT_PORTS or connection.origin.dst_port in MQTT_PORTS:
-            return True
-
-        # For non-standard ports, require a parsed CONNECT packet to avoid
-        # classifying arbitrary binary traffic as MQTT.
-        for packet in connection.records:
-            if packet.mqtt_packet_type_code == 1 and (packet.mqtt_packet_type or "").upper() == "CONNECT":
-                return True
-        return False
+        return protocol_utils.is_mqtt_connection(connection.origin, connection.records)
 
     def _orient_mqtt_connection(
         self,
         connection: IndexedConnection,
     ) -> Optional[Tuple[str, str, int, str]]:
         """Orient MQTT traffic as (client_ip, server_ip, service_port, protocol)."""
-        origin = connection.origin
-        if origin.dst_port in MQTT_PORTS and origin.src_port not in MQTT_PORTS:
-            return origin.src_ip, origin.dst_ip, origin.dst_port, origin.protocol
-        if origin.src_port in MQTT_PORTS and origin.dst_port not in MQTT_PORTS:
-            return origin.dst_ip, origin.src_ip, origin.src_port, origin.protocol
-
-        if not connection.records:
-            return None
-
-        first_packet = min(connection.records, key=lambda pkt: pkt.timestamp)
-        if first_packet.dst_port in MQTT_PORTS and first_packet.src_port not in MQTT_PORTS:
-            return first_packet.src_ip, first_packet.dst_ip, first_packet.dst_port, first_packet.protocol
-        if first_packet.src_port in MQTT_PORTS and first_packet.dst_port not in MQTT_PORTS:
-            return first_packet.dst_ip, first_packet.src_ip, first_packet.src_port, first_packet.protocol
-
-        # Non-standard ports: orient by CONNECT packet (client -> broker).
-        connect_packets = [
-            pkt
-            for pkt in connection.records
-            if pkt.mqtt_packet_type_code == 1 and (pkt.mqtt_packet_type or "").upper() == "CONNECT"
-        ]
-        if not connect_packets:
-            return None
-
-        connect_pkt = min(connect_packets, key=lambda pkt: pkt.timestamp)
-        service_port = connect_pkt.dst_port if connect_pkt.dst_port > 0 else connect_pkt.src_port
-        if service_port <= 0:
-            return None
-        return connect_pkt.src_ip, connect_pkt.dst_ip, service_port, connect_pkt.protocol
+        return protocol_utils.orient_mqtt_connection(connection.origin, connection.records)
 
     def _add_mqtt_connection(
         self,
@@ -2293,51 +2272,14 @@ class MissingTrafficAugmentor:
 
     def _is_opcua_indexed_connection(self, connection: IndexedConnection) -> bool:
         """Return True if this connection appears to carry OPC UA traffic."""
-        if connection.origin.src_port in OPCUA_PORTS or connection.origin.dst_port in OPCUA_PORTS:
-            return True
-
-        # For non-standard ports, require high-confidence HEL/OPN metadata.
-        for packet in connection.records:
-            message_type = (packet.opcua_message_type or "").upper()
-            if message_type == "HEL" and packet.opcua_endpoint_url:
-                return True
-            if message_type == "OPN" and packet.opcua_security_policy_uri:
-                return True
-        return False
+        return protocol_utils.is_opcua_connection(connection.origin, connection.records)
 
     def _orient_opcua_connection(
         self,
         connection: IndexedConnection,
     ) -> Optional[Tuple[str, str, int, str]]:
         """Orient OPC UA traffic as (client_ip, server_ip, service_port, protocol)."""
-        origin = connection.origin
-        if origin.dst_port in OPCUA_PORTS and origin.src_port not in OPCUA_PORTS:
-            return origin.src_ip, origin.dst_ip, origin.dst_port, origin.protocol
-        if origin.src_port in OPCUA_PORTS and origin.dst_port not in OPCUA_PORTS:
-            return origin.dst_ip, origin.src_ip, origin.src_port, origin.protocol
-
-        if not connection.records:
-            return None
-
-        hel_packets = [
-            pkt for pkt in connection.records if (pkt.opcua_message_type or "").upper() == "HEL"
-        ]
-        if hel_packets:
-            hel_packet = min(hel_packets, key=lambda pkt: pkt.timestamp)
-            service_port = hel_packet.dst_port if hel_packet.dst_port > 0 else hel_packet.src_port
-            if service_port > 0:
-                return hel_packet.src_ip, hel_packet.dst_ip, service_port, hel_packet.protocol
-
-        opn_packets = [
-            pkt for pkt in connection.records if (pkt.opcua_message_type or "").upper() == "OPN"
-        ]
-        if opn_packets:
-            opn_packet = min(opn_packets, key=lambda pkt: pkt.timestamp)
-            service_port = opn_packet.dst_port if opn_packet.dst_port > 0 else opn_packet.src_port
-            if service_port > 0:
-                return opn_packet.src_ip, opn_packet.dst_ip, service_port, opn_packet.protocol
-
-        return None
+        return protocol_utils.orient_opcua_connection(connection.origin, connection.records)
 
     def _add_opcua_connection(
         self,
@@ -2573,7 +2515,7 @@ class MissingTrafficAugmentor:
                         if address is None or address < 0:
                             continue
                         acc = _get_acc(address, unit_id, normalized_type)
-                        acc.observe(
+                        acc.buffer_observe(
                             value=value,
                             timestamp=packet.timestamp,
                             function_code=function_code,
@@ -2599,7 +2541,7 @@ class MissingTrafficAugmentor:
                         if address is None or address < 0:
                             continue
                         acc = _get_acc(address, request.unit_id, normalized_req_type)
-                        acc.observe(
+                        acc.buffer_observe(
                             value=value,
                             timestamp=packet.timestamp,
                             function_code=request.function_code,
@@ -2615,7 +2557,7 @@ class MissingTrafficAugmentor:
                         if address is None or address < 0:
                             continue
                         acc = _get_acc(address, request.unit_id, normalized_req_type)
-                        acc.observe(
+                        acc.buffer_observe(
                             value=value,
                             timestamp=packet.timestamp,
                             function_code=request.function_code,
@@ -2635,7 +2577,7 @@ class MissingTrafficAugmentor:
                     if address is None or address < 0:
                         continue
                     acc = _get_acc(address, unit_id, normalized_fallback_type)
-                    acc.observe(
+                    acc.buffer_observe(
                         value=value,
                         timestamp=packet.timestamp,
                         function_code=function_code,
@@ -2955,29 +2897,15 @@ class MissingTrafficAugmentor:
         signal_properties: Optional[Dict[str, object]] = None,
     ) -> str:
         """Ensure an ICSSignal node and ownership edge exist in output."""
-        signal_key = _generate_signal_key(protocol, host, port, signal_name)
-        signal_guid = _generate_signal_guid(protocol, host, port, signal_name)
-        if signal_guid in register_statements:
-            return signal_guid
-
-        props: Dict[str, object] = {
-            "guid": signal_guid,
-            "signalKey": signal_key,
-            "protocol": protocol.lower(),
-            "host": host,
-            "port": port,
-            "name": signal_name,
-            "source": "pcap",
-        }
-        if signal_properties:
-            props.update(signal_properties)
-
-        register_statements[signal_guid] = cypher_emit.create_ics_signal_statement(
-            signal_guid=signal_guid,
-            properties=props,
-            endpoint_guid=asset_guid,
+        return protocol_utils.ensure_ics_signal_node(
+            protocol=protocol,
+            host=host,
+            port=port,
+            asset_guid=asset_guid,
+            signal_name=signal_name,
+            register_statements=register_statements,
+            signal_properties=signal_properties,
         )
-        return signal_guid
 
     def _build_process_signal_statements(
         self,
@@ -2990,55 +2918,14 @@ class MissingTrafficAugmentor:
         process_id: Optional[int] = None,
     ) -> List[str]:
         """Build READ_SIGNAL / WRITE_SIGNAL statements for one process+signal pair."""
-        statements: List[str] = []
-        read_count = int(summary.get("readCount") or 0)
-        write_count = int(summary.get("writeCount") or 0)
-        if read_count <= 0 and write_count <= 0:
-            return statements
-
-        proc_guid_escaped = cypher_emit.escape_cypher_string(process_guid)
-        signal_guid_escaped = cypher_emit.escape_cypher_string(signal_guid)
-        common_props: Dict[str, object] = {
-            "correlationConfidence": round(correlation_confidence, 4),
-            "inferredFrom": "pcap",
-            "pcapAugmented": True,
-        }
-        if process_image:
-            common_props["processImage"] = process_image
-        if process_id is not None:
-            common_props["processId"] = process_id
-
-        if read_count > 0:
-            read_props = dict(common_props)
-            read_props["readCount"] = read_count
-            if summary.get("lastReadAt") is not None:
-                read_props["lastReadAt"] = summary["lastReadAt"]
-            cypher_props = cypher_emit.format_properties(read_props)
-            statement = (
-                f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
-                f"MATCH (sig:ICSSignal {{guid: '{signal_guid_escaped}'}})\n"
-                f"MERGE (proc)-[acc:READ_SIGNAL]->(sig)\n"
-                f"SET acc += {cypher_props}\n"
-                "SET acc.pcapAugmented = true"
-            )
-            statements.append(statement)
-
-        if write_count > 0:
-            write_props = dict(common_props)
-            write_props["writeCount"] = write_count
-            if summary.get("lastWriteAt") is not None:
-                write_props["lastWriteAt"] = summary["lastWriteAt"]
-            cypher_props = cypher_emit.format_properties(write_props)
-            statement = (
-                f"MATCH (proc:Process {{guid: '{proc_guid_escaped}'}})\n"
-                f"MATCH (sig:ICSSignal {{guid: '{signal_guid_escaped}'}})\n"
-                f"MERGE (proc)-[acc:WRITE_SIGNAL]->(sig)\n"
-                f"SET acc += {cypher_props}\n"
-                "SET acc.pcapAugmented = true"
-            )
-            statements.append(statement)
-
-        return statements
+        return protocol_utils.build_process_signal_statements(
+            process_guid=process_guid,
+            signal_guid=signal_guid,
+            summary=summary,
+            correlation_confidence=correlation_confidence,
+            process_image=process_image,
+            process_id=process_id,
+        )
 
     def _collect_mqtt_signals(
         self,
@@ -3047,108 +2934,10 @@ class MissingTrafficAugmentor:
         server_ip: str,
         server_port: int,
     ) -> Dict[str, Dict[str, object]]:
-        """Collect per-field MQTT summaries suitable for ICSSignal properties.
-
-        Each numeric field in a PUBLISH payload produces a separate signal entry
-        keyed by ``topic.field_name``.  The original topic is stored as the
-        ``mqttTopic`` property so callers can trace back to the source.
-        """
-        # Per-topic shared metadata (timestamps, QoS, packet types).
-        topic_meta: Dict[str, Dict[str, object]] = {}
-        # Per-field accumulators keyed by "topic.field".
-        accumulators: Dict[str, _SignalAccumulator] = {}
-        # Map signal_key -> raw topic for reverse lookup.
-        field_topics: Dict[str, str] = {}
-
-        def _ensure_topic_meta(topic: str) -> Dict[str, object]:
-            if topic not in topic_meta:
-                topic_meta[topic] = {
-                    "sampleCount": 0,
-                    "readCount": 0,
-                    "writeCount": 0,
-                    "firstSeenAt": None,
-                    "lastSeenAt": None,
-                    "lastReadAt": None,
-                    "lastWriteAt": None,
-                    "_qos_levels": set(),
-                    "_packet_types": set(),
-                    "mqttRetainSeen": False,
-                }
-            return topic_meta[topic]
-
-        def _get_accumulator(signal_key: str, topic: str) -> _SignalAccumulator:
-            if signal_key not in accumulators:
-                accumulators[signal_key] = _SignalAccumulator(
-                    signal_id=signal_key, protocol="mqtt",
-                )
-                field_topics[signal_key] = topic
-            return accumulators[signal_key]
-
-        for packet in packets:
-            topic = (packet.mqtt_topic or "").strip()
-            if not topic:
-                continue
-            meta = _ensure_topic_meta(topic)
-            meta["sampleCount"] = int(meta["sampleCount"]) + 1
-
-            first_seen = meta.get("firstSeenAt")
-            if first_seen is None or packet.timestamp < float(first_seen):
-                meta["firstSeenAt"] = packet.timestamp
-            last_seen = meta.get("lastSeenAt")
-            if last_seen is None or packet.timestamp > float(last_seen):
-                meta["lastSeenAt"] = packet.timestamp
-
-            packet_type = (packet.mqtt_packet_type or "").upper()
-            if packet_type:
-                meta["_packet_types"].add(packet_type)
-            if packet.mqtt_qos is not None and 0 <= packet.mqtt_qos <= 2:
-                meta["_qos_levels"].add(packet.mqtt_qos)
-            if packet.mqtt_retain is True:
-                meta["mqttRetainSeen"] = True
-
-            if packet_type == "PUBLISH":
-                is_write = packet.dst_ip == server_ip and packet.dst_port == server_port
-                is_read = packet.src_ip == server_ip and packet.src_port == server_port
-                role = ""
-                if is_write:
-                    meta["writeCount"] = int(meta["writeCount"]) + 1
-                    meta["lastWriteAt"] = packet.timestamp
-                    role = "write"
-                elif is_read:
-                    meta["readCount"] = int(meta["readCount"]) + 1
-                    meta["lastReadAt"] = packet.timestamp
-                    role = "read"
-
-                for field_name, value in packet.mqtt_payload_values:
-                    signal_key = f"{topic}.{field_name}"
-                    acc = _get_accumulator(signal_key, topic)
-                    acc.observe(value, packet.timestamp, role)
-
-        # Build output: one entry per field across all topics.
-        result: Dict[str, Dict[str, object]] = {}
-        for signal_key, acc in accumulators.items():
-            raw_topic = field_topics[signal_key]
-            meta = topic_meta.get(raw_topic, {})
-            field_name = signal_key[len(raw_topic) + 1 :]
-
-            out: Dict[str, object] = {}
-            for k, v in meta.items():
-                if not k.startswith("_"):
-                    out[k] = v
-
-            qos_levels = sorted(meta.get("_qos_levels", set()))  # type: ignore[arg-type]
-            packet_types = sorted(meta.get("_packet_types", set()))  # type: ignore[arg-type]
-            if qos_levels:
-                out["mqttQosLevels"] = ",".join(str(q) for q in qos_levels[:8])
-            if packet_types:
-                out["mqttPacketTypes"] = ",".join(packet_types[:8])
-
-            out["mqttTopic"] = raw_topic
-            out["mqttField"] = field_name
-            out.update(acc.to_properties())
-            result[signal_key] = out
-
-        return result
+        """Collect per-field MQTT summaries suitable for ICSSignal properties."""
+        return protocol_utils.collect_mqtt_signals(
+            packets=packets, server_ip=server_ip, server_port=server_port,
+        )
 
     def _collect_opcua_signals(
         self,
@@ -3157,205 +2946,10 @@ class MissingTrafficAugmentor:
         server_ip: str,
         server_port: int,
     ) -> Dict[str, Dict[str, object]]:
-        """Collect per-signal OPC UA summaries for ICSSignal nodes.
-
-        Preferred identity is decoded OPC UA NodeId. If unavailable, falls back
-        to endpoint/secure-channel level metadata.
-        """
-        summaries: Dict[str, Dict[str, object]] = {}
-        accumulators: Dict[str, _SignalAccumulator] = {}
-        # Correlate response messages back to request NodeIds:
-        # key = (client_ip, secure_channel_id_or_-1, request_id)
-        request_node_ids: Dict[Tuple[str, int, int], Tuple[str, ...]] = {}
-        request_operation: Dict[Tuple[str, int, int], str] = {}
-
-        def _request_key(
-            *,
-            client_ip: str,
-            secure_channel_id: Optional[int],
-            request_id: Optional[int],
-        ) -> Optional[Tuple[str, int, int]]:
-            if request_id is None:
-                return None
-            channel = secure_channel_id if secure_channel_id is not None else -1
-            return (client_ip, channel, request_id)
-
-        def _display_tag(node_id: str) -> str:
-            # Prefer human-meaningful string NodeIds (e.g., ns=2;s=Robot_Arm).
-            marker = ";s="
-            if marker in node_id:
-                raw = node_id.split(marker, 1)[1] or node_id
-                # Normalize common quoted dotted identifiers:
-                #   "a"."b"."c" -> a.b.c
-                if '".' in raw or '."' in raw:
-                    raw = raw.replace('"."', ".").replace('."', ".").replace('"', "")
-                return raw
-            return node_id
-
-        def _get_accumulator(signal_name: str) -> _SignalAccumulator:
-            if signal_name not in accumulators:
-                accumulators[signal_name] = _SignalAccumulator(signal_id=signal_name, protocol="opcua")
-            return accumulators[signal_name]
-
-        def _acc(signal_name: str) -> Dict[str, object]:
-            if signal_name not in summaries:
-                summaries[signal_name] = {
-                    "sampleCount": 0,
-                    "readCount": 0,
-                    "writeCount": 0,
-                    "firstSeenAt": None,
-                    "lastSeenAt": None,
-                    "lastReadAt": None,
-                    "lastWriteAt": None,
-                    "_message_types": set(),
-                    "_service_types": set(),
-                    "_chunk_types": set(),
-                    "_security_policies": set(),
-                    "_endpoint_urls": set(),
-                    "_secure_channel_ids": set(),
-                    "_identity_kind": "unknown",
-                }
-            return summaries[signal_name]
-
-        for packet in packets:
-            service_type = (packet.opcua_service_type or "").strip()
-            operation = (packet.opcua_operation or "").strip().lower()
-            message_type = (packet.opcua_message_type or "").upper()
-            from_server = packet.src_ip == server_ip and packet.src_port == server_port
-            to_server = packet.dst_ip == server_ip and packet.dst_port == server_port
-            explicit_node_ids = tuple(dict.fromkeys(
-                n for n in packet.opcua_node_ids
-                if n and not n.startswith("ns=0;") and not n.startswith("ns=1;")
-            ))
-
-            # Remember request operation/tag context for response correlation.
-            if to_server and explicit_node_ids and operation in {"read", "write"}:
-                key = _request_key(
-                    client_ip=packet.src_ip,
-                    secure_channel_id=packet.opcua_secure_channel_id,
-                    request_id=packet.opcua_request_id,
-                )
-                if key is not None:
-                    request_node_ids[key] = explicit_node_ids
-                    request_operation[key] = operation
-                # Feed WriteRequest values to accumulators
-                if operation == "write" and packet.opcua_values:
-                    for i, nid in enumerate(explicit_node_ids):
-                        val = packet.opcua_values[i] if i < len(packet.opcua_values) else None
-                        _get_accumulator(nid).observe(val, packet.timestamp, "write")
-
-            signal_names: Tuple[str, ...] = ()
-            identity_kind = "unknown"
-
-            if explicit_node_ids:
-                signal_names = explicit_node_ids
-                identity_kind = "nodeid"
-            elif from_server and service_type in {"ReadResponse", "WriteResponse"}:
-                # Correlate response to the originating request to recover NodeIds.
-                key = _request_key(
-                    client_ip=packet.dst_ip,
-                    secure_channel_id=packet.opcua_secure_channel_id,
-                    request_id=packet.opcua_request_id,
-                )
-                if key is not None:
-                    mapped_ids = request_node_ids.get(key) or ()
-                    mapped_op = request_operation.get(key)
-                    if mapped_ids:
-                        # Only accept a mapped context when service/operation family matches.
-                        if service_type == "ReadResponse" and mapped_op == "read":
-                            signal_names = mapped_ids
-                            identity_kind = "nodeid"
-                            # Feed ReadResponse values to accumulators
-                            if packet.opcua_values:
-                                for i, nid in enumerate(mapped_ids):
-                                    val = packet.opcua_values[i] if i < len(packet.opcua_values) else None
-                                    _get_accumulator(nid).observe(val, packet.timestamp, "read")
-                        elif service_type == "WriteResponse" and mapped_op == "write":
-                            signal_names = mapped_ids
-                            identity_kind = "nodeid"
-
-            if not signal_names:
-                continue
-
-            for signal_name in signal_names:
-                summary = _acc(signal_name)
-                summary["sampleCount"] = int(summary["sampleCount"]) + 1
-                summary["_identity_kind"] = identity_kind
-
-                first_seen = summary.get("firstSeenAt")
-                if first_seen is None or packet.timestamp < float(first_seen):
-                    summary["firstSeenAt"] = packet.timestamp
-                last_seen = summary.get("lastSeenAt")
-                if last_seen is None or packet.timestamp > float(last_seen):
-                    summary["lastSeenAt"] = packet.timestamp
-
-                if message_type:
-                    summary["_message_types"].add(message_type)
-                if service_type:
-                    summary["_service_types"].add(service_type)
-                chunk_type = (packet.opcua_chunk_type or "").upper()
-                if chunk_type:
-                    summary["_chunk_types"].add(chunk_type)
-                if packet.opcua_security_policy_uri:
-                    summary["_security_policies"].add(packet.opcua_security_policy_uri)
-                if packet.opcua_endpoint_url:
-                    summary["_endpoint_urls"].add(packet.opcua_endpoint_url)
-                if packet.opcua_secure_channel_id is not None:
-                    summary["_secure_channel_ids"].add(packet.opcua_secure_channel_id)
-
-                if operation == "read":
-                    summary["readCount"] = int(summary["readCount"]) + 1
-                    summary["lastReadAt"] = packet.timestamp
-                elif operation == "write":
-                    summary["writeCount"] = int(summary["writeCount"]) + 1
-                    summary["lastWriteAt"] = packet.timestamp
-                else:
-                    # Keep direction-based fallback only when service decoding is absent.
-                    if not service_type and message_type in {"MSG", "ACK"}:
-                        if from_server:
-                            summary["readCount"] = int(summary["readCount"]) + 1
-                            summary["lastReadAt"] = packet.timestamp
-                        elif to_server:
-                            summary["writeCount"] = int(summary["writeCount"]) + 1
-                            summary["lastWriteAt"] = packet.timestamp
-
-        result: Dict[str, Dict[str, object]] = {}
-        for signal_name, summary in summaries.items():
-            # Skip TypeDefinition schema reads — not physical process signals.
-            if signal_name.startswith("TD_"):
-                continue
-            # Skip signals with no numeric value observations (strings,
-            # datetimes, and other non-numeric OPC UA types).
-            acc = accumulators.get(signal_name)
-            if acc is None or acc.sample_count == 0:
-                continue
-
-            out = {k: v for k, v in summary.items() if not k.startswith("_")}
-            message_types = sorted(summary["_message_types"])  # type: ignore[index]
-            service_types = sorted(summary["_service_types"])  # type: ignore[index]
-            chunk_types = sorted(summary["_chunk_types"])  # type: ignore[index]
-            security_policies = sorted(summary["_security_policies"])  # type: ignore[index]
-            endpoint_urls = sorted(summary["_endpoint_urls"])  # type: ignore[index]
-            secure_channel_ids = sorted(summary["_secure_channel_ids"])  # type: ignore[index]
-            identity_kind = str(summary.get("_identity_kind") or "unknown")
-            if message_types:
-                out["opcuaMessageTypes"] = ",".join(message_types[:8])
-            if service_types:
-                out["opcuaServiceTypes"] = ",".join(service_types[:8])
-            if chunk_types:
-                out["opcuaChunkTypes"] = ",".join(chunk_types[:3])
-            if security_policies:
-                out["opcuaSecurityPolicies"] = ",".join(security_policies[:4])
-            if endpoint_urls:
-                out["opcuaEndpointUrls"] = ",".join(endpoint_urls[:4])
-            if secure_channel_ids:
-                out["opcuaSecureChannelIds"] = ",".join(str(scid) for scid in secure_channel_ids[:8])
-            out["opcuaIdentityKind"] = identity_kind
-            out["opcuaNodeId"] = signal_name
-            out["opcuaTag"] = _display_tag(signal_name)
-            out.update(acc.to_properties())
-            result[signal_name] = out
-        return result
+        """Collect per-signal OPC UA summaries for ICSSignal nodes."""
+        return protocol_utils.collect_opcua_signals(
+            packets=packets, server_ip=server_ip, server_port=server_port,
+        )
 
     def _ensure_register_node(
         self,
@@ -3424,23 +3018,553 @@ class MissingTrafficAugmentor:
         service_port: int,
     ) -> List[int]:
         """Extract client ephemeral source ports observed for a client->server flow."""
-        ports: Set[int] = set()
-        for pkt in packets:
-            if (
-                pkt.src_ip == client_ip
-                and pkt.dst_ip == server_ip
-                and pkt.dst_port == service_port
-                and pkt.src_port > 0
-            ):
-                ports.add(pkt.src_port)
-            elif (
-                pkt.src_ip == server_ip
-                and pkt.dst_ip == client_ip
-                and pkt.src_port == service_port
-                and pkt.dst_port > 0
-            ):
-                ports.add(pkt.dst_port)
-        return sorted(ports)
+        return protocol_utils.extract_client_source_ports(
+            packets=packets, client_ip=client_ip, server_ip=server_ip, service_port=service_port,
+        )
+
+    def _build_connection_stats(self, connection: IndexedConnection) -> Optional[ConnectionStats]:
+        """Build lightweight per-connection stats without retaining full packet lists."""
+        stats = ConnectionStats(
+            canonical_id=connection.canonical_id,
+            origin=connection.origin,
+            origin_timestamp=connection.origin_timestamp,
+        )
+        for packet in connection.records:
+            stats.add_packet(packet)
+            if packet.timestamp < stats.origin_timestamp:
+                stats.origin = packet.connection_key()
+                stats.origin_timestamp = packet.timestamp
+        if stats.packet_count <= 0:
+            return None
+        return stats
+
+    def _merge_register_summaries(
+        self,
+        summary_maps: Sequence[Dict[Tuple[int, Optional[int], str], Dict[str, object]]],
+    ) -> Dict[Tuple[int, Optional[int], str], Dict[str, object]]:
+        """Merge per-connection register summaries into one aggregated map."""
+        merged: Dict[Tuple[int, Optional[int], str], Dict[str, object]] = {}
+        timeline_source_score: Dict[Tuple[int, Optional[int], str], Tuple[int, int, int, int]] = {}
+        timeline_points_by_key: Dict[Tuple[int, Optional[int], str], List[Tuple[float, int]]] = {}
+        timeline_tolerance_by_key: Dict[Tuple[int, Optional[int], str], List[float]] = {}
+
+        def _to_int(props: Dict[str, object], key: str) -> int:
+            value = props.get(key)
+            if value in (None, ""):
+                return 0
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                try:
+                    return int(float(str(value)))
+                except (TypeError, ValueError):
+                    return 0
+
+        def _to_float(props: Dict[str, object], key: str) -> Optional[float]:
+            value = props.get(key)
+            if value in (None, ""):
+                return None
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        def _parse_top_values(encoded: object) -> Dict[int, int]:
+            if not encoded:
+                return {}
+            result: Dict[int, int] = {}
+            for token in str(encoded).split(","):
+                if ":" not in token:
+                    continue
+                value_raw, count_raw = token.split(":", 1)
+                try:
+                    value = int(value_raw)
+                    result[value] = result.get(value, 0) + int(count_raw)
+                except (TypeError, ValueError):
+                    continue
+            return result
+
+        def _parse_function_codes(encoded: object) -> Set[int]:
+            if not encoded:
+                return set()
+            parsed: Set[int] = set()
+            for token in str(encoded).split(","):
+                token = token.strip()
+                if not token:
+                    continue
+                try:
+                    parsed.add(int(token))
+                except ValueError:
+                    continue
+            return parsed
+
+        def _summary_score(props: Dict[str, object]) -> Tuple[int, int, int, int]:
+            return (
+                _to_int(props, "timelinePoints"),
+                _to_int(props, "distinctValues"),
+                _to_int(props, "rleRuns"),
+                _to_int(props, "valueSamples"),
+            )
+
+        def _parse_timeline(encoded: object) -> List[Tuple[float, int]]:
+            if not encoded:
+                return []
+            text = str(encoded).strip()
+            if not text.startswith("@") or "|" not in text:
+                return []
+
+            try:
+                base_raw, points_raw = text[1:].split("|", 1)
+                base_ts = float(base_raw)
+            except (TypeError, ValueError):
+                return []
+
+            parsed: List[Tuple[float, int]] = []
+            for token in points_raw.split(","):
+                if ":" not in token:
+                    continue
+                dt_raw, value_raw = token.split(":", 1)
+                try:
+                    ts = base_ts + float(dt_raw)
+                    value = int(float(value_raw))
+                except (TypeError, ValueError):
+                    continue
+                parsed.append((ts, value))
+            return parsed
+
+        for summary_map in summary_maps:
+            for key, incoming in summary_map.items():
+                incoming_dict = dict(incoming)
+                incoming_samples = _to_int(incoming_dict, "valueSamples")
+                incoming_last_seen = _to_float(incoming_dict, "lastSeenAt")
+                incoming_last_write = _to_float(incoming_dict, "lastWriteAt")
+                incoming_tolerance = _to_float(incoming_dict, "sdtTolerance")
+                parsed_timeline = _parse_timeline(incoming_dict.get("valueTimeline"))
+                if parsed_timeline:
+                    timeline_points_by_key.setdefault(key, []).extend(parsed_timeline)
+                if incoming_tolerance is not None and incoming_tolerance > 0:
+                    timeline_tolerance_by_key.setdefault(key, []).append(incoming_tolerance)
+
+                if key not in merged:
+                    merged[key] = incoming_dict
+                    timeline_source_score[key] = _summary_score(incoming_dict)
+                    continue
+
+                current = merged[key]
+                current_samples = _to_int(current, "valueSamples")
+                current_mean = _to_float(current, "meanValue") or 0.0
+                incoming_mean = _to_float(incoming_dict, "meanValue") or 0.0
+                combined_samples = current_samples + incoming_samples
+
+                for field in ("readCount", "writeCount", "valueSamples", "stateChanges"):
+                    total = _to_int(current, field) + _to_int(incoming_dict, field)
+                    if total > 0:
+                        current[field] = total
+
+                if combined_samples > 0:
+                    weighted_mean = (
+                        (current_mean * current_samples) + (incoming_mean * incoming_samples)
+                    ) / combined_samples
+                    current["meanValue"] = round(weighted_mean, 3)
+
+                current_min = _to_float(current, "minValue")
+                incoming_min = _to_float(incoming_dict, "minValue")
+                if incoming_min is not None and (current_min is None or incoming_min < current_min):
+                    current["minValue"] = int(incoming_min)
+
+                current_max = _to_float(current, "maxValue")
+                incoming_max = _to_float(incoming_dict, "maxValue")
+                if incoming_max is not None and (current_max is None or incoming_max > current_max):
+                    current["maxValue"] = int(incoming_max)
+
+                current["distinctValues"] = max(
+                    _to_int(current, "distinctValues"),
+                    _to_int(incoming_dict, "distinctValues"),
+                )
+
+                current_last_seen = _to_float(current, "lastSeenAt")
+                if incoming_last_seen is not None and (
+                    current_last_seen is None or incoming_last_seen > current_last_seen
+                ):
+                    current["lastSeenAt"] = round(incoming_last_seen, 3)
+                    if "lastValue" in incoming_dict:
+                        current["lastValue"] = incoming_dict["lastValue"]
+                    if "lastFunctionCode" in incoming_dict:
+                        current["lastFunctionCode"] = incoming_dict["lastFunctionCode"]
+
+                current_last_write = _to_float(current, "lastWriteAt")
+                if incoming_last_write is not None and (
+                    current_last_write is None or incoming_last_write > current_last_write
+                ):
+                    current["lastWriteAt"] = round(incoming_last_write, 3)
+
+                current_funcs = _parse_function_codes(current.get("observedFunctions"))
+                incoming_funcs = _parse_function_codes(incoming_dict.get("observedFunctions"))
+                all_funcs = sorted(current_funcs | incoming_funcs)
+                if all_funcs:
+                    current["observedFunctions"] = ",".join(str(code) for code in all_funcs)
+
+                top_values = _parse_top_values(current.get("topValues"))
+                for value, count in _parse_top_values(incoming_dict.get("topValues")).items():
+                    top_values[value] = top_values.get(value, 0) + count
+                if top_values:
+                    ordered = sorted(top_values.items(), key=lambda item: (-item[1], item[0]))[:4]
+                    current["topValues"] = ",".join(f"{value}:{count}" for value, count in ordered)
+
+                if current.get("rleTruncated") or incoming_dict.get("rleTruncated"):
+                    current["rleTruncated"] = True
+
+                incoming_score = _summary_score(incoming_dict)
+                if incoming_score > timeline_source_score.get(key, (0, 0, 0, 0)):
+                    for field in (
+                        "valueRLE",
+                        "rleRuns",
+                        "rleCompressionRatio",
+                        "rleTruncated",
+                        "valueTimeline",
+                        "timelinePoints",
+                        "compressionRatio",
+                        "sdtTolerance",
+                        "sdtRecompressions",
+                    ):
+                        if field in incoming_dict:
+                            current[field] = incoming_dict[field]
+                    timeline_source_score[key] = incoming_score
+
+        for key, summary in merged.items():
+            points = timeline_points_by_key.get(key) or []
+            if not points:
+                continue
+
+            points.sort(key=lambda item: item[0])
+            deduped: List[Tuple[float, int]] = []
+            for ts, val in points:
+                if not deduped or deduped[-1] != (ts, val):
+                    deduped.append((ts, val))
+
+            tolerances = timeline_tolerance_by_key.get(key) or []
+            seed_tolerance = min(tolerances) if tolerances else 1.0
+            sdt = _SDTCompressor(tolerance=seed_tolerance, max_points=100)
+            for ts, val in deduped:
+                sdt.add(ts, val)
+            timeline = sdt.encode_timeline()
+            if timeline:
+                summary["valueTimeline"] = timeline
+                summary["timelinePoints"] = len(sdt.points)
+                summary["sdtTolerance"] = sdt.tolerance
+                if sdt.recompression_count > 0:
+                    summary["sdtRecompressions"] = sdt.recompression_count
+                elif "sdtRecompressions" in summary:
+                    del summary["sdtRecompressions"]
+
+        for summary in merged.values():
+            samples = _to_int(summary, "valueSamples")
+            rle_runs = _to_int(summary, "rleRuns")
+            timeline_points = _to_int(summary, "timelinePoints")
+
+            if samples > 0 and rle_runs > 0:
+                summary["rleCompressionRatio"] = round(samples / rle_runs, 2)
+            if samples > 0 and timeline_points > 0:
+                summary["compressionRatio"] = round(samples / timeline_points, 2)
+
+        return merged
+
+    def _compute_modbus_group_payload(
+        self,
+        group: ModbusGroup,
+        connection_key: ConnectionKey,
+    ) -> Optional[_ModbusGroupPayload]:
+        """Heavy per-group compute (packet walk + register aggregation).
+
+        Thread-safe: only touches local data and pure self.*() helpers that do
+        not mutate shared state.
+        """
+        policy = self.config.policy
+        if (
+            policy.is_broadcast_or_multicast(group.client_ip)
+            or policy.is_broadcast_or_multicast(group.server_ip)
+        ):
+            return None
+        if policy.is_outer(group.client_ip) and policy.is_outer(group.server_ip):
+            return None
+
+        group_stats: List[ConnectionStats] = []
+        source_ports: Set[int] = set()
+        protocol_counts: Dict[str, int] = {}
+        total_packets = 0
+        bytes_out = 0
+        bytes_in = 0
+        first_seen = float("inf")
+        last_seen = 0.0
+        all_function_codes: Set[int] = set()
+        all_unit_ids: Set[int] = set()
+        all_registers: Set[int] = set()
+        total_transactions = 0
+        src_mac = ""
+        dst_mac = ""
+
+        for connection in group.connections:
+            stats = self._build_connection_stats(connection)
+            if stats is None:
+                continue
+            group_stats.append(stats)
+            total_packets += stats.packet_count
+            if stats.first_seen < first_seen:
+                first_seen = stats.first_seen
+            if stats.last_seen > last_seen:
+                last_seen = stats.last_seen
+            all_function_codes.update(stats.modbus_function_codes)
+            all_unit_ids.update(stats.modbus_unit_ids)
+            all_registers.update(stats.modbus_registers_seen)
+            total_transactions += stats.modbus_transaction_count
+
+            for packet in connection.records:
+                protocol_name = packet.high_level_protocol or "UNKNOWN"
+                protocol_counts[protocol_name] = protocol_counts.get(protocol_name, 0) + 1
+                if (
+                    packet.src_ip == group.client_ip
+                    and packet.dst_ip == group.server_ip
+                    and packet.dst_port == group.service_port
+                ):
+                    bytes_out += packet.size
+                    if packet.src_port > 0:
+                        source_ports.add(packet.src_port)
+                    if not src_mac and packet.src_mac:
+                        src_mac = packet.src_mac
+                    if not dst_mac and packet.dst_mac:
+                        dst_mac = packet.dst_mac
+                elif (
+                    packet.src_ip == group.server_ip
+                    and packet.dst_ip == group.client_ip
+                    and packet.src_port == group.service_port
+                ):
+                    bytes_in += packet.size
+                    if packet.dst_port > 0:
+                        source_ports.add(packet.dst_port)
+                    if not src_mac and packet.dst_mac:
+                        src_mac = packet.dst_mac
+                    if not dst_mac and packet.src_mac:
+                        dst_mac = packet.src_mac
+
+        if not group_stats or total_packets < policy.min_packet_threshold:
+            return None
+
+        register_summaries = self._merge_register_summaries(
+            [stats.get_register_summaries() for stats in group_stats]
+        )
+
+        return _ModbusGroupPayload(
+            connection_key=connection_key,
+            source_ports=source_ports,
+            protocol_counts=protocol_counts,
+            total_packets=total_packets,
+            bytes_out=bytes_out,
+            bytes_in=bytes_in,
+            first_seen=first_seen,
+            last_seen=last_seen,
+            all_function_codes=all_function_codes,
+            all_unit_ids=all_unit_ids,
+            all_registers=all_registers,
+            total_transactions=total_transactions,
+            src_mac=src_mac,
+            dst_mac=dst_mac,
+            register_summaries=register_summaries,
+        )
+
+    def _apply_modbus_group_payload(
+        self,
+        payload: _ModbusGroupPayload,
+        group: ModbusGroup,
+        asset_statements: Dict[str, str],
+        service_statements: Dict[str, str],
+        host_statements: Dict[str, str],
+        register_statements: Dict[str, str],
+        process_statements: Dict[str, str],
+        runs_statements: Dict[str, str],
+        relationship_statements: List[str],
+        process_register_statements: List[str],
+        telemetry_index: Optional["TelemetryConnectionIndex"] = None,
+    ) -> Optional[str]:
+        """Stage Cypher for an already-computed Modbus group payload. Not thread-safe."""
+        connection_key = payload.connection_key
+        service_name = self.config.service_map.get(group.service_port, "Modbus")
+
+        source_ports = payload.source_ports
+        protocol_counts = payload.protocol_counts
+        total_packets = payload.total_packets
+        bytes_out = payload.bytes_out
+        bytes_in = payload.bytes_in
+        first_seen = payload.first_seen
+        last_seen = payload.last_seen
+        all_function_codes = payload.all_function_codes
+        all_unit_ids = payload.all_unit_ids
+        all_registers = payload.all_registers
+        total_transactions = payload.total_transactions
+        src_mac = payload.src_mac
+        dst_mac = payload.dst_mac
+        register_summaries = payload.register_summaries
+
+        client_node_id: Optional[str] = None
+        client_is_process = False
+        process_context: Optional[ProcessContext] = None
+        correlation_source = "pcap_only"
+        correlation_confidence = 0.5
+        sorted_source_ports = sorted(source_ports)
+
+        if telemetry_index is not None:
+            process_context = self._find_telemetry_process_context(
+                telemetry_index=telemetry_index,
+                client_ip=group.client_ip,
+                server_ip=group.server_ip,
+                service_port=group.service_port,
+                protocol=connection_key.protocol,
+                source_ports=sorted_source_ports,
+            )
+            if process_context and process_context.is_valid():
+                client_node_id = process_context.process_guid
+                client_is_process = True
+                correlation_source = "telemetry"
+                correlation_confidence = 1.0
+
+        if client_node_id is None:
+            hostname, ip_address = self._resolve_host(group.client_ip)
+            asset_guid = self._ensure_asset_node(hostname, ip_address, asset_statements)
+            client_node_id = self._ensure_placeholder_process(
+                hostname, asset_guid, process_statements, runs_statements
+            )
+            if client_node_id is None:
+                return None
+            client_is_process = True
+            if process_context is None:
+                process_context = ProcessContext(
+                    process_guid=client_node_id,
+                    process_image=f"{hostname} Runtime",
+                    process_id=0,
+                    user="",
+                    computer=hostname,
+                )
+
+        rel_type, dst_label = self._classify_destination(group.server_ip)
+        server_hostname, server_ip = self._resolve_host(group.server_ip)
+        server_asset_guid = self._ensure_asset_node(server_hostname, server_ip, asset_statements)
+        server_node_id = self._ensure_network_service_node(
+            ip=group.server_ip,
+            port=group.service_port,
+            protocol=connection_key.protocol,
+            asset_statements=asset_statements,
+            service_statements=service_statements,
+            process_statements=process_statements,
+            runs_statements=runs_statements,
+            service_name=service_name,
+            aggregation="modbus",
+            note="Aggregated Modbus server inferred from PCAP-only traffic",
+        )
+
+        if self._signal_db:
+            for connection in group.connections:
+                self._collect_modbus_signals(
+                    packets=connection.records,
+                    client_ip=group.client_ip,
+                    server_ip=group.server_ip,
+                    server_port=group.service_port,
+                )
+
+        for (address, unit_id, register_type), summary in register_summaries.items():
+            self._ensure_register_node(
+                host=server_hostname,
+                port=group.service_port,
+                asset_guid=server_asset_guid,
+                register_address=address,
+                unit_id=unit_id,
+                register_type=register_type,
+                register_statements=register_statements,
+                register_summary=summary,
+            )
+
+        if (
+            self.config.enable_process_attribution
+            and client_is_process
+            and process_context
+            and register_summaries
+        ):
+            register_stmts, _ = self._generate_process_register_access(
+                process_context=process_context,
+                register_summaries=register_summaries,
+                server_hostname=server_hostname,
+                server_port=group.service_port,
+                correlation_confidence=correlation_confidence,
+            )
+            process_register_statements.extend(register_stmts)
+
+        dominant_protocol_name = (
+            max(protocol_counts.keys(), key=lambda name: protocol_counts[name])
+            if protocol_counts else "UNKNOWN"
+        )
+        relationship_properties: Dict[str, object] = {
+            "SourceIp": group.client_ip,
+            "SourcePort": "aggregated",
+            "DestinationIp": group.server_ip,
+            "DestinationPort": group.service_port,
+            "Protocol": connection_key.protocol.lower(),
+            "inferredFrom": "pcap",
+            "pcapAugmented": True,
+            "note": "Observed in PCAP but missing from host telemetry",
+            "packetCount": total_packets,
+            "bytesOut": bytes_out,
+            "bytesIn": bytes_in,
+            "aggregated": "modbus",
+            "canonicalCount": len(group.connections),
+            "uniqueSourcePorts": len(sorted_source_ports),
+        }
+
+        if first_seen != float("inf") and last_seen > 0:
+            relationship_properties["firstSeen"] = first_seen
+            relationship_properties["lastSeen"] = last_seen
+            relationship_properties["durationSeconds"] = round(last_seen - first_seen, 6)
+
+        total_bytes = bytes_out + bytes_in
+        if total_packets > 0 and total_bytes > 0:
+            relationship_properties["avgPacketSize"] = round(total_bytes / total_packets, 2)
+        if total_packets > 0 and len(group.connections) > 0 and total_bytes > 0:
+            relationship_properties["meanBytesPerConnection"] = round(total_bytes / len(group.connections), 2)
+
+        dir_index = directionality_ratio(bytes_out, bytes_in)
+        relationship_properties["directionalityIndex"] = round(dir_index, 6) if dir_index is not None else None
+
+        if dominant_protocol_name != "UNKNOWN":
+            relationship_properties["highLevelProtocol"] = dominant_protocol_name
+        if src_mac:
+            relationship_properties["srcMac"] = src_mac
+        if dst_mac:
+            relationship_properties["dstMac"] = dst_mac
+        if all_function_codes:
+            relationship_properties["modbusFunctionCodes"] = ",".join(str(fc) for fc in sorted(all_function_codes))
+        if all_unit_ids:
+            relationship_properties["modbusUnitIds"] = ",".join(str(uid) for uid in sorted(all_unit_ids))
+        if all_registers:
+            relationship_properties["modbusRegisterCount"] = len(all_registers)
+        if total_transactions > 0:
+            relationship_properties["modbusTransactions"] = total_transactions
+
+        if client_is_process and process_context and correlation_source == "telemetry":
+            relationship_properties["correlatedFromTelemetry"] = True
+            relationship_properties["note"] = (
+                f"Modbus traffic correlated to process {process_context.process_image} "
+                f"(PID {process_context.process_id}) from telemetry connection"
+            )
+
+        source_label = "Process"
+        self._stage_connect_relationship(
+            relationship_statements=relationship_statements,
+            source_guid=client_node_id,
+            dest_guid=server_node_id,
+            properties=relationship_properties,
+            relationship_name=rel_type,
+            source_label=source_label,
+            dest_label=dst_label,
+            source_ports=sorted_source_ports,
+        )
+        return rel_type
 
     def _find_telemetry_process_context(
         self,
@@ -3453,51 +3577,14 @@ class MissingTrafficAugmentor:
         source_ports: Sequence[int],
     ) -> Optional["ProcessContext"]:
         """Resolve process context from telemetry with deterministic source-port matching."""
-        if telemetry_index is None:
-            return None
-
-        candidate_ports = sorted({int(port) for port in source_ports if int(port) > 0})
-        if candidate_ports:
-            matches_by_guid: Dict[str, Tuple[int, int, "ProcessContext"]] = {}
-            for src_port in candidate_ports:
-                process_context = telemetry_index.find_process_for_connection(
-                    src_ip=client_ip,
-                    dst_ip=server_ip,
-                    dst_port=service_port,
-                    protocol=protocol,
-                    src_port=src_port,
-                    require_src_port_match=True,
-                )
-                if (
-                    not process_context
-                    or not process_context.is_valid()
-                    or not process_context.process_guid
-                ):
-                    continue
-
-                current = matches_by_guid.get(process_context.process_guid)
-                if current is None:
-                    matches_by_guid[process_context.process_guid] = (1, src_port, process_context)
-                else:
-                    matches_by_guid[process_context.process_guid] = (
-                        current[0] + 1,
-                        min(current[1], src_port),
-                        current[2],
-                    )
-
-            if matches_by_guid:
-                _, _, best_context = max(
-                    matches_by_guid.values(),
-                    key=lambda value: (value[0], -value[1]),
-                )
-                return best_context
-
-            # Source ports were observed but had no deterministic telemetry match.
-            # Avoid ambiguous endpoint-only attribution in this case.
-            return None
-
-        # No source ports available — no deterministic evidence to attribute.
-        return None
+        return protocol_utils.find_telemetry_process_context(
+            telemetry_index=telemetry_index,
+            client_ip=client_ip,
+            server_ip=server_ip,
+            service_port=service_port,
+            protocol=protocol,
+            source_ports=source_ports,
+        )
 
     def _add_modbus_group(
         self,

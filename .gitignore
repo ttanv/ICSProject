@@ -2,6 +2,9 @@ logs/**
 data/**
 **/__pycache__/
 .ipynb_checkpoints/
+.pytest_cache/
+.duckdb_tmp/
+.codex
 pcap_traffic
 pcap_traffic_latest
 zeek_logs
@@ -14,10 +17,25 @@ ICSGraph/
 docs/
 graphs/
 *.pkl
-# Don’t track local datasets / logs
-data/
-logs/
 
-# Don’t track local datasets / logs
+# Local/generated datasets, run outputs, and bulky graph artifacts.
 data/
 logs/
+paper_graphs/
+paper_graphs_1h/
+paper_graphs_1hr/
+paper_graphs_parallel/
+paper_graphs_v*/
+*.duckdb
+*.duckdb.*
+*.cypher
+*.cypher.*
+*.pcap
+*.pcapng
+*.tar
+*.xlsx
+*.log
+*.pid
+augmentation_log.txt
+invariantExperiments/output*.json
+invariantExperiments/benign/

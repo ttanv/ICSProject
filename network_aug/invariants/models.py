@@ -27,7 +27,17 @@ class Invariant:
     """Modbus unit ID, if applicable."""
 
     signal_container_guid: Optional[str] = None
-    """Unique signal identifier encoding host|port|unitId|registerType|address."""
+    """Unique signal identifier encoding host|port|unitId|registerType|address.
+
+    Note: in the current codebase this GUID is derived from the polling client
+    host (see protocol_utils._generate_node_guid_for_signal_container), so it is
+    shared across all RTUs that the same client polls at the same address. Use
+    server_host to disambiguate per-physical-signal.
+    """
+
+    server_host: Optional[str] = None
+    """Server hostname (the Modbus slave / RTU). Combined with
+    signal_container_guid this uniquely identifies one physical signal."""
 
     state_id: Optional[int] = None
     """FSM state ID when state-aware, None for state-agnostic."""
@@ -75,6 +85,69 @@ class InvariantSet:
     invariants: List[Invariant] = field(default_factory=list)
     """The mined invariants."""
 
+    def _build_correlation_graph(self) -> Dict[str, Any]:
+        """Derive a correlation graph from value_range and inter_register invariants.
+
+        Nodes come from value_range invariants (one per signal/register).
+        Edges come from inter_register invariants (correlation between two signals).
+        This restructures existing data into an explicit graph for downstream
+        causal analysis (e.g. violation tree construction).
+
+        Node keys are composite "guid@server_host" strings so that the same
+        Modbus GUID polled across multiple RTUs produces distinct nodes. Edges
+        carry explicit source/target guid + server_host fields in addition to
+        the composite source/target node ids.
+        """
+        def node_key(guid: Optional[str], server_host: Optional[str]) -> Optional[str]:
+            if not guid:
+                return None
+            if not server_host:
+                return guid
+            return f"{guid}@{server_host}"
+
+        nodes: Dict[str, Any] = {}
+        edges: List[Dict[str, Any]] = []
+
+        for inv in self.invariants:
+            if inv.type == "value_range" and inv.signal_container_guid:
+                key = node_key(inv.signal_container_guid, inv.server_host)
+                if key is None:
+                    continue
+                nodes[key] = {
+                    "signal_container_guid": inv.signal_container_guid,
+                    "server_host": inv.server_host,
+                    "register": inv.registers[0],
+                    "unit_id": inv.unit_id,
+                    "variable_name": inv.parameters.get("variable_name"),
+                }
+
+        for inv in self.invariants:
+            if inv.type != "inter_register":
+                continue
+            p = inv.parameters
+            guid_a = p.get("signal_guid_a")
+            guid_b = p.get("signal_guid_b")
+            host_a = p.get("server_host_a") or inv.server_host
+            host_b = p.get("server_host_b") or inv.server_host
+            src_key = node_key(guid_a, host_a)
+            tgt_key = node_key(guid_b, host_b)
+            if not src_key or not tgt_key:
+                continue
+            edges.append({
+                "source": src_key,
+                "target": tgt_key,
+                "source_guid": guid_a,
+                "source_server_host": host_a,
+                "target_guid": guid_b,
+                "target_server_host": host_b,
+                "pearson_r": p["pearson_r"],
+                "slope": p.get("slope"),
+                "intercept": p.get("intercept"),
+                "relationship": p.get("relationship"),
+            })
+
+        return {"nodes": nodes, "edges": edges}
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "generated_at": self.generated_at,
@@ -82,6 +155,7 @@ class InvariantSet:
             "st_file_path": self.st_file_path,
             "baseline_hours": self.baseline_hours,
             "total_observations_used": self.total_observations_used,
+            "correlation_graph": self._build_correlation_graph(),
             "invariants": [inv.to_dict() for inv in self.invariants],
         }
 

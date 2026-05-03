@@ -6,7 +6,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Sequence, Set, Tuple
+
+import numpy as np
 
 from .filters import AugmentationPolicy
 
@@ -32,9 +34,9 @@ class AugmentationConfig:
             "192.168.43.11": "PLC-03",
             "192.168.44.11": "PLC-03",  # Secondary network interface
             "192.168.0.1": "FT-PLC-01",
-            "192.168.0.5": "FT-GW-01",
-            "192.168.0.10": "FT-MQTT-01",
-            "192.168.0.12": "FT-CLIENT-01",
+            "192.168.0.5": "FT-RPI-01",
+            "192.168.0.10": "FT-HMI-01",
+            "192.168.0.12": "FT-GW-01",
             "192.168.0.252": "FT-ROUTER",
         }
     )
@@ -220,6 +222,94 @@ class _SDTCompressor:
         if len(self.points) > self.max_points:
             self._recompress()
 
+    def add_many(self, timestamps: Sequence[float], values: Sequence[float]) -> None:
+        """Batch add — same semantics as repeated add(), with locals hoisted to skip attribute lookup per sample."""
+        n = len(timestamps)
+        if n == 0:
+            return
+
+        # Hoist state and constants to locals. Write-back happens at the end.
+        last_ts = self._last_stored_ts
+        last_val = self._last_stored_val
+        upper_slope = self._upper_slope
+        lower_slope = self._lower_slope
+        pending = self._pending
+        points = self.points
+        points_append = points.append
+        tolerance = self.tolerance
+        max_points = self.max_points
+        pos_inf = float("inf")
+        neg_inf = float("-inf")
+
+        for i in range(n):
+            ts = timestamps[i]
+            val = values[i]
+
+            if last_ts is None:
+                points_append((ts, val))
+                last_ts = ts
+                last_val = val
+                upper_slope = pos_inf
+                lower_slope = neg_inf
+                pending = None
+                continue
+
+            dt = ts - last_ts
+            if dt <= 0:
+                continue
+
+            upper_limit = last_val + upper_slope * dt + tolerance
+            lower_limit = last_val + lower_slope * dt - tolerance
+
+            if val > upper_limit or val < lower_limit:
+                if pending is not None:
+                    p_ts, p_val = pending
+                    points_append((p_ts, p_val))
+                    last_ts = p_ts
+                    last_val = p_val
+                    upper_slope = pos_inf
+                    lower_slope = neg_inf
+                points_append((ts, val))
+                last_ts = ts
+                last_val = val
+                upper_slope = pos_inf
+                lower_slope = neg_inf
+                pending = None
+            else:
+                us = (val + tolerance - last_val) / dt
+                ls = (val - tolerance - last_val) / dt
+                if us < upper_slope:
+                    upper_slope = us
+                if ls > lower_slope:
+                    lower_slope = ls
+                pending = (ts, val)
+
+            if len(points) > max_points:
+                # Write back before recompression, let _recompress handle it, then reload
+                self._last_stored_ts = last_ts
+                self._last_stored_val = last_val
+                self._upper_slope = upper_slope
+                self._lower_slope = lower_slope
+                self._pending = pending
+                self.tolerance = tolerance
+                self._recompress()
+                last_ts = self._last_stored_ts
+                last_val = self._last_stored_val
+                upper_slope = self._upper_slope
+                lower_slope = self._lower_slope
+                pending = self._pending
+                tolerance = self.tolerance
+                points = self.points
+                points_append = points.append
+
+        # Write back
+        self._last_stored_ts = last_ts
+        self._last_stored_val = last_val
+        self._upper_slope = upper_slope
+        self._lower_slope = lower_slope
+        self._pending = pending
+        self.tolerance = tolerance
+
     def _store(self, timestamp: float, value: float) -> None:
         self.points.append((timestamp, value))
         self._last_stored_ts = timestamp
@@ -313,6 +403,13 @@ class _RegisterAccumulator:
     _rle: List[Tuple[int, int]] = field(default_factory=list, repr=False)
     _rle_truncated: bool = field(default=False, repr=False)
 
+    # Deferred observation buffer (flushed via flush_buffer(); populated by buffer_observe())
+    _buf_values: List[Optional[int]] = field(default_factory=list, repr=False)
+    _buf_timestamps: List[float] = field(default_factory=list, repr=False)
+    _buf_fcs: List[Optional[int]] = field(default_factory=list, repr=False)
+    _buf_roles: List[str] = field(default_factory=list, repr=False)
+    _buf_register_type: Optional[str] = field(default=None, repr=False)
+
     _TYPE_PRIORITY: Dict[str, int] = field(
         init=False,
         default_factory=lambda: {"coil": 0, "discreteInput": 0, "holdingRegister": 1, "inputRegister": 1},
@@ -404,7 +501,188 @@ class _RegisterAccumulator:
             self._sdt = _SDTCompressor(tolerance=1.0, max_points=100)
         self._sdt.add(timestamp, value)
 
+    def buffer_observe(
+        self,
+        value: Optional[int],
+        timestamp: float,
+        function_code: Optional[int],
+        role: str,
+        register_type: Optional[str],
+    ) -> None:
+        """Queue an observation. Call flush_buffer() before reading state."""
+        self._buf_values.append(value)
+        self._buf_timestamps.append(timestamp)
+        self._buf_fcs.append(function_code)
+        self._buf_roles.append(role)
+        if self._buf_register_type is None and register_type is not None:
+            self._buf_register_type = register_type
+
+    def flush_buffer(self) -> None:
+        """Flush deferred observations via observe_many()."""
+        if not self._buf_values:
+            return
+        self.observe_many(
+            self._buf_values,
+            self._buf_timestamps,
+            self._buf_fcs,
+            self._buf_roles,
+            self._buf_register_type,
+        )
+        self._buf_values = []
+        self._buf_timestamps = []
+        self._buf_fcs = []
+        self._buf_roles = []
+        self._buf_register_type = None
+
+    def observe_many(
+        self,
+        values: Sequence[Optional[int]],
+        timestamps: Sequence[float],
+        function_codes: Sequence[Optional[int]],
+        roles: Sequence[str],
+        register_type: Optional[str],
+    ) -> None:
+        """Batch equivalent of repeated observe(); preserves per-sample semantics but processes in vectorized fashion."""
+        n = len(values)
+        if n == 0:
+            return
+
+        self.apply_type_hint(register_type)
+
+        # mark_seen: track max timestamp, observed_functions, last_function_code
+        ts_max = timestamps[0]
+        last_fc = self.last_function_code
+        for i in range(n):
+            ts = timestamps[i]
+            if ts > ts_max:
+                ts_max = ts
+            fc = function_codes[i]
+            if fc is not None:
+                last_fc = fc
+                self.observed_functions.add(fc)
+        if self.last_seen_at is None or ts_max > self.last_seen_at:
+            self.last_seen_at = ts_max
+        self.last_function_code = last_fc
+
+        # Role tallies + last_write_at
+        n_reads = 0
+        n_writes = 0
+        last_write_ts: Optional[float] = None
+        for i in range(n):
+            r = roles[i]
+            if r == "read":
+                n_reads += 1
+            elif r == "write":
+                n_writes += 1
+                ts = timestamps[i]
+                if last_write_ts is None or ts > last_write_ts:
+                    last_write_ts = ts
+        self.read_count += n_reads
+        self.write_count += n_writes
+        if last_write_ts is not None and (self.last_write_at is None or last_write_ts > self.last_write_at):
+            self.last_write_at = last_write_ts
+
+        # Value-path: filter to non-None while preserving order
+        if all(v is not None for v in values):
+            vals_list = list(values)
+            tss_list = list(timestamps)
+        else:
+            vals_list = [v for v in values if v is not None]
+            tss_list = [timestamps[i] for i, v in enumerate(values) if v is not None]
+
+        m = len(vals_list)
+        if m == 0:
+            return
+
+        vals_np = np.asarray(vals_list, dtype=np.int64)
+        tss_np = np.asarray(tss_list, dtype=np.float64)
+
+        # state_changes: transitions for coil/discreteInput
+        if register_type in ("coil", "discreteInput"):
+            if self.last_value is not None:
+                prev = np.int64(self.last_value)
+                changes = int(np.count_nonzero(vals_np[0:1] != prev))
+                if m > 1:
+                    changes += int(np.count_nonzero(vals_np[1:] != vals_np[:-1]))
+            else:
+                changes = int(np.count_nonzero(vals_np[1:] != vals_np[:-1])) if m > 1 else 0
+            self.state_changes += changes
+
+        self.last_value = int(vals_np[-1])
+
+        # min/max
+        batch_min = int(vals_np.min())
+        batch_max = int(vals_np.max())
+        if self.min_value is None or batch_min < self.min_value:
+            self.min_value = batch_min
+        if self.max_value is None or batch_max > self.max_value:
+            self.max_value = batch_max
+
+        # Incremental mean
+        old_n = self.sample_count
+        new_n = old_n + m
+        self.mean_value = (self.mean_value * old_n + float(vals_np.sum())) / new_n
+        self.sample_count = new_n
+
+        # Unique values in first-encounter order (to match original scalar observe() behavior for value_frequencies cap).
+        unique_vals, first_idx, unique_counts = np.unique(vals_np, return_index=True, return_counts=True)
+        order = np.argsort(first_idx)
+        unique_vals_ordered = unique_vals[order]
+        unique_counts_ordered = unique_counts[order]
+
+        # Distinct values via HLL bitmask (preserves Python hash semantics by hashing per unique value)
+        new_mask = 0
+        for u in unique_vals_ordered.tolist():
+            new_mask |= 1 << (hash(int(u)) & 63)
+        newly_added = new_mask & ~self._seen_values_hll
+        if newly_added:
+            self.distinct_values += bin(newly_added).count("1")
+            self._seen_values_hll |= new_mask
+
+        # value_frequencies (capped at _MAX_TRACKED_VALUES; existing entries always get incremented)
+        freqs = self.value_frequencies
+        cap = self._MAX_TRACKED_VALUES
+        for u, c in zip(unique_vals_ordered.tolist(), unique_counts_ordered.tolist()):
+            key = int(u)
+            count = int(c)
+            if key in freqs:
+                freqs[key] += count
+            elif len(freqs) < cap:
+                freqs[key] = count
+
+        # RLE
+        if m == 1:
+            run_values = [int(vals_np[0])]
+            run_lengths = [1]
+        else:
+            change_mask = np.concatenate(([True], vals_np[1:] != vals_np[:-1]))
+            run_starts = np.flatnonzero(change_mask)
+            run_ends = np.concatenate((run_starts[1:], [m]))
+            run_values = vals_np[run_starts].tolist()
+            run_lengths = (run_ends - run_starts).tolist()
+
+        rle = self._rle
+        start_idx = 0
+        if rle and int(run_values[0]) == rle[-1][0]:
+            lv, lc = rle[-1]
+            rle[-1] = (lv, lc + int(run_lengths[0]))
+            start_idx = 1
+        max_runs = self._RLE_MAX_RUNS
+        rle_truncated = self._rle_truncated
+        for k in range(start_idx, len(run_values)):
+            rle.append((int(run_values[k]), int(run_lengths[k])))
+            if len(rle) > max_runs:
+                rle.pop(0)
+                rle_truncated = True
+        self._rle_truncated = rle_truncated
+
+        # SDT: use batch path on the hoisted compressor
+        if self._sdt is None:
+            self._sdt = _SDTCompressor(tolerance=1.0, max_points=100)
+        self._sdt.add_many(tss_np.tolist(), [float(v) for v in vals_np.tolist()])
+
     def to_properties(self) -> Dict[str, object]:
+        self.flush_buffer()
         props: Dict[str, object] = {}
         if self.register_type:
             props["registerType"] = self.register_type

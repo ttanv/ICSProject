@@ -105,106 +105,15 @@ class ScapyPCAPConnectionIndex:
                     if self.packet_limit is not None and processed_packets >= self.packet_limit:
                         break
                     processed_packets += 1
-                    ip_layers = _extract_ip_layers(packet)
-                    if self.prefer_innermost and len(ip_layers) > 1:
-                        layer_iterable = [(len(ip_layers) - 1, ip_layers[-1])]
-                    else:
-                        layer_iterable = list(enumerate(ip_layers))
-
-                    for layer_index, layer_info in layer_iterable:
-                        conn_id, origin_key = _make_connection_keys(layer_info)
-                        if not conn_id:
-                            continue
-                        if self._should_ignore_layer(layer_info):
-                            continue
-
-                        src_mac, dst_mac = _extract_mac_addresses(packet)
-                        tcp_flags, tcp_seq, tcp_ack = _extract_tcp_metadata(packet)
-                        transport_payload = _extract_transport_payload(packet, layer_info.protocol)
-                        payload_len = _infer_payload_length(packet, layer_info.protocol)
-                        http_meta = _extract_http_metadata(packet)
-                        tls_sni = _extract_tls_sni(packet)
-                        mqtt_details = (
-                            parse_mqtt_details(
-                                transport_payload,
-                                layer_info.src_port,
-                                layer_info.dst_port,
-                            )
-                            if layer_info.protocol == "tcp"
-                            else MQTTDetails()
-                        )
-                        opcua_details = (
-                            parse_opcua_details(
-                                transport_payload,
-                                layer_info.src_port,
-                                layer_info.dst_port,
-                            )
-                            if layer_info.protocol == "tcp"
-                            else OPCUADetails()
-                        )
-
-                        modbus_details = _extract_modbus_details(packet, layer_info)
-
-                        record = PacketRecord(
-                            pcap_file=pcap_file.name,
-                            packet_index=packet_index,
-                            timestamp=float(packet.time),
-                            size=len(packet),
-                            src_ip=layer_info.src_ip,
-                            dst_ip=layer_info.dst_ip,
-                            src_port=layer_info.src_port,
-                            dst_port=layer_info.dst_port,
-                            protocol=layer_info.protocol,
-                            high_level_protocol=detect_high_level_protocol(
-                                packet,
-                                layer_info.src_port,
-                                layer_info.dst_port,
-                                layer_info.protocol,
-                            ),
-                            ip_layer_index=layer_index,
-                            ip_layer_count=layer_info.layer_count,
-                            src_mac=src_mac,
-                            dst_mac=dst_mac,
-                            tcp_flags=tcp_flags,
-                            tcp_seq=tcp_seq,
-                            tcp_ack=tcp_ack,
-                            payload_len=payload_len,
-                            http_method=http_meta.get("method"),
-                            http_host=http_meta.get("host"),
-                            http_path=http_meta.get("path"),
-                            http_status=http_meta.get("status"),
-                            http_content_type=http_meta.get("content_type"),
-                            tls_sni=tls_sni,
-                            mqtt_packet_type=mqtt_details.packet_type,
-                            mqtt_packet_type_code=mqtt_details.packet_type_code,
-                            mqtt_topic=mqtt_details.topic,
-                            mqtt_qos=mqtt_details.qos,
-                            mqtt_retain=mqtt_details.retain,
-                            mqtt_dup=mqtt_details.dup,
-                            mqtt_client_id=mqtt_details.client_id,
-                            mqtt_keepalive=mqtt_details.keepalive,
-                            mqtt_packet_id=mqtt_details.packet_id,
-                            mqtt_payload_size=mqtt_details.payload_size,
-                            opcua_message_type=opcua_details.message_type,
-                            opcua_chunk_type=opcua_details.chunk_type,
-                            opcua_message_size=opcua_details.message_size,
-                            opcua_secure_channel_id=opcua_details.secure_channel_id,
-                            opcua_endpoint_url=opcua_details.endpoint_url,
-                            opcua_security_policy_uri=opcua_details.security_policy_uri,
-                            opcua_service_type=opcua_details.service_type,
-                            opcua_operation=opcua_details.operation,
-                            opcua_request_id=opcua_details.request_id,
-                            opcua_node_ids=opcua_details.node_ids,
-                            opcua_values=opcua_details.values,
-                            mqtt_payload_values=mqtt_details.payload_values,
-                            modbus_function=modbus_details.function_code,
-                            modbus_unit_id=modbus_details.unit_id,
-                            modbus_registers=modbus_details.registers,
-                            modbus_read_registers=modbus_details.read_registers,
-                            modbus_write_registers=modbus_details.write_registers,
-                            modbus_register_values=modbus_details.register_values,
-                            modbus_transaction_id=modbus_details.transaction_id,
-                        )
+                    for record in iter_packet_records_scapy(
+                        packet,
+                        pcap_file=pcap_file.name,
+                        packet_index=packet_index,
+                        prefer_innermost=self.prefer_innermost,
+                        ignored_ips=self._IGNORED_IPS,
+                    ):
+                        conn_id = record.connection_key().bidirectional_id()
+                        origin_key = record.connection_key()
                         if conn_id not in self._index:
                             self._index[conn_id] = IndexedConnection(
                                 canonical_id=conn_id,
@@ -783,3 +692,112 @@ def _expand_modbus_range(start: int, quantity: int, max_span: int = 512) -> Tupl
     quantity = min(quantity, max_span)
     end = start + quantity
     return tuple(range(start, end))
+
+
+def iter_packet_records_scapy(
+    packet,
+    *,
+    pcap_file: str,
+    packet_index: int,
+    prefer_innermost: bool = True,
+    ignored_ips: Optional[Iterable[str]] = None,
+) -> Iterator[PacketRecord]:
+    """Yield PacketRecord objects for the requested packet/layer selection."""
+    ignored_ip_set = frozenset(str(ip) for ip in (ignored_ips or ()))
+    ip_layers = _extract_ip_layers(packet)
+    if prefer_innermost and len(ip_layers) > 1:
+        layer_iterable = [(len(ip_layers) - 1, ip_layers[-1])]
+    else:
+        layer_iterable = list(enumerate(ip_layers))
+
+    src_mac, dst_mac = _extract_mac_addresses(packet)
+    tcp_flags, tcp_seq, tcp_ack = _extract_tcp_metadata(packet)
+    http_meta = _extract_http_metadata(packet)
+    tls_sni = _extract_tls_sni(packet)
+
+    for layer_index, layer_info in layer_iterable:
+        if layer_info.src_ip in ignored_ip_set or layer_info.dst_ip in ignored_ip_set:
+            continue
+
+        transport_payload = _extract_transport_payload(packet, layer_info.protocol)
+        payload_len = _infer_payload_length(packet, layer_info.protocol)
+        mqtt_details = (
+            parse_mqtt_details(
+                transport_payload,
+                layer_info.src_port,
+                layer_info.dst_port,
+            )
+            if layer_info.protocol == "tcp"
+            else MQTTDetails()
+        )
+        opcua_details = (
+            parse_opcua_details(
+                transport_payload,
+                layer_info.src_port,
+                layer_info.dst_port,
+            )
+            if layer_info.protocol == "tcp"
+            else OPCUADetails()
+        )
+        modbus_details = _extract_modbus_details(packet, layer_info)
+
+        yield PacketRecord(
+            pcap_file=pcap_file,
+            packet_index=packet_index,
+            timestamp=float(packet.time),
+            size=len(packet),
+            src_ip=layer_info.src_ip,
+            dst_ip=layer_info.dst_ip,
+            src_port=layer_info.src_port,
+            dst_port=layer_info.dst_port,
+            protocol=layer_info.protocol,
+            high_level_protocol=detect_high_level_protocol(
+                packet,
+                layer_info.src_port,
+                layer_info.dst_port,
+                layer_info.protocol,
+            ),
+            ip_layer_index=layer_index,
+            ip_layer_count=layer_info.layer_count,
+            src_mac=src_mac,
+            dst_mac=dst_mac,
+            tcp_flags=tcp_flags,
+            tcp_seq=tcp_seq,
+            tcp_ack=tcp_ack,
+            payload_len=payload_len,
+            http_method=http_meta.get("method"),
+            http_host=http_meta.get("host"),
+            http_path=http_meta.get("path"),
+            http_status=http_meta.get("status"),
+            http_content_type=http_meta.get("content_type"),
+            tls_sni=tls_sni,
+            mqtt_packet_type=mqtt_details.packet_type,
+            mqtt_packet_type_code=mqtt_details.packet_type_code,
+            mqtt_topic=mqtt_details.topic,
+            mqtt_qos=mqtt_details.qos,
+            mqtt_retain=mqtt_details.retain,
+            mqtt_dup=mqtt_details.dup,
+            mqtt_client_id=mqtt_details.client_id,
+            mqtt_keepalive=mqtt_details.keepalive,
+            mqtt_packet_id=mqtt_details.packet_id,
+            mqtt_payload_size=mqtt_details.payload_size,
+            opcua_message_type=opcua_details.message_type,
+            opcua_chunk_type=opcua_details.chunk_type,
+            opcua_message_size=opcua_details.message_size,
+            opcua_secure_channel_id=opcua_details.secure_channel_id,
+            opcua_endpoint_url=opcua_details.endpoint_url,
+            opcua_security_policy_uri=opcua_details.security_policy_uri,
+            opcua_service_type=opcua_details.service_type,
+            opcua_operation=opcua_details.operation,
+            opcua_request_id=opcua_details.request_id,
+            opcua_node_ids=opcua_details.node_ids,
+            opcua_values=opcua_details.values,
+            mqtt_payload_values=mqtt_details.payload_values,
+            modbus_function=modbus_details.function_code,
+            modbus_unit_id=modbus_details.unit_id,
+            modbus_registers=modbus_details.registers,
+            modbus_read_registers=modbus_details.read_registers,
+            modbus_write_registers=modbus_details.write_registers,
+            modbus_register_values=modbus_details.register_values,
+            modbus_transaction_id=modbus_details.transaction_id,
+        )

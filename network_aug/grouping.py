@@ -22,23 +22,21 @@ class ModbusGroup:
     service_port: int
     protocol: str
     connections: List[IndexedConnection] = field(default_factory=list)
-    _cached_packets: Optional[List[PacketRecord]] = field(default=None, repr=False)
 
     def add(self, connection: IndexedConnection) -> None:
         self.connections.append(connection)
-        self._cached_packets = None  # Invalidate cache
 
     def canonical_ids(self) -> Set[str]:
         return {connection.canonical_id for connection in self.connections}
 
     def packets(self) -> List[PacketRecord]:
-        if self._cached_packets is not None:
-            return self._cached_packets
+        # Build packets on demand without caching the merged list. In streaming
+        # mode these merged groups can be very large, and retaining them after
+        # one handler pass defeats the point of spill-backed materialization.
         packets: List[PacketRecord] = []
         for connection in self.connections:
             packets.extend(connection.records)
         packets.sort(key=lambda pkt: pkt.timestamp)
-        self._cached_packets = packets
         return packets
 
 
@@ -92,23 +90,18 @@ class HTTPMonitorGroup:
     service_port: int
     protocol: str
     connections: List[IndexedConnection] = field(default_factory=list)
-    _cached_packets: Optional[List[PacketRecord]] = field(default=None, repr=False)
 
     def add(self, connection: IndexedConnection) -> None:
         self.connections.append(connection)
-        self._cached_packets = None  # Invalidate cache
 
     def canonical_ids(self) -> Set[str]:
         return {connection.canonical_id for connection in self.connections}
 
     def packets(self) -> List[PacketRecord]:
-        if self._cached_packets is not None:
-            return self._cached_packets
         packets: List[PacketRecord] = []
         for connection in self.connections:
             packets.extend(connection.records)
         packets.sort(key=lambda pkt: pkt.timestamp)
-        self._cached_packets = packets
         return packets
 
 
@@ -191,25 +184,20 @@ class CollapsedConnectionGroup:
     protocol: str
     connections: List[IndexedConnection] = field(default_factory=list)
     client_ports: Set[int] = field(default_factory=set)
-    _cached_packets: Optional[List[PacketRecord]] = field(default=None, repr=False)
 
     def add(self, connection: IndexedConnection, client_port: int) -> None:
         self.connections.append(connection)
         if client_port:
             self.client_ports.add(client_port)
-        self._cached_packets = None  # Invalidate cache
 
     def canonical_ids(self) -> Set[str]:
         return {connection.canonical_id for connection in self.connections}
 
     def packets(self) -> List[PacketRecord]:
-        if self._cached_packets is not None:
-            return self._cached_packets
         packets: List[PacketRecord] = []
         for connection in self.connections:
             packets.extend(connection.records)
         packets.sort(key=lambda pkt: pkt.timestamp)
-        self._cached_packets = packets
         return packets
 
 

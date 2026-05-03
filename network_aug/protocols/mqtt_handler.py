@@ -18,7 +18,7 @@ class MqttProtocolHandler:
         relationship_count = 0
         consumed = set()
         asset_ips = getattr(context.augmentor, '_asset_ips', set())
-        grouped_packets = {}
+        grouped_connections = {}
         grouped_cids = {}
 
         iterable = (
@@ -56,11 +56,14 @@ class MqttProtocolHandler:
                 continue
 
             group_key = (client_ip, server_ip, service_port, protocol.lower())
-            grouped_packets.setdefault(group_key, []).extend(indexed.records)
+            grouped_connections.setdefault(group_key, []).append(indexed)
             grouped_cids.setdefault(group_key, set()).add(indexed.canonical_id)
 
-        for (client_ip, server_ip, service_port, protocol) in sorted(grouped_packets.keys()):
-            packets = sorted(grouped_packets[(client_ip, server_ip, service_port, protocol)], key=lambda pkt: pkt.timestamp)
+        for (client_ip, server_ip, service_port, protocol) in sorted(grouped_connections.keys()):
+            packets = []
+            for indexed in grouped_connections[(client_ip, server_ip, service_port, protocol)]:
+                packets.extend(indexed.records)
+            packets.sort(key=lambda pkt: pkt.timestamp)
             if not packets:
                 continue
 

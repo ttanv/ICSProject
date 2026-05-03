@@ -216,8 +216,10 @@ class CorrelatedConnection:
     confidence: float  # 0.0 - 1.0
     correlation_method: str  # e.g., "temporal_5tuple", "5tuple_only"
 
-    # Packets from the correlated PCAP connection
-    packets: List[PacketRecord] = field(default_factory=list)
+    # Packet sequence from the correlated PCAP connection.
+    # Keep the original sequence reference so streaming mode can defer
+    # loading/spooling work until the matched edge is actually materialized.
+    packets: Sequence[PacketRecord] = field(default_factory=tuple)
 
     @property
     def process_context(self) -> ProcessContext:
@@ -564,7 +566,7 @@ class CorrelationEngine:
                             pcap_connection=pcap_conn,
                             confidence=confidence,
                             correlation_method="session_port_exact",
-                            packets=list(pcap_conn.records),
+                            packets=pcap_conn.records,
                         )
                     else:
                         # Port matches but temporal is off - still a good match
@@ -580,7 +582,7 @@ class CorrelationEngine:
                             pcap_connection=pcap_conn,
                             confidence=confidence,
                             correlation_method="session_port_match",
-                            packets=list(pcap_conn.records),
+                            packets=pcap_conn.records,
                         )
 
         # No session-port match found

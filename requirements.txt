@@ -1,0 +1,8 @@
+tqdm
+PyYAML
+dpkt
+scapy
+duckdb
+numpy
+pandas
+pytest

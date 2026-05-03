@@ -132,6 +132,51 @@ class TestModels:
         parsed = json.loads(j)
         assert len(parsed["invariants"]) == 1
         assert parsed["signal_db_path"] == "/tmp/test.duckdb"
+        assert "correlation_graph" in parsed
+
+    def test_correlation_graph_structure(self):
+        """correlation_graph should have nodes from value_range and edges from inter_register."""
+        inv_set = InvariantSet(
+            generated_at="2025-01-01T00:00:00Z",
+            signal_db_path="/tmp/test.duckdb",
+            invariants=[
+                Invariant(
+                    type="value_range",
+                    registers=[1],
+                    unit_id=1,
+                    signal_container_guid="guid-a",
+                    parameters={"min": 0, "max": 100, "variable_name": "temp"},
+                ),
+                Invariant(
+                    type="value_range",
+                    registers=[2],
+                    unit_id=1,
+                    signal_container_guid="guid-b",
+                    parameters={"min": 0, "max": 200, "variable_name": "pressure"},
+                ),
+                Invariant(
+                    type="inter_register",
+                    registers=[1, 2],
+                    unit_id=1,
+                    parameters={
+                        "register_a": 1,
+                        "register_b": 2,
+                        "signal_guid_a": "guid-a",
+                        "signal_guid_b": "guid-b",
+                        "pearson_r": 0.95,
+                        "slope": 2.0,
+                        "intercept": 0.0,
+                        "relationship": "positive",
+                    },
+                ),
+            ],
+        )
+        graph = inv_set._build_correlation_graph()
+        assert "guid-a" in graph["nodes"]
+        assert "guid-b" in graph["nodes"]
+        assert graph["nodes"]["guid-a"]["variable_name"] == "temp"
+        assert len(graph["edges"]) == 1
+        assert graph["edges"][0]["pearson_r"] == 0.95
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +294,146 @@ class TestMiners:
         ranges = sorted((inv.parameters["min"], inv.parameters["max"]) for inv in reg1_invs)
         assert ranges[0][1] < 300    # Server A: 100..199
         assert ranges[1][0] >= 50000  # Server B: 50000..50099
+
+        conn.close()
+
+    def test_shared_guid_across_servers_does_not_conflate_value_ranges(self):
+        """Reproduce the production bug condition: signal_container_guid is generated from
+        client_hostname (see protocol_utils._generate_node_guid_for_signal_container), so
+        when one polling client polls the same Modbus address on multiple RTUs, all those
+        RTUs share the same GUID. The miner must NOT collapse them via GROUP BY guid alone.
+        """
+        conn = duckdb.connect(":memory:")
+        conn.execute("""
+            CREATE TABLE signal_observations (
+                timestamp DOUBLE NOT NULL,
+                register_address INTEGER NOT NULL,
+                value INTEGER NOT NULL,
+                access_type VARCHAR NOT NULL,
+                function_code INTEGER NOT NULL,
+                unit_id INTEGER,
+                client_host VARCHAR NOT NULL,
+                server_host VARCHAR NOT NULL,
+                client_ip VARCHAR NOT NULL,
+                server_ip VARCHAR NOT NULL,
+                transaction_id INTEGER,
+                request_timestamp DOUBLE,
+                response_timestamp DOUBLE,
+                write_acknowledged BOOLEAN,
+                signal_container_guid VARCHAR NOT NULL,
+                pcap_file VARCHAR NOT NULL
+            )
+        """)
+        rows = []
+        # Same GUID, two different servers, very different value ranges.
+        # On the buggy code the conflation would produce min=10, max=50099.
+        shared_guid = "guid-shared-because-client-host-only"
+        for i in range(100):
+            ts = 1000.0 + i * 0.5
+            # RTU-A: values 10..29 (small range)
+            rows.append((
+                ts, 1, 10 + (i % 20), "read", 3, 1,
+                "PLC-03", "RTU-A", "10.0.0.1", "10.0.0.2",
+                i, ts, ts + 0.01, None, shared_guid, "test.pcap",
+            ))
+            # RTU-B: values 50000..50099 (very different range)
+            rows.append((
+                ts, 1, 50000 + i, "read", 3, 1,
+                "PLC-03", "RTU-B", "10.0.0.1", "10.0.0.3",
+                i, ts, ts + 0.01, None, shared_guid, "test.pcap",
+            ))
+        conn.executemany(
+            "INSERT INTO signal_observations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+
+        invariants = mine_value_ranges(conn, 0.0, 2000.0, min_observations=10)
+        # Should produce TWO separate invariants (one per server), NOT one merged 10..50099 range.
+        reg1_invs = [inv for inv in invariants if inv.registers == [1]]
+        assert len(reg1_invs) == 2, (
+            f"Expected 2 invariants (one per server) but got {len(reg1_invs)}. "
+            "Likely cause: miner is grouping by signal_container_guid only and "
+            "conflating physically-distinct signals."
+        )
+
+        # Each invariant must report its own server's range, not the conflated union.
+        by_server = {inv.server_host: inv for inv in reg1_invs}
+        assert by_server["RTU-A"].parameters["min"] == 10
+        assert by_server["RTU-A"].parameters["max"] == 29
+        assert by_server["RTU-B"].parameters["min"] == 50000
+        assert by_server["RTU-B"].parameters["max"] == 50099
+
+        conn.close()
+
+    def test_shared_guid_across_servers_does_not_create_phantom_correlation(self):
+        """If two registers each share GUIDs across servers but are uncorrelated within
+        any single server, the miner must not invent a cross-server correlation."""
+        conn = duckdb.connect(":memory:")
+        conn.execute("""
+            CREATE TABLE signal_observations (
+                timestamp DOUBLE NOT NULL,
+                register_address INTEGER NOT NULL,
+                value INTEGER NOT NULL,
+                access_type VARCHAR NOT NULL,
+                function_code INTEGER NOT NULL,
+                unit_id INTEGER,
+                client_host VARCHAR NOT NULL,
+                server_host VARCHAR NOT NULL,
+                client_ip VARCHAR NOT NULL,
+                server_ip VARCHAR NOT NULL,
+                transaction_id INTEGER,
+                request_timestamp DOUBLE,
+                response_timestamp DOUBLE,
+                write_acknowledged BOOLEAN,
+                signal_container_guid VARCHAR NOT NULL,
+                pcap_file VARCHAR NOT NULL
+            )
+        """)
+        rows = []
+        guid_r1 = "guid-shared-reg1"
+        guid_r2 = "guid-shared-reg2"
+        # RTU-A: reg1 varies 0..99, reg2 constant 5
+        # RTU-B: reg1 constant 200, reg2 varies 1000..1099
+        # Within either server, reg1 and reg2 do NOT correlate.
+        # But concatenated across both servers, they would appear correlated
+        # (low reg1 with low reg2 on RTU-A, high reg1 with high reg2 on RTU-B).
+        for i in range(100):
+            ts = 1000.0 + i * 0.5
+            rows.append((
+                ts, 1, i, "read", 3, 1,
+                "PLC-03", "RTU-A", "10.0.0.1", "10.0.0.2",
+                i, ts, ts + 0.01, None, guid_r1, "test.pcap",
+            ))
+            rows.append((
+                ts, 2, 5, "read", 3, 1,
+                "PLC-03", "RTU-A", "10.0.0.1", "10.0.0.2",
+                i, ts, ts + 0.01, None, guid_r2, "test.pcap",
+            ))
+            rows.append((
+                ts, 1, 200, "read", 3, 1,
+                "PLC-03", "RTU-B", "10.0.0.1", "10.0.0.3",
+                i, ts, ts + 0.01, None, guid_r1, "test.pcap",
+            ))
+            rows.append((
+                ts, 2, 1000 + i, "read", 3, 1,
+                "PLC-03", "RTU-B", "10.0.0.1", "10.0.0.3",
+                i, ts, ts + 0.01, None, guid_r2, "test.pcap",
+            ))
+        conn.executemany(
+            "INSERT INTO signal_observations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+
+        invariants = mine_inter_register_correlations(
+            conn, 0.0, 2000.0, min_observations=10, correlation_threshold=0.7
+        )
+        # Within RTU-A, reg2 is constant → no correlation. Within RTU-B, reg1 is constant → no correlation.
+        # The miner must scope per-server, so total correlations should be 0.
+        assert len(invariants) == 0, (
+            f"Expected 0 correlations but got {len(invariants)}. "
+            "Likely cause: miner is filtering observations by signal_container_guid "
+            "alone and pulling rows from both servers into the correlation calculation."
+        )
 
         conn.close()
 
@@ -463,3 +648,8 @@ class TestPipeline:
         parsed = json.loads(config.output.read_text())
         assert "invariants" in parsed
         assert len(parsed["invariants"]) > 0
+        # correlation_graph should be present with nodes and edges
+        assert "correlation_graph" in parsed
+        graph = parsed["correlation_graph"]
+        assert len(graph["nodes"]) >= 2  # reg 1 and reg 2
+        assert len(graph["edges"]) >= 1  # they correlate
