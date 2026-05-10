@@ -2694,8 +2694,20 @@ class MissingTrafficAugmentor:
                 if signal_data.last_seen_at is None or timestamp > signal_data.last_seen_at:
                     signal_data.last_seen_at = timestamp
 
-            # Generate SignalContainer GUID for client observer (primary reference)
-            signal_guid = _generate_node_guid("SignalContainer", client_hostname, address, unit_id)
+            # Generate ICSSignal GUID matching the graph builder's recipe
+            # (see _ensure_modbus_ics_signal_node — same module). Falls back to
+            # the SignalContainer GUID when keys are missing so downstream code
+            # that joins on the column still has *some* identifier.
+            reg_type_for_guid = _register_type_from_function(function_code)
+            if server_hostname and unit_id is not None and reg_type_for_guid:
+                signal_guid = _generate_signal_guid(
+                    "modbus", server_hostname, server_port,
+                    unit_id, reg_type_for_guid, address,
+                )
+            else:
+                signal_guid = _generate_node_guid(
+                    "SignalContainer", client_hostname, address, unit_id
+                )
 
             # Create observation tuple for DuckDB (if signal_db is enabled)
             # Order must match OBSERVATION_COLUMNS in signal_db.py

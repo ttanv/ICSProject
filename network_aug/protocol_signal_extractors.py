@@ -51,7 +51,7 @@ def extract_mqtt_signal_observations(
             clean_field = str(field_name or "value").strip() or "value"
             signal_name = f"{topic}.{clean_field}"
             signal_guid = generate_signal_guid(
-                "mqtt", server_host, server_port, topic, clean_field
+                "mqtt", server_host, server_port, signal_name
             )
             observations.append(
                 (
@@ -180,7 +180,7 @@ class MqttSignalStreamExtractor:
             clean_field = str(field_name or "value").strip() or "value"
             signal_name = f"{topic}.{clean_field}"
             signal_guid = generate_signal_guid(
-                "mqtt", server_host, self.server_port, topic, clean_field
+                "mqtt", server_host, self.server_port, signal_name
             )
             rows.append(
                 (
