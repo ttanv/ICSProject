@@ -168,6 +168,10 @@ class MissingTrafficAugmentor:
             from .signal_db import SignalDatabase
             self._signal_db = SignalDatabase(config.signal_db_path)
             logger.info("Initialized signal database at %s", config.signal_db_path)
+        # When True, the streaming augmentor has already populated the signal
+        # database via per-PCAP Parquet shards during pass 1; the apply phase
+        # must skip its own _collect_modbus_signals calls to avoid duplicates.
+        self._modbus_signals_preloaded: bool = False
 
     def _build_artifacts(
         self,
@@ -1376,7 +1380,7 @@ class MissingTrafficAugmentor:
                 and base_key.dst_port == 502  # Modbus port
             ):
                 # Optional: persist raw observations to DuckDB without graph nodes
-                if self._signal_db:
+                if self._signal_db and not self._modbus_signals_preloaded:
                     self._collect_modbus_signals(
                         packets=all_packets,
                         client_ip=base_key.src_ip,
@@ -3472,7 +3476,7 @@ class MissingTrafficAugmentor:
             note="Aggregated Modbus server inferred from PCAP-only traffic",
         )
 
-        if self._signal_db:
+        if self._signal_db and not self._modbus_signals_preloaded:
             for connection in group.connections:
                 self._collect_modbus_signals(
                     packets=connection.records,
@@ -3686,7 +3690,7 @@ class MissingTrafficAugmentor:
         )
 
         # Optional: persist raw observations to DuckDB without graph nodes
-        if self._signal_db:
+        if self._signal_db and not self._modbus_signals_preloaded:
             self._collect_modbus_signals(
                 packets=packets,
                 client_ip=group.client_ip,

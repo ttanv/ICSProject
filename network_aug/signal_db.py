@@ -108,7 +108,7 @@ class SignalObservation:
 class SignalDatabase:
     """Manages DuckDB connection and signal observation storage."""
 
-    SCHEMA = """
+    TABLE_SCHEMA = """
     CREATE TABLE IF NOT EXISTS signal_observations (
         timestamp DOUBLE NOT NULL,
         register_address INTEGER NOT NULL,
@@ -127,18 +127,33 @@ class SignalDatabase:
         signal_container_guid VARCHAR NOT NULL,
         pcap_file VARCHAR NOT NULL
     );
-
-    CREATE INDEX IF NOT EXISTS idx_signal_container
-        ON signal_observations(signal_container_guid);
-    CREATE INDEX IF NOT EXISTS idx_register
-        ON signal_observations(register_address, unit_id);
-    CREATE INDEX IF NOT EXISTS idx_timestamp
-        ON signal_observations(timestamp);
-    CREATE INDEX IF NOT EXISTS idx_access_type
-        ON signal_observations(access_type);
-    CREATE INDEX IF NOT EXISTS idx_transaction
-        ON signal_observations(transaction_id);
     """
+
+    # Indexes are dropped during bulk load and recreated on close() / first read.
+    # Each insert otherwise pays O(log N) per index — five indexes × tens-of-millions
+    # of rows is the dominant cost in the profile (~26% of total).
+    INDEX_DEFS: Tuple[Tuple[str, str], ...] = (
+        ("idx_signal_container", "signal_observations(signal_container_guid)"),
+        ("idx_register", "signal_observations(register_address, unit_id)"),
+        ("idx_timestamp", "signal_observations(timestamp)"),
+        ("idx_access_type", "signal_observations(access_type)"),
+        ("idx_transaction", "signal_observations(transaction_id)"),
+    )
+
+    PENDING_ACK_SCHEMA = """
+    DROP TABLE IF EXISTS _pending_write_acks;
+    CREATE TABLE _pending_write_acks (
+        client_ip VARCHAR NOT NULL,
+        server_ip VARCHAR NOT NULL,
+        transaction_id INTEGER NOT NULL,
+        response_timestamp DOUBLE NOT NULL,
+        acknowledged BOOLEAN NOT NULL
+    );
+    """
+
+    # Buffer ack rows in Python and ship to DuckDB in batches; avoids the
+    # one-INSERT-per-call overhead that the per-row UPDATE used to have.
+    _ACK_BUFFER_FLUSH = 50_000
 
     def __init__(self, db_path: Path) -> None:
         """Initialize DuckDB connection and create schema if needed.
@@ -156,14 +171,44 @@ class SignalDatabase:
 
         self._db_path = Path(db_path)
         self._conn = duckdb.connect(str(self._db_path))
-        self._create_schema()
         self._pending_writes: Dict[tuple, int] = {}  # (client_ip, server_ip, transaction_id) -> row_id
+        # In-memory ack buffer; flushed into _pending_write_acks in batches.
+        self._ack_buffer: List[Tuple[str, str, int, float, bool]] = []
+        self._pending_ack_count: int = 0
+        # Indexes are absent during bulk-load and rebuilt on close()/first read.
+        self._indexes_built: bool = False
+        self._create_schema()
         logger.info("Opened signal database at %s", self._db_path)
 
     def _create_schema(self) -> None:
-        """Create the signal_observations table and indexes."""
-        self._conn.execute(self.SCHEMA)
-        logger.debug("Signal database schema created/verified")
+        """Create the table and ack staging table; defer index creation to close()."""
+        self._conn.execute(self.TABLE_SCHEMA)
+        self._conn.execute(self.PENDING_ACK_SCHEMA)
+        # If reopening a populated DB the indexes may already exist — keep them so
+        # downstream readers (geco/invariants) keep working without a rebuild.
+        existing = {
+            row[0] for row in self._conn.execute(
+                "SELECT index_name FROM duckdb_indexes() WHERE table_name = 'signal_observations'"
+            ).fetchall()
+        }
+        wanted = {name for name, _ in self.INDEX_DEFS}
+        self._indexes_built = wanted.issubset(existing)
+        if not self._indexes_built and existing & wanted:
+            # Partial state from a crashed run — rebuild from scratch on close().
+            for name in existing & wanted:
+                self._conn.execute(f"DROP INDEX IF EXISTS {name}")
+        logger.debug(
+            "Signal database schema ready (indexes_built=%s)", self._indexes_built
+        )
+
+    def _ensure_indexes(self) -> None:
+        """Create the read indexes if they aren't already present."""
+        if self._indexes_built:
+            return
+        for name, definition in self.INDEX_DEFS:
+            self._conn.execute(f"CREATE INDEX IF NOT EXISTS {name} ON {definition}")
+        self._indexes_built = True
+        logger.info("Built %d signal_observations indexes", len(self.INDEX_DEFS))
 
     def insert_observation(self, observation: SignalObservation) -> int:
         """Insert a single signal observation.
@@ -257,19 +302,14 @@ class SignalDatabase:
         return len(observations)
 
     def insert_tuples_fast(self, tuples: Sequence[ObservationTuple]) -> int:
-        """Ultra-fast bulk insert using pandas DataFrame.
+        """Bulk insert observation tuples via DuckDB's pandas replacement scan.
 
-        This method is ~100-800x faster than insert_batch() for large datasets.
-        It bypasses Python object creation overhead by accepting raw tuples
-        and using DuckDB's native pandas integration.
+        Indexes are *not* maintained during this call — they are built once at
+        :meth:`close` (or on first read). This avoids paying O(log N) per index
+        per row during ingest, which dominated the original profile.
 
         Args:
             tuples: List of tuples matching OBSERVATION_COLUMNS order.
-                    Each tuple should be: (timestamp, register_address, value,
-                    access_type, function_code, unit_id, client_host, server_host,
-                    client_ip, server_ip, transaction_id, request_timestamp,
-                    response_timestamp, write_acknowledged, signal_container_guid,
-                    pcap_file)
 
         Returns:
             Number of observations inserted.
@@ -281,16 +321,10 @@ class SignalDatabase:
             import pandas as pd
         except ImportError as e:
             logger.warning("pandas not available, falling back to slow insert")
-            # Fallback to slow path - convert tuples to SignalObservation
-            observations = [
-                SignalObservation(*t) for t in tuples
-            ]
+            observations = [SignalObservation(*t) for t in tuples]
             return self.insert_batch(observations)
 
-        # Create DataFrame from tuples - this is very fast
         df = pd.DataFrame(tuples, columns=OBSERVATION_COLUMNS)
-
-        # DuckDB can directly query pandas DataFrames - extremely fast
         self._conn.execute("INSERT INTO signal_observations SELECT * FROM df")
 
         logger.debug("Fast-inserted %d signal observations", len(tuples))
@@ -304,42 +338,94 @@ class SignalDatabase:
         response_timestamp: float,
         acknowledged: bool = True,
     ) -> int:
-        """Update write_acknowledged for a pending write operation.
+        """Buffer a write-ack for later bulk application.
 
-        Args:
-            client_ip: Client IP address.
-            server_ip: Server IP address.
-            transaction_id: Modbus transaction ID.
-            response_timestamp: Timestamp of the response packet.
-            acknowledged: Whether the write was acknowledged.
+        Originally ran an UPDATE per call, which triggered a full index scan on
+        every Modbus write response and dominated runtime at scale (912k UPDATEs
+        = 760s of the 2461s Pipedream 1hr profile). We now buffer acks in
+        memory, ship them to a staging table in batches, and resolve them in
+        one UPDATE FROM during :meth:`flush_write_acks` — called automatically
+        from :meth:`close` and any read accessor.
 
         Returns:
-            Number of rows updated.
+            Always 0 — actual row counts are only known after flush.
         """
-        result = self._conn.execute(
-            """
-            UPDATE signal_observations
-            SET write_acknowledged = ?,
-                response_timestamp = ?
-            WHERE client_ip = ?
-              AND server_ip = ?
-              AND transaction_id = ?
-              AND access_type = 'write'
-              AND write_acknowledged IS NULL
-            """,
-            [acknowledged, response_timestamp, client_ip, server_ip, transaction_id],
+        self._ack_buffer.append(
+            (client_ip, server_ip, transaction_id, response_timestamp, acknowledged)
         )
-        updated = result.fetchone()
-        # DuckDB doesn't return row count directly from UPDATE, check via changes
-        return 0 if updated is None else 1
+        if len(self._ack_buffer) >= self._ACK_BUFFER_FLUSH:
+            self._spill_ack_buffer()
+        return 0
+
+    def _spill_ack_buffer(self) -> None:
+        """Move the in-memory ack buffer into the DuckDB staging table."""
+        if not self._ack_buffer:
+            return
+        try:
+            import pandas as pd
+        except ImportError:
+            # Fallback: row-by-row INSERT — slow, but correctness preserved.
+            self._conn.executemany(
+                "INSERT INTO _pending_write_acks VALUES (?, ?, ?, ?, ?)",
+                self._ack_buffer,
+            )
+        else:
+            df = pd.DataFrame(
+                self._ack_buffer,
+                columns=("client_ip", "server_ip", "transaction_id",
+                         "response_timestamp", "acknowledged"),
+            )
+            self._conn.execute("INSERT INTO _pending_write_acks SELECT * FROM df")
+        self._pending_ack_count += len(self._ack_buffer)
+        self._ack_buffer.clear()
+
+    def flush_write_acks(self) -> int:
+        """Apply all buffered write acks to signal_observations in one UPDATE.
+
+        Returns:
+            Number of staged ack rows that were applied. Note: this is the
+            staging-row count, not the count of signal_observations rows
+            actually updated (which may differ if some txids never had a
+            matching write in the table).
+        """
+        self._spill_ack_buffer()
+        if self._pending_ack_count == 0:
+            return 0
+
+        staged = self._pending_ack_count
+        # UPDATE FROM pattern: one statement does the join+update for every
+        # buffered ack; replaces 912k row-by-row UPDATEs in the original code.
+        self._conn.execute(
+            """
+            UPDATE signal_observations AS s
+            SET write_acknowledged = a.acknowledged,
+                response_timestamp = a.response_timestamp
+            FROM _pending_write_acks AS a
+            WHERE s.client_ip = a.client_ip
+              AND s.server_ip = a.server_ip
+              AND s.transaction_id = a.transaction_id
+              AND s.access_type = 'write'
+              AND s.write_acknowledged IS NULL
+            """
+        )
+        self._conn.execute("DELETE FROM _pending_write_acks")
+        self._pending_ack_count = 0
+        logger.info("Flushed %d staged write acks", staged)
+        return staged
 
     def get_observation_count(self) -> int:
         """Return total number of observations in the database."""
+        if self._ack_buffer or self._pending_ack_count:
+            self.flush_write_acks()
+        self._ensure_indexes()
         result = self._conn.execute("SELECT COUNT(*) FROM signal_observations")
         return result.fetchone()[0]
 
     def get_statistics(self) -> Dict[str, int]:
         """Return statistics about stored observations."""
+        if self._ack_buffer or self._pending_ack_count:
+            self.flush_write_acks()
+        self._ensure_indexes()
         stats = {}
 
         # Total count
@@ -388,8 +474,15 @@ class SignalDatabase:
         return stats
 
     def close(self) -> None:
-        """Close database connection."""
+        """Flush pending acks, build indexes, and close the database connection."""
         if self._conn:
+            try:
+                if self._pending_ack_count:
+                    self.flush_write_acks()
+                self._conn.execute("DROP TABLE IF EXISTS _pending_write_acks")
+                self._ensure_indexes()
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Failed to finalize signal DB during close: %s", exc)
             self._conn.close()
             logger.info("Closed signal database at %s", self._db_path)
             self._conn = None

@@ -737,6 +737,39 @@ class StreamingPCAPIndex:
         self._stats: Dict[str, ConnectionStats] = {}
         self._processed_files: List[str] = []
         self._total_packets: int = 0
+        # Inline Modbus extraction config — when set, each pass-1 worker also
+        # writes a per-PCAP Parquet shard with fully-resolved observations.
+        self._modbus_extract_dir: Optional[Path] = None
+        self._modbus_extract_kwargs: Optional[Dict[str, object]] = None
+        self._modbus_shard_paths: List[Path] = []
+
+    def configure_modbus_extraction(
+        self,
+        shard_dir: Path,
+        asset_ip_to_hostname: Dict[str, str],
+        modbus_server_ports: Tuple[int, ...] = (502,),
+        asset_ips: Tuple[str, ...] = (),
+    ) -> None:
+        """Enable inline Modbus signal extraction in pass-1 workers.
+
+        Args:
+            shard_dir: Directory to write per-PCAP Parquet shards into.
+            asset_ip_to_hostname: IP -> hostname map for hostname resolution.
+            modbus_server_ports: Ports treated as Modbus servers (default 502).
+            asset_ips: If non-empty, only packets touching these IPs are
+                extracted. Empty tuple means "extract all".
+        """
+        self._modbus_extract_dir = Path(shard_dir)
+        self._modbus_extract_dir.mkdir(parents=True, exist_ok=True)
+        self._modbus_extract_kwargs = {
+            "asset_ip_to_hostname": dict(asset_ip_to_hostname),
+            "modbus_server_ports": tuple(modbus_server_ports),
+            "asset_ips": tuple(asset_ips),
+        }
+
+    @property
+    def modbus_shard_paths(self) -> List[Path]:
+        return list(self._modbus_shard_paths)
 
     def build(self) -> None:
         """Process all PCAP files, accumulating statistics incrementally."""
@@ -760,6 +793,11 @@ class StreamingPCAPIndex:
 
         print(f"Processed {self._total_packets:,} packets across {len(pcap_files)} files")
         print(f"Found {len(self._stats):,} unique connections")
+        if self._modbus_shard_paths:
+            print(
+                f"Wrote {len(self._modbus_shard_paths)} Modbus signal shards under "
+                f"{self._modbus_extract_dir}"
+            )
 
     def _process_single_file_isolated(self, pcap_path: Path) -> None:
         """Process one file in an isolated worker so parser crashes are recoverable."""
@@ -809,6 +847,15 @@ class StreamingPCAPIndex:
         with tempfile.NamedTemporaryFile(prefix="stream_stats_", suffix=".pkl", delete=False) as handle:
             result_path = Path(handle.name)
 
+        modbus_kwargs = None
+        shard_path: Optional[Path] = None
+        if self._modbus_extract_kwargs is not None and self._modbus_extract_dir is not None:
+            shard_path = self._modbus_extract_dir / f"{pcap_path.stem}.parquet"
+            modbus_kwargs = {
+                "shard_path": str(shard_path),
+                **self._modbus_extract_kwargs,
+            }
+
         ctx = multiprocessing.get_context("spawn")
         process = ctx.Process(
             target=_stream_file_stats_worker,
@@ -818,6 +865,7 @@ class StreamingPCAPIndex:
                 backend,
                 tuple(self._IGNORED_IPS),
                 str(result_path),
+                modbus_kwargs,
             ),
         )
         process.start()
@@ -837,6 +885,8 @@ class StreamingPCAPIndex:
                             error_message=error_message or "worker completed without a result payload",
                         )
                     )
+                if shard_path is not None and payload.get("modbus_shard_rows", 0) > 0:
+                    self._modbus_shard_paths.append(shard_path)
                 return payload["stats"], int(payload["processed_packets"])
 
             error_message = payload.get("error") if payload else None
@@ -873,9 +923,26 @@ def _stream_file_stats_worker(
     backend: str,
     ignored_ips: Tuple[str, ...],
     result_path_str: str,
+    modbus_extract_kwargs: Optional[Dict[str, object]] = None,
 ) -> None:
-    """Worker that parses one PCAP file and serializes per-file streaming stats."""
+    """Worker that parses one PCAP file and serializes per-file streaming stats.
+
+    When ``modbus_extract_kwargs`` is provided the worker also runs an inline
+    Modbus signal extractor over the same packet stream, writing a
+    per-PCAP Parquet shard. This eliminates the apply-time DuckDB write loop
+    that otherwise re-iterates packets and dominates the original runtime.
+    """
     result_path = Path(result_path_str)
+    extractor = None
+    if modbus_extract_kwargs is not None:
+        from .streaming_modbus_extract import ModbusSignalExtractor
+        extractor = ModbusSignalExtractor(
+            pcap_file=Path(pcap_path_str).name,
+            shard_path=Path(modbus_extract_kwargs["shard_path"]),
+            asset_ip_to_hostname=dict(modbus_extract_kwargs["asset_ip_to_hostname"]),
+            modbus_server_ports=frozenset(modbus_extract_kwargs.get("modbus_server_ports") or (502,)),
+            asset_ip_set=frozenset(modbus_extract_kwargs.get("asset_ips") or ()),
+        )
     try:
         pcap_path = Path(pcap_path_str)
         partial_stats: Dict[str, ConnectionStats] = {}
@@ -903,12 +970,18 @@ def _stream_file_stats_worker(
                 stats.origin_timestamp = record.timestamp
             processed_packets += 1
 
+            if extractor is not None:
+                extractor.process_packet(record)
+
+        modbus_shard_rows = extractor.finalize() if extractor is not None else 0
+
         with result_path.open("wb") as handle:
             pickle.dump(
                 {
                     "ok": True,
                     "stats": partial_stats,
                     "processed_packets": processed_packets,
+                    "modbus_shard_rows": modbus_shard_rows,
                 },
                 handle,
                 protocol=pickle.HIGHEST_PROTOCOL,

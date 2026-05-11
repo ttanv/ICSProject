@@ -631,6 +631,31 @@ class StreamingAugmentor:
         finally:
             result_path.unlink(missing_ok=True)
 
+    def _load_modbus_shards(self, batch_aug: object, shard_dir: Path) -> None:
+        """Bulk-load per-PCAP Modbus shards into the signal database.
+
+        Replaces the apply-time ``_collect_modbus_signals`` calls with a single
+        SQL statement that streams every shard into ``signal_observations``.
+        Sets the ``_modbus_signals_preloaded`` flag so the apply phase skips
+        redundant per-group inserts.
+        """
+        signal_db = getattr(batch_aug, "_signal_db", None)
+        if signal_db is None:
+            return
+        shards = sorted(p for p in shard_dir.glob("*.parquet"))
+        if not shards:
+            return
+        glob = str(shard_dir / "*.parquet")
+        # DuckDB streams Parquet files without materializing them in RAM.
+        signal_db._conn.execute(
+            f"INSERT INTO signal_observations SELECT * FROM read_parquet('{glob}')"
+        )
+        # Mark the augmentor so apply-phase callers skip the redundant inserts.
+        batch_aug._modbus_signals_preloaded = True
+        print(
+            f"Loaded {len(shards)} Modbus shard(s) into signal database from {shard_dir}"
+        )
+
     def run(self) -> Tuple[int, int]:
         """Execute streaming augmentation with targeted full-packet materialization."""
         if self._signal_db is not None:
@@ -658,7 +683,32 @@ class StreamingAugmentor:
             packet_limit_per_file=self.config.packet_limit,
             parser_backend=self._parser_backend,
         )
-        pcap_index.build()
+
+        # Inline Modbus signal extraction: have each pass-1 worker also write
+        # a Parquet shard with fully-resolved Modbus observations so the apply
+        # phase can skip the expensive packet re-iteration.
+        modbus_extract_dir: Optional[Path] = None
+        if batch_aug._signal_db is not None:
+            modbus_extract_dir = Path(tempfile.mkdtemp(prefix="network_aug_modbus_shards_"))
+            asset_map = {**self._asset_ip_map, **self.config.ip_hostname_map}
+            pcap_index.configure_modbus_extraction(
+                shard_dir=modbus_extract_dir,
+                asset_ip_to_hostname=asset_map,
+                modbus_server_ports=(502,),
+                asset_ips=tuple(self._asset_ips) if self._asset_ips else (),
+            )
+
+        try:
+            pcap_index.build()
+
+            if modbus_extract_dir is not None and pcap_index.modbus_shard_paths:
+                self._load_modbus_shards(batch_aug, modbus_extract_dir)
+        finally:
+            if modbus_extract_dir is not None:
+                # Shards were ingested into DuckDB; drop the staging dir.
+                import shutil
+                shutil.rmtree(modbus_extract_dir, ignore_errors=True)
+
         stats_by_cid = {stats.canonical_id: stats for stats in pcap_index.iter_stats()}
 
         candidate_ids, selection_stats = self._select_candidate_connection_ids(
@@ -669,6 +719,20 @@ class StreamingAugmentor:
         print(
             f"Selected {len(candidate_ids)} candidate connections from {in_scope_connections} in-scope connections"
         )
+
+        # Sample packets are only consulted during candidate selection
+        # (orientation + policy heuristics). After this point pass 2 reads
+        # full packet records back from the PCAPs, so the retained samples
+        # are dead weight — ~40 KB per connection × hundreds of thousands
+        # of connections at 24h+ scale.
+        sample_drop_count = 0
+        for stats in stats_by_cid.values():
+            if stats._sample_packets:
+                sample_drop_count += len(stats._sample_packets)
+                stats._sample_packets.clear()
+        if sample_drop_count:
+            print(f"Released {sample_drop_count:,} sample packets after candidate selection")
+            gc.collect()
         print(
             f"  - sample correlations: {selection_stats.get('successful_correlations', 0)}/"
             f"{selection_stats.get('total_attempts', 0)}"
