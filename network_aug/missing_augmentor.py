@@ -3,10 +3,11 @@ Add missing traffic connections, augments existing connections with traffic meta
 """
 from dataclasses import dataclass, field
 import hashlib
+import heapq
 import logging
 from pathlib import Path
 import re
-from typing import Tuple, Optional, Dict, Set, List, Sequence
+from typing import Iterator, Tuple, Optional, Dict, Set, List, Sequence
 from tqdm import tqdm
 import uuid
 from .models import SignalContainerData, ConnectionKey, IndexedConnection, PacketRecord
@@ -28,6 +29,7 @@ from .cypher_reader import (
 )
 from .features import (
     PreSortedPackets,
+    RelationshipFeatureAccumulator,
     average_packet_size,
     count_tcp_retransmits,
     dominant_protocol,
@@ -41,6 +43,7 @@ from .features import (
     mean_interarrival_time,
     mean_rtt_ms,
     resolve_mac_addresses,
+    stream_relationship_features,
 )
 from .modbus_helpers import modbus_transaction_key, register_type_from_function
 from .mqtt_helpers import MQTT_PORTS
@@ -1294,38 +1297,64 @@ class MissingTrafficAugmentor:
             if edge_key in seen_edges:
                 continue
 
-            # Combine all packets from correlated PCAP connections
-            all_packets: List[PacketRecord] = []
+            # Pick a representative anchor (highest correlation confidence).
+            # We avoid materializing packets — corr.packets is a lazy
+            # _SpooledPacketRecords iterator. For BE 24h's busiest edge the
+            # old all_packets list peaked at ~8 GB; at 1-week scale this
+            # was the dominant remaining memory term.
             best_confidence = 0.0
             representative_anchor: Optional[CorrelatedConnection] = None
-
             for corr in edge_correlations:
-                all_packets.extend(corr.packets)
                 if corr.confidence > best_confidence:
                     best_confidence = corr.confidence
                     representative_anchor = corr
-
-            if not all_packets or representative_anchor is None:
+            if representative_anchor is None:
                 continue
 
             anchor = representative_anchor.telemetry_anchor
             base_key = anchor.connection_key
             proto = base_key.protocol.lower()
+            proc_ctx = representative_anchor.process_context
 
-            # Determine source port from PCAP if telemetry doesn't have it
-            if base_key.src_port > 0:
-                src_port = base_key.src_port
-            elif all_packets:
-                # Use most common source port from PCAP
-                port_counts: Dict[int, int] = {}
-                for pkt in all_packets:
+            # All downstream packet consumers (feature accumulator,
+            # _collect_modbus_signals, _collect_modbus_registers,
+            # _collect_mqtt_signals, _collect_opcua_signals) read packets
+            # in a single pass. _SpooledPacketRecords is disk-backed and
+            # re-iterable, so we can build a fresh heapq.merge for each
+            # consumer without ever materializing a packet list. This
+            # capped the memory term that scaled with capture length.
+            def _merged_packets() -> Iterator[PacketRecord]:
+                return heapq.merge(
+                    *[corr.packets for corr in edge_correlations],
+                    key=lambda pkt: pkt.timestamp,
+                )
+
+            need_source_port = base_key.src_port <= 0
+            port_counts: Optional[Dict[int, int]] = {} if need_source_port else None
+            placeholder_conn = ConnectionKey(
+                src_ip=base_key.src_ip,
+                src_port=base_key.src_port if base_key.src_port > 0 else 0,
+                dst_ip=base_key.dst_ip,
+                dst_port=base_key.dst_port,
+                protocol=proto,
+            )
+            acc = RelationshipFeatureAccumulator(connection=placeholder_conn)
+
+            for pkt in _merged_packets():
+                acc.update(pkt)
+                if port_counts is not None:
                     if pkt.src_ip == base_key.src_ip:
                         port_counts[pkt.src_port] = port_counts.get(pkt.src_port, 0) + 1
                     elif pkt.dst_ip == base_key.src_ip:
                         port_counts[pkt.dst_port] = port_counts.get(pkt.dst_port, 0) + 1
-                src_port = max(port_counts, key=port_counts.get) if port_counts else 0
+
+            if acc.packet_count == 0:
+                continue
+
+            if need_source_port and port_counts:
+                src_port = max(port_counts, key=port_counts.get)
             else:
-                src_port = 0
+                src_port = base_key.src_port if base_key.src_port > 0 else 0
 
             connection_view = ConnectionKey(
                 src_ip=base_key.src_ip,
@@ -1335,11 +1364,13 @@ class MissingTrafficAugmentor:
                 protocol=proto,
             )
 
-            feature_props = self._relationship_properties(connection_view, all_packets)
+            # Patch the accumulator's connection identity for the feature
+            # dict's metadata fields. The directional sums are already
+            # correct because src_port doesn't affect IP-pair matching.
+            acc.connection = connection_view
+            feature_props = acc.feature_dict()
 
             feature_props["correlatedPcapConnections"] = len(edge_correlations)
-
-            proc_ctx = representative_anchor.process_context
 
             # Fill in missing network properties from telemetry
             if not anchor.rel_properties.get("SourceIp"):
@@ -1379,10 +1410,12 @@ class MissingTrafficAugmentor:
                 and proc_ctx.is_valid()
                 and base_key.dst_port == 502  # Modbus port
             ):
-                # Optional: persist raw observations to DuckDB without graph nodes
+                # Optional: persist raw observations to DuckDB without graph nodes.
+                # In the streaming pipeline _modbus_signals_preloaded is True
+                # (signals came from Parquet shards) and this branch is skipped.
                 if self._signal_db and not self._modbus_signals_preloaded:
                     self._collect_modbus_signals(
-                        packets=all_packets,
+                        packets=_merged_packets(),
                         client_ip=base_key.src_ip,
                         server_ip=base_key.dst_ip,
                         server_port=base_key.dst_port,
@@ -1403,7 +1436,7 @@ class MissingTrafficAugmentor:
                 )
 
                 register_summaries = self._collect_modbus_registers(
-                    packets=all_packets,
+                    packets=_merged_packets(),
                     server_ip=base_key.dst_ip,
                     server_port=base_key.dst_port,
                 )
@@ -1440,7 +1473,7 @@ class MissingTrafficAugmentor:
                 server_hostname, _ = self._resolve_host(base_key.dst_ip)
                 server_asset_guid = self._ensure_asset_node(server_hostname, base_key.dst_ip, asset_statements)
                 mqtt_signal_summaries = self._collect_mqtt_signals(
-                    packets=all_packets,
+                    packets=_merged_packets(),
                     server_ip=base_key.dst_ip,
                     server_port=base_key.dst_port,
                 )
@@ -1479,7 +1512,7 @@ class MissingTrafficAugmentor:
                 server_hostname, _ = self._resolve_host(base_key.dst_ip)
                 server_asset_guid = self._ensure_asset_node(server_hostname, base_key.dst_ip, asset_statements)
                 opcua_signal_summaries = self._collect_opcua_signals(
-                    packets=all_packets,
+                    packets=_merged_packets(),
                     server_ip=base_key.dst_ip,
                     server_port=base_key.dst_port,
                 )

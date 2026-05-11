@@ -742,6 +742,47 @@ class StreamingPCAPIndex:
         self._modbus_extract_dir: Optional[Path] = None
         self._modbus_extract_kwargs: Optional[Dict[str, object]] = None
         self._modbus_shard_paths: List[Path] = []
+        # Per-PCAP ConnectionStats spill — when configured, each PCAP's partial
+        # stats are pickled to a per-PCAP shard on disk and the in-memory dict
+        # is never built. Working set stays at "one PCAP's stats" regardless of
+        # total capture length. Critical for >24h runs where the accumulated
+        # dict would otherwise grow linearly with run length.
+        self._stats_shard_dir: Optional[Path] = None
+        self._stats_shard_paths: List[Path] = []
+        # Asset-IP scope filter pushed into the worker so out-of-scope
+        # connections never reach the ConnectionStats dict.
+        self._asset_ips_filter: Tuple[str, ...] = ()
+
+    def configure_stats_spill(
+        self,
+        shard_dir: Path,
+        asset_ips: Tuple[str, ...] = (),
+    ) -> None:
+        """Enable per-PCAP ConnectionStats spill to disk.
+
+        When this is configured the index does not retain a global
+        ``self._stats`` dict; instead each PCAP's worker output is pickled
+        to a shard file and downstream consumers stream through
+        :meth:`iter_shards`. Working set is bounded by one PCAP's stats
+        regardless of total capture length.
+
+        Args:
+            shard_dir: Directory to write per-PCAP pickle shards into.
+            asset_ips: If non-empty, the worker also filters packets so only
+                in-scope connections (touching at least one asset IP) reach
+                the stats dict. Empty means "no scope filter at parse time".
+        """
+        self._stats_shard_dir = Path(shard_dir)
+        self._stats_shard_dir.mkdir(parents=True, exist_ok=True)
+        self._asset_ips_filter = tuple(asset_ips)
+
+    @property
+    def stats_shard_paths(self) -> List[Path]:
+        return list(self._stats_shard_paths)
+
+    @property
+    def spill_enabled(self) -> bool:
+        return self._stats_shard_dir is not None
 
     def configure_modbus_extraction(
         self,
@@ -792,7 +833,14 @@ class StreamingPCAPIndex:
             gc.collect()  # Force garbage collection between files
 
         print(f"Processed {self._total_packets:,} packets across {len(pcap_files)} files")
-        print(f"Found {len(self._stats):,} unique connections")
+        if self.spill_enabled:
+            # Stats are on disk; print shard count instead of conn count.
+            print(
+                f"Wrote {len(self._stats_shard_paths)} stats shards under "
+                f"{self._stats_shard_dir} (total in-memory dict avoided)"
+            )
+        else:
+            print(f"Found {len(self._stats):,} unique connections")
         if self._modbus_shard_paths:
             print(
                 f"Wrote {len(self._modbus_shard_paths)} Modbus signal shards under "
@@ -832,11 +880,20 @@ class StreamingPCAPIndex:
         partial_stats: Dict[str, ConnectionStats],
         processed_packets: int,
     ) -> None:
-        for conn_id, partial in partial_stats.items():
-            if conn_id not in self._stats:
-                self._stats[conn_id] = partial
-            else:
-                self._stats[conn_id].merge(partial)
+        if self._stats_shard_dir is not None:
+            # Spill mode: write the partial dict straight to disk and forget
+            # about it. Downstream consumers stream through iter_shards().
+            idx = len(self._stats_shard_paths)
+            shard_path = self._stats_shard_dir / f"stats_{idx:05d}.pkl"
+            with shard_path.open("wb") as handle:
+                pickle.dump(partial_stats, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            self._stats_shard_paths.append(shard_path)
+        else:
+            for conn_id, partial in partial_stats.items():
+                if conn_id not in self._stats:
+                    self._stats[conn_id] = partial
+                else:
+                    self._stats[conn_id].merge(partial)
         self._total_packets += processed_packets
 
     def _run_stats_worker(
@@ -866,6 +923,7 @@ class StreamingPCAPIndex:
                 tuple(self._IGNORED_IPS),
                 str(result_path),
                 modbus_kwargs,
+                self._asset_ips_filter,
             ),
         )
         process.start()
@@ -913,8 +971,90 @@ class StreamingPCAPIndex:
         return payload
 
     def iter_stats(self) -> Iterator[ConnectionStats]:
-        """Yield ConnectionStats objects for streaming processing."""
-        yield from self._stats.values()
+        """Yield ConnectionStats objects for streaming processing.
+
+        In spill mode this materializes shards one at a time and yields
+        their stats, so the working set stays bounded by a single PCAP's
+        dict. Callers must be tolerant of seeing the *same* canonical_id
+        across multiple yielded objects (one per shard it appeared in) —
+        for true merged stats use :meth:`iter_merged_stats` instead.
+        """
+        if self._stats_shard_dir is None:
+            yield from self._stats.values()
+            return
+        for shard_path in self._stats_shard_paths:
+            with shard_path.open("rb") as handle:
+                shard: Dict[str, ConnectionStats] = pickle.load(handle)
+            yield from shard.values()
+            del shard
+            gc.collect()
+
+    def iter_shards(self) -> Iterator[Dict[str, ConnectionStats]]:
+        """Yield per-PCAP stats dicts one at a time (spill mode only).
+
+        Each yielded dict is the worker output for a single PCAP. Callers
+        process each dict to completion, then release the reference; the
+        next iteration loads the next shard from disk. Working set is
+        bounded by one PCAP's stats regardless of how many shards exist.
+        """
+        if self._stats_shard_dir is None:
+            # No spill — synthesize a single "shard" from the in-memory dict
+            # so consumers can use the same loop shape unconditionally.
+            if self._stats:
+                yield self._stats
+            return
+        for shard_path in self._stats_shard_paths:
+            with shard_path.open("rb") as handle:
+                shard: Dict[str, ConnectionStats] = pickle.load(handle)
+            yield shard
+            del shard
+            gc.collect()
+
+    def iter_merged_stats(self) -> Iterator[ConnectionStats]:
+        """Yield fully-merged ConnectionStats, lazily merging across shards.
+
+        Walks shards in order, maintaining an accumulator only for
+        connections that have not yet appeared in their *last* shard. Each
+        connection is yielded exactly once, in completion order, then
+        evicted from the accumulator.
+
+        Working set bound: connections that appear in shard[i..N) but not
+        yet in shard[N]. For continuous ICS connections this is close to
+        the full unique-connection count, so prefer :meth:`iter_shards`
+        for streaming candidate-selection where you only need per-shard
+        slices.
+        """
+        if self._stats_shard_dir is None:
+            yield from self._stats.values()
+            return
+
+        # Pre-scan: for each canonical_id, find its *last* shard. Building
+        # completion[shard_idx] -> [cids] lets us evict each cid exactly
+        # when the last shard touching it is loaded.
+        last_shard_for: Dict[str, int] = {}
+        for idx, shard_path in enumerate(self._stats_shard_paths):
+            with shard_path.open("rb") as handle:
+                for cid in pickle.load(handle).keys():
+                    last_shard_for[cid] = idx
+        completion: Dict[int, List[str]] = {}
+        for cid, idx in last_shard_for.items():
+            completion.setdefault(idx, []).append(cid)
+        del last_shard_for
+        gc.collect()
+
+        accumulator: Dict[str, ConnectionStats] = {}
+        for idx, shard_path in enumerate(self._stats_shard_paths):
+            with shard_path.open("rb") as handle:
+                shard: Dict[str, ConnectionStats] = pickle.load(handle)
+            for cid, partial in shard.items():
+                if cid in accumulator:
+                    accumulator[cid].merge(partial)
+                else:
+                    accumulator[cid] = partial
+            del shard
+            for cid in completion.get(idx, ()):
+                yield accumulator.pop(cid)
+            gc.collect()
 
 
 def _stream_file_stats_worker(
@@ -924,6 +1064,7 @@ def _stream_file_stats_worker(
     ignored_ips: Tuple[str, ...],
     result_path_str: str,
     modbus_extract_kwargs: Optional[Dict[str, object]] = None,
+    asset_ip_filter: Tuple[str, ...] = (),
 ) -> None:
     """Worker that parses one PCAP file and serializes per-file streaming stats.
 
@@ -931,6 +1072,11 @@ def _stream_file_stats_worker(
     Modbus signal extractor over the same packet stream, writing a
     per-PCAP Parquet shard. This eliminates the apply-time DuckDB write loop
     that otherwise re-iterates packets and dominates the original runtime.
+
+    When ``asset_ip_filter`` is non-empty, packets where neither endpoint is
+    an asset IP are skipped before any ConnectionStats allocation. This
+    keeps out-of-scope chatter (mDNS, broadcasts, NTP, etc.) out of the
+    stats dict entirely.
     """
     result_path = Path(result_path_str)
     extractor = None
@@ -943,6 +1089,7 @@ def _stream_file_stats_worker(
             modbus_server_ports=frozenset(modbus_extract_kwargs.get("modbus_server_ports") or (502,)),
             asset_ip_set=frozenset(modbus_extract_kwargs.get("asset_ips") or ()),
         )
+    asset_ip_set = frozenset(asset_ip_filter)
     try:
         pcap_path = Path(pcap_path_str)
         partial_stats: Dict[str, ConnectionStats] = {}
@@ -954,6 +1101,15 @@ def _stream_file_stats_worker(
             backend=backend,
             ignored_ips=ignored_ips,
         ):
+            if asset_ip_set and record.src_ip not in asset_ip_set and record.dst_ip not in asset_ip_set:
+                # Still hand the packet to the Modbus extractor (which has
+                # its own scope filter) so we don't lose Modbus observations
+                # — but skip the ConnectionStats allocation.
+                if extractor is not None:
+                    extractor.process_packet(record)
+                processed_packets += 1
+                continue
+
             conn_key = record.connection_key()
             conn_id = conn_key.bidirectional_id()
             if conn_id not in partial_stats:

@@ -449,6 +449,29 @@ class StreamingAugmentor:
         stats_iter: Sequence[ConnectionStats],
         telemetry_index: TelemetryConnectionIndex,
     ) -> Tuple[Set[str], Dict[str, int]]:
+        candidate_ids, _origin, stats = self._select_candidates_streaming(
+            iter(stats_iter), telemetry_index
+        )
+        return candidate_ids, stats
+
+    def _select_candidates_streaming(
+        self,
+        stats_iter: Iterator[ConnectionStats],
+        telemetry_index: TelemetryConnectionIndex,
+    ) -> Tuple[Set[str], Dict[str, Tuple[ConnectionKey, int, float]], Dict[str, int]]:
+        """Select candidates while keeping only a tiny per-conn record around.
+
+        Returns:
+            candidate_ids: set of canonical_ids picked as candidates.
+            candidate_origin: cid -> (origin_key, packet_count, origin_timestamp).
+                This is all the materialization phase needs from ConnectionStats.
+            selection_stats: correlation engine + scope/policy stats.
+
+        Same connection may be visited multiple times (one per shard it
+        appeared in). We take the union — if any visit selects it, the cid
+        joins the candidate set. The ``candidate_origin`` record uses the
+        earliest timestamp seen and accumulates packet_count across shards.
+        """
         correlation_config = CorrelationConfig(
             min_confidence=self.config.min_correlation_confidence,
             temporal_tolerance_seconds=self.config.temporal_tolerance_seconds,
@@ -457,14 +480,34 @@ class StreamingAugmentor:
         correlation_engine = CorrelationEngine(config=correlation_config)
 
         candidate_ids: Set[str] = set()
-        in_scope_connections = 0
+        candidate_origin: Dict[str, Tuple[ConnectionKey, int, float]] = {}
+        in_scope_canonical_ids: Set[str] = set()
         selected_by_correlation = 0
         selected_by_policy = 0
 
         for stats in stats_iter:
             if not self._is_in_scope(stats):
                 continue
-            in_scope_connections += 1
+            in_scope_canonical_ids.add(stats.canonical_id)
+
+            # Aggregate the small "what materialization needs" record across
+            # shards. Earliest origin wins; packet_count sums.
+            existing = candidate_origin.get(stats.canonical_id)
+            if existing is None:
+                candidate_origin[stats.canonical_id] = (
+                    stats.origin, stats.packet_count, stats.origin_timestamp
+                )
+            else:
+                prev_origin, prev_count, prev_ts = existing
+                if stats.origin_timestamp < prev_ts:
+                    prev_origin = stats.origin
+                    prev_ts = stats.origin_timestamp
+                candidate_origin[stats.canonical_id] = (
+                    prev_origin, prev_count + stats.packet_count, prev_ts
+                )
+
+            if stats.canonical_id in candidate_ids:
+                continue  # already selected by an earlier shard
 
             correlated = correlation_engine.correlate(stats.to_indexed_connection(), telemetry_index)
             if correlated is not None:
@@ -476,18 +519,31 @@ class StreamingAugmentor:
                 candidate_ids.add(stats.canonical_id)
                 selected_by_policy += 1
 
+        # Drop non-candidate origin entries to free memory.
+        for cid in list(candidate_origin.keys()):
+            if cid not in candidate_ids:
+                del candidate_origin[cid]
+
         selection_stats = correlation_engine.get_statistics()
-        selection_stats["in_scope_connections"] = in_scope_connections
+        selection_stats["in_scope_connections"] = len(in_scope_canonical_ids)
         selection_stats["selected_by_correlation"] = selected_by_correlation
         selection_stats["selected_by_policy"] = selected_by_policy
-        return candidate_ids, selection_stats
+        return candidate_ids, candidate_origin, selection_stats
 
     def _materialize_candidate_connections(
         self,
         candidate_ids: Set[str],
-        stats_by_cid: Dict[str, ConnectionStats],
+        candidate_origin: Dict[str, Tuple[ConnectionKey, int, float]],
         spool_dir: Path,
     ) -> List[IndexedConnection]:
+        """Spool full packet records for candidates and wrap them.
+
+        Args:
+            candidate_ids: cids that survived candidate selection.
+            candidate_origin: cid -> (origin_key, packet_count, origin_ts).
+                Tiny per-cid record collected during selection; replaces the
+                ~10 GB ``stats_by_cid`` dict in the previous design.
+        """
         if not candidate_ids:
             return []
 
@@ -506,18 +562,20 @@ class StreamingAugmentor:
             )
 
         connections: List[IndexedConnection] = []
-        for cid, stats in stats_by_cid.items():
-            if cid not in candidate_ids:
+        for cid in candidate_ids:
+            origin_info = candidate_origin.get(cid)
+            if origin_info is None:
                 continue
+            origin_key, packet_count, origin_ts = origin_info
             record_path = self._spool_path(spool_dir, cid)
             if not record_path.exists():
                 continue
             connections.append(
                 IndexedConnection(
                     canonical_id=cid,
-                    origin=stats.origin,
-                    records=_SpooledPacketRecords(record_path, stats.packet_count),
-                    origin_timestamp=stats.origin_timestamp,
+                    origin=origin_key,
+                    records=_SpooledPacketRecords(record_path, packet_count),
+                    origin_timestamp=origin_ts,
                 )
             )
         return connections
@@ -684,6 +742,17 @@ class StreamingAugmentor:
             parser_backend=self._parser_backend,
         )
 
+        # Per-PCAP ConnectionStats spill: each worker writes its stats dict
+        # to a per-PCAP pickle shard on disk. The main process never
+        # materializes a global stats_by_cid dict — candidate selection
+        # streams through shards one at a time. Working set bounded by
+        # one PCAP's stats regardless of total capture length.
+        stats_spill_dir = Path(tempfile.mkdtemp(prefix="network_aug_stats_shards_"))
+        pcap_index.configure_stats_spill(
+            shard_dir=stats_spill_dir,
+            asset_ips=tuple(self._asset_ips) if self._asset_ips else (),
+        )
+
         # Inline Modbus signal extraction: have each pass-1 worker also write
         # a Parquet shard with fully-resolved Modbus observations so the apply
         # phase can skip the expensive packet re-iteration.
@@ -709,35 +778,28 @@ class StreamingAugmentor:
                 import shutil
                 shutil.rmtree(modbus_extract_dir, ignore_errors=True)
 
-        stats_by_cid = {stats.canonical_id: stats for stats in pcap_index.iter_stats()}
-
-        candidate_ids, selection_stats = self._select_candidate_connection_ids(
-            list(stats_by_cid.values()),
+        # Stream candidate selection through per-PCAP stats shards. The
+        # iteration yields each shard's stats once and lets them be GC'd
+        # between shards. Same canonical_id can appear across shards;
+        # _select_candidates_streaming unions the selections.
+        candidate_ids, candidate_origin, selection_stats = self._select_candidates_streaming(
+            pcap_index.iter_stats(),
             telemetry_index,
         )
         in_scope_connections = selection_stats.get("in_scope_connections", 0)
         print(
             f"Selected {len(candidate_ids)} candidate connections from {in_scope_connections} in-scope connections"
         )
-
-        # Sample packets are only consulted during candidate selection
-        # (orientation + policy heuristics). After this point pass 2 reads
-        # full packet records back from the PCAPs, so the retained samples
-        # are dead weight — ~40 KB per connection × hundreds of thousands
-        # of connections at 24h+ scale.
-        sample_drop_count = 0
-        for stats in stats_by_cid.values():
-            if stats._sample_packets:
-                sample_drop_count += len(stats._sample_packets)
-                stats._sample_packets.clear()
-        if sample_drop_count:
-            print(f"Released {sample_drop_count:,} sample packets after candidate selection")
-            gc.collect()
         print(
             f"  - sample correlations: {selection_stats.get('successful_correlations', 0)}/"
             f"{selection_stats.get('total_attempts', 0)}"
         )
         print(f"  - selected by policy/protocol heuristics: {selection_stats.get('selected_by_policy', 0)}")
+
+        # Stats shards have been consumed; drop them from disk before pass 2
+        # so the spool dir has the disk all to itself.
+        import shutil
+        shutil.rmtree(stats_spill_dir, ignore_errors=True)
 
         with tempfile.TemporaryDirectory(prefix="network_aug_spool_") as spool_dir_raw:
             spool_dir = Path(spool_dir_raw)
@@ -746,7 +808,7 @@ class StreamingAugmentor:
             )
             materialized_connections = self._materialize_candidate_connections(
                 candidate_ids,
-                stats_by_cid,
+                candidate_origin,
                 spool_dir,
             )
             print(
@@ -754,13 +816,7 @@ class StreamingAugmentor:
                 f"using spill storage under {spool_dir}"
             )
 
-            # The first streaming pass keeps lightweight per-connection samples
-            # for candidate selection only. Drop them before grouped artifact
-            # generation so large scenarios do not carry both the first-pass
-            # samples and the spill-backed materialized views at once.
             pcap_index = None
-            stats_by_cid.clear()
-            del stats_by_cid
             del candidate_ids
             gc.collect()
 
