@@ -66,6 +66,15 @@ hosts:
     has_logs: true
     description: Corporate network workstation for business operations
     os: Windows Server 2012 R2 Standard
+  CWS-LINUX-01:
+    hostname: CWS-LINUX-01
+    ip_addresses:
+      - 192.168.40.13
+    role: Corporate Workstation
+    zone: Corporate
+    has_logs: true
+    description: Linux corporate network workstation for business operations
+    os: Linux Ubuntu 20.04
   DNS-01:
     hostname: DNS-01
     ip_addresses:
