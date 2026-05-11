@@ -140,23 +140,42 @@ per-dataset paths.
 ### 3.6 `TMPDIR` must point at real disk
 
 `/tmp` on this host is tmpfs (RAM-backed, ~32 GB). The streaming augmentor
-creates `network_aug_spool_*` directories with one pickle per connection
-(~100k files for a 24h Stuxnet run). Without `TMPDIR=$OUT_DIR/tmp`, the spool
-eats all RAM and the kernel OOM-kills the process. **Every canonical script
-sets `TMPDIR` per-stage; preserve that habit.**
+creates three different temp-dir trees on disk:
 
-Stale spools persist after a crash. Sweep them with `rm -rf
-/tmp/network_aug_spool_*` between runs.
+- `network_aug_spool_*` — one pickle per candidate connection (~100k
+  files / ~30 GB for a 24h run, ~210 GB for a 1-week run).
+- `network_aug_stats_shards_*` — one pickle per PCAP with all of its
+  `ConnectionStats` (added by the per-PCAP stats spill; ~250 MB per
+  PCAP-hour; deleted after candidate selection).
+- `network_aug_modbus_shards_*` — one Parquet per PCAP with all
+  fully-resolved Modbus observations (deleted after the bulk-load into
+  DuckDB).
+
+Without `TMPDIR=$OUT_DIR/tmp`, the spool + shards eat all RAM and the
+kernel OOM-kills the process. **Every canonical script sets `TMPDIR`
+per-stage; preserve that habit.**
+
+Stale dirs persist after a crash. Sweep them with:
+
+```bash
+rm -rf "$TMPDIR"/network_aug_spool_* \
+       "$TMPDIR"/network_aug_stats_shards_* \
+       "$TMPDIR"/network_aug_modbus_shards_*
+```
 
 ### 3.7 Watch memory
 
-The Modbus group materialization phase peaks 49–60 GB RAM on Stuxnet at
-about 32% progress. If you are running multiple datasets in parallel, plan
-accordingly. `watch_augmentation.sh <pid> <label>` is the kill-switch
-script. Defaults (override via env): `MAX_RSS_KB=12 GiB`,
+The default `watch_augmentation.sh` thresholds (`MAX_RSS_KB=12 GiB`,
 `MIN_AVAILABLE_KB=20 GiB`, `MAX_SWAP_USED_KB=1 GiB`,
-`MAX_RSS_JUMP_KB=1.5 GiB`, polled every 10 s. If any threshold trips, it
-SIGTERMs (then SIGKILLs) the target. Logs go to `logs/<label>_watch_<ts>.log`.
+`MAX_RSS_JUMP_KB=1.5 GiB`, polled every 10 s) **are too tight for the
+24h+ streaming runs after the Apr 2026 optimizations**. They were sized
+for the pre-optimization batch augmentor where the Modbus group
+materialization phase peaked 49–60 GB on Stuxnet at ~32% progress.
+
+The streaming pipeline now hits ~25 GB peak on BE 24h and ~35 GB on
+Stuxnet 24h. See §3.12 for measured numbers and recommended override
+flags. If you are running the legacy batch path (`MissingTrafficAugmentor`
+without `--streaming`), the old 49–60 GB profile still applies.
 
 For Modbus parallelism inside one run: `NETWORK_AUG_MODBUS_WORKERS`
 (defaults `min(8, cpu-1)`); set to `1` to disable. The `signal_container_guid`
@@ -242,6 +261,97 @@ identity-bearing columns) to the legacy "run + apply fix script" flow. See
 `scripts/fix_signal_guids.py` (UPDATE-based, slow) is kept only for tiny
 DBs; the CTAS variants supersede it on anything bigger.
 
+### 3.12 Performance and memory at scale (post-Apr 2026)
+
+Two commits on `simplify-correlation` substantially cut wall time and
+peak RSS for the streaming augmentor. The wins compound with capture
+length, so multi-day runs are now feasible on a 64 GB box.
+
+- `0e26f5c` — DuckDB index deferral on `signal_observations` (drop at
+  ingest, rebuild on close), bulk write-acks via a staging table +
+  single `UPDATE FROM`, and inline Modbus signal extraction in pass-1
+  workers via per-PCAP Parquet shards bulk-loaded after pass 1. The
+  legacy apply-time `_collect_modbus_signals` loop is short-circuited
+  when shards are preloaded.
+- `f65c337` — per-PCAP `ConnectionStats` spill (`configure_stats_spill`
+  in `StreamingPCAPIndex`) replaces the in-memory `stats_by_cid` dict.
+  `_augment_existing_relationships` consumes packets via `heapq.merge`
+  over the per-correlation spooled iterators and folds them through
+  a `RelationshipFeatureAccumulator` in `features.py`. Both kill the
+  linear-growth memory terms that previously blocked 1-week+ runs.
+
+**Measured baseline — BlackEnergy 24h** (39 PCAPs, 19 GB, 90.9M packets):
+
+| Stage | Wall | RSS at exit |
+| --- | ---: | ---: |
+| Pass 1 (parse + stats + inline Modbus extract) | 35 min | 0.6 GB |
+| Pass 2 (materialize candidate spool) | 27 min | 2.5 GB |
+| Build artifacts (graph emission) | 23 min | 16.1 GB |
+| **Total wall** | **~85 min** | |
+| **Peak RSS (background sampler)** | | **25.9 GB** |
+
+The ~10 GB gap between final stage RSS (16.1 GB) and the sampled peak
+(25.9 GB) is **DuckDB's index rebuild at `close()`** — 5 indexes on the
+27M-row `signal_observations` table. Roughly independent of capture
+length once the table exists.
+
+**Estimated wall + peak for the other 24h scenarios** (~290 s/GB of
+PCAP, peak governed mostly by index rebuild + per-edge accumulator):
+
+| Scenario | PCAPs | PCAP size | Wall estimate | Peak RSS estimate |
+| --- | ---: | ---: | ---: | ---: |
+| FrostyGoop | 28 | 14 GB | ~65 min | ~18 GB |
+| Triton | 33 | 16 GB | ~75 min | ~20 GB |
+| IndustroyerV2 | 33 | 16 GB | ~75 min | ~20 GB |
+| **BlackEnergy ✓** | **39** | **19 GB** | **85 min** | **25.9 GB** |
+| Fuxnet | 44 | 21 GB | ~95 min | ~22 GB |
+| Industroyer | 46 | 23 GB | ~105 min | ~24 GB |
+| Pipedream | 67 | 33 GB | ~2 h 30 m | ~30 GB |
+| Stuxnet | 97 | 47 GB | ~3 h 30 m | ~35 GB |
+
+1-week extrapolation: wall ~10 h, peak ~20–25 GB. The two linear-growth
+terms are gone; what's left scales with observation count (DuckDB index
+build) which is ~7× the 24h size, still well under 64 GB.
+
+**Watch-script thresholds** — the defaults in `watch_augmentation.sh`
+(`MAX_RSS_KB=12 GiB`, `MIN_AVAILABLE_KB=20 GiB`) trip during normal
+operation on these workloads. Recommended overrides for 24h+ runs:
+
+```bash
+MAX_RSS_KB=$((40 * 1024 * 1024)) \
+MIN_AVAILABLE_KB=$((8 * 1024 * 1024)) \
+MAX_RSS_JUMP_KB=$((5 * 1024 * 1024)) \
+bash watch_augmentation.sh "$pid" "$slug"
+```
+
+(40 GB RSS ceiling, 8 GB minimum free system memory, 5 GB allowed
+single-poll jump for the index-rebuild transient.)
+
+**Spool / shard directories** — beyond the old `network_aug_spool_*`,
+the new code creates two more temporary dirs (all under `$TMPDIR`):
+
+- `network_aug_stats_shards_*` — per-PCAP `ConnectionStats` pickles,
+  ~250 MB per PCAP-hour. Cleaned up after candidate selection.
+- `network_aug_modbus_shards_*` — per-PCAP Parquet shards with
+  fully-resolved Modbus observations. Cleaned up after bulk-load.
+
+If a run crashes mid-way, sweep all three from `$TMPDIR`:
+
+```bash
+rm -rf "$TMPDIR"/network_aug_spool_* \
+       "$TMPDIR"/network_aug_stats_shards_* \
+       "$TMPDIR"/network_aug_modbus_shards_*
+```
+
+**Profiling new workloads** — `python -m tests.profile_streaming_aug
+--base-cypher … --pcap-dir … --assets … --signal-db … --output stats.json`
+runs the full streaming pipeline with non-invasive monkey-patching that
+captures per-stage wall time, RSS in/out at each stage boundary, peak
+RSS via a 0.5 s background sampler, and DuckDB hot-path call counts.
+Output is a JSON file plus a console table. Use it any time you suspect
+a regression or new bottleneck — the numbers in this section came from
+exactly this tool.
+
 ---
 
 ## 4. Dataset-specific quirks
@@ -283,9 +393,18 @@ These are non-obvious facts about the bundled scenarios:
 network_aug/                    Augmentation engine
   __main__.py                   CLI entry
   enhancer.py                   AugmentationConfig + main batch flow
-  streaming_augmentor.py        --streaming path
-  streaming.py                  Streaming PCAP loop (dpkt-only)
-  missing_augmentor.py          Batch (non-streaming) augmentor
+  streaming_augmentor.py        --streaming path; per-PCAP stats spill
+  streaming.py                  Streaming PCAP loop + ConnectionStats
+                                shard machinery (configure_stats_spill,
+                                iter_shards, iter_merged_stats)
+  streaming_modbus_extract.py   Inline Modbus signal extractor used by
+                                pass-1 workers (writes Parquet shards)
+  missing_augmentor.py          Batch (non-streaming) augmentor;
+                                _augment_existing_relationships now
+                                streams via heapq.merge
+  features.py                   RelationshipFeatureAccumulator
+                                (streaming feature extractor) +
+                                legacy list-based extractors
   correlation.py                Telemetry ↔ PCAP correlation
   cypher_emit.py                Cypher writer
   pcap_index*.py                Index builders (dpkt + scapy variants)
@@ -293,7 +412,8 @@ network_aug/                    Augmentation engine
   mqtt_helpers.py / opcua_helpers.py
   protocol_signal_db.py         DuckDB schema for signal observations
   protocol_signal_extractors.py Standalone MQTT/OPC UA extraction
-  signal_db.py                  Modbus signal DuckDB
+  signal_db.py                  Modbus signal DuckDB; index deferral
+                                + bulk write-ack staging table
   geco/                         Modbus GECO detector (train/score)
   geco_opcua/                   OPC UA GECO detector
   invariants/                   Modbus invariant miner
@@ -322,7 +442,10 @@ tests/                          pytest
   test_invariants.py / test_mqtt_invariants.py / test_opcua_invariants.py
   test_protocol_signal_extraction.py
   test_streaming_parity.py      Streaming vs batch comparison
+  test_stats_spill.py           Per-PCAP shard merge equals in-memory merge
+  test_streaming_features.py    Streaming feature accumulator parity
   compare_streaming_batch.py
+  profile_streaming_aug.py      Non-invasive per-stage profiler — see §3.12
 
 docs/
   architecture-overview.md      Read first, this is the canonical doc
@@ -350,13 +473,21 @@ augmentation_log.txt            Shared log of past runs (append-only history)
    `PCAP_DIR`, `OUT_DIR`. Keep the per-dataset `TMP_DIR`.
 3. If PCAPs are not in UTC, add `--pcap-time-offset <hours>` to the
    `network_aug` invocation.
-4. Run the script. Watch with `bash watch_augmentation.sh <pid> <slug>` in
-   another shell.
-5. Sanity-check before GECO/invariants: `COUNT(DISTINCT value)` per
+4. Estimate wall + peak from §3.12 and pick a `TMPDIR` with enough disk
+   for the spool. Raise `watch_augmentation.sh` thresholds per §3.12 if
+   running a 24h+ scenario — the defaults will SIGTERM a healthy run.
+5. Run the script. Watch with `bash watch_augmentation.sh <pid> <slug>` in
+   another shell (with the overrides from §3.12).
+6. Sanity-check before GECO/invariants: `COUNT(DISTINCT value)` per
    register, agreement between telemetry/attack `unit_id`, train/score
    window disjointness. (No GUID-fix step — see 3.11; producers now emit
    the same recipe the graph uses.)
-6. Import the augmented graph: `bash purge_db.sh $AUG_CYPHER`.
+7. Import the augmented graph: `bash purge_db.sh $AUG_CYPHER`.
+
+For one-off profiling or regression hunts, prefer
+`python -m tests.profile_streaming_aug ...` over the canonical script —
+it captures per-stage wall time + peak RSS into a JSON file with no
+source modifications. See §3.12 for invocation.
 
 ---
 
@@ -375,6 +506,19 @@ augmentation_log.txt            Shared log of past runs (append-only history)
 - `scripts/run_*.sh` use `set -uo pipefail` but **not** `set -e`.
   Mid-pipeline failures don't abort the wrapper. Adding `-e` (or per-stage
   exit checks) would prevent downstream stages running on bad inputs.
+- DuckDB index rebuild at `SignalDatabase.close()` adds a ~10 GB
+  transient peak on 24h runs (~15 GB at 1 week), independent of the
+  caller's working set. Building indexes sequentially (`for name, defn in
+  INDEX_DEFS: conn.execute(...)`) instead of inside the same try-block
+  would cap the transient at one index's working memory. See §3.12 for
+  measured numbers.
+- The streaming inline-Modbus extractor in `streaming_modbus_extract.py`
+  applies asset-IP scope filtering but not the `is_broadcast/is_outer/in_base_graph`
+  filters the legacy per-group extractor used. Result: signal DB now
+  contains ~5–25 % more rows than the legacy path (verified strict
+  superset on BE 24h and Pipedream 1hr). Net effect is more downstream
+  coverage, not duplicates. Port the filters into the extractor if you
+  need byte-exact parity with older `paper_graphs/*` outputs.
 
 ---
 
@@ -385,10 +529,12 @@ augmentation_log.txt            Shared log of past runs (append-only history)
 | 0 successful PCAP→telemetry correlations                      | Wrong `--pcap-time-offset` sign (3.2) or stale cache (3.3).        |
 | Graph has no 192.168.0.x evidence                             | `assets.yaml` missing FT hosts (3.1).                              |
 | Augmentor OOM-killed                                          | `TMPDIR` not set; `/tmp` is tmpfs (3.6).                           |
+| `watch_augmentation.sh` kills a healthy 24h+ run              | Default kill thresholds sized for legacy batch path (3.7); raise per §3.12. |
 | GECO produces 0 alerts on a dataset                           | Constant registers, unit_id mismatch, or same train/score (3.8).   |
 | GECO produces alerts with `peak_cusum=0.00`                   | `templates.py` zero-threshold artifact (3.8, item 1).              |
 | MQTT/Modbus invariants reference signals not in graph         | Old DB built before the source fix — backfill via fix scripts (3.11). |
 | `NetworkService` port mismatch in OPC UA attribution          | String-vs-int port type (3.10).                                    |
+| New signal DB has ~10% more rows than old `paper_graphs/*`    | Inline Modbus extractor lacks legacy group-level filters (§7 open defect). Not a regression — strict superset. |
 | Two scenarios show byte-identical 192.168.0.1 traffic         | Same shared supervisory testbed, not contamination.                |
 | Streaming run died on one PCAP                                | Corrupt file; move it aside and rerun (3.4).                       |
 | `BrokenProcessPool` / exit 137 from protocol extractor        | Multiple workers writing one DuckDB; serialize or use per-worker dbs. |
