@@ -1,0 +1,142 @@
+name: Custom.Linux.Sysmon.Install
+description: |
+  Sysmon for Linux is a system monitor that provides detailed information
+  about process creations, network connections, and changes to file creation
+  time. This artifact manages the deployment and installation of Sysmon for Linux
+  from Microsoft's official repositories.
+  
+  NOTE: By default we install the sysmon config from SwiftOnSecurity -
+  we recommend you review the config file and override it in the GUI
+  with one that better suits your needs.
+  
+  This artifact handles installing Sysmon for Linux via package managers
+  (apt/dnf/yum) and configuring it.
+
+tools:
+  - name: SysmonLinuxConfig
+    url: http://siem.ics.lab:5000/sysmon-linux.xml
+    serve_locally: true
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+required_permissions:
+  - EXECVE
+
+parameters:
+  - name: SysmonBinaryLocation
+    description: Location where sysmon is installed after package installation.
+    default: /usr/bin/sysmon
+  - name: PackageManager
+    description: Package manager to use (auto-detect if empty). Options apt, dnf, yum
+    default: ""
+
+sources:
+- query: |
+    LET detected_pm = SELECT * FROM switch(
+      a={ SELECT "apt" AS pm FROM stat(filename="/usr/bin/apt-get") },
+      b={ SELECT "dnf" AS pm FROM stat(filename="/usr/bin/dnf") },
+      c={ SELECT "yum" AS pm FROM stat(filename="/usr/bin/yum") }
+    )
+    
+    LET pm = if(condition=PackageManager, 
+                then=PackageManager, 
+                else=detected_pm[0].pm)
+    
+    LET sysmon_installed = SELECT * FROM glob(globs=SysmonBinaryLocation)
+    
+    LET existing_hash = SELECT lowcase(
+       string=parse_string_with_regex(
+          string=Stdout, regex="SHA256:\\s*([a-fA-F0-9]+)").g1) AS Hash
+    FROM execve(argv=[SysmonBinaryLocation, "-c"])
+    WHERE sysmon_installed
+    
+    LET sysmon_config = SELECT * FROM Artifact.Generic.Utils.FetchBinary(
+       ToolName="SysmonLinuxConfig", IsExecutable=FALSE)
+    
+    LET add_ms_repo_ubuntu = SELECT * FROM execve(
+       argv=["bash", "-c", "wget -q https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb && dpkg -i /tmp/packages-microsoft-prod.deb && apt-get update"],
+       length=10000000)
+    
+    LET add_ms_repo_debian = SELECT * FROM execve(
+       argv=["bash", "-c", "wget -q https://packages.microsoft.com/config/debian/$(. /etc/os-release && echo ${VERSION_ID%%.*})/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb && dpkg -i /tmp/packages-microsoft-prod.deb && apt-get update"],
+       length=10000000)
+    
+    LET add_ms_repo_rhel = SELECT * FROM execve(
+       argv=["bash", "-c", "rpm -Uvh https://packages.microsoft.com/config/rhel/$(. /etc/os-release && echo ${VERSION_ID%%.*})/packages-microsoft-prod.rpm"],
+       length=10000000)
+    
+    LET install_sysmon_apt = SELECT * FROM execve(
+       argv=["apt-get", "install", "-y", "sysmonforlinux"],
+       length=10000000)
+    
+    LET install_sysmon_dnf = SELECT * FROM execve(
+       argv=["dnf", "install", "-y", "sysmonforlinux"],
+       length=10000000)
+    
+    LET install_sysmon_yum = SELECT * FROM execve(
+       argv=["yum", "install", "-y", "sysmonforlinux"],
+       length=10000000)
+    
+    LET enable_service = SELECT * FROM execve(
+       argv=["systemctl", "enable", "sysmon"])
+    
+    LET start_service = SELECT * FROM execve(
+       argv=["systemctl", "start", "sysmon"])
+    
+    LET restart_service = SELECT * FROM execve(
+       argv=["systemctl", "restart", "sysmon"])
+    
+    LET do_install = SELECT * FROM chain(
+    a={
+       SELECT * FROM if(
+         condition=pm = "apt",
+         then={ SELECT * FROM add_ms_repo_ubuntu }
+       )
+    },
+    b={
+       SELECT * FROM switch(
+         a={ SELECT * FROM install_sysmon_apt WHERE pm = "apt" },
+         b={ SELECT * FROM install_sysmon_dnf WHERE pm = "dnf" },
+         c={ SELECT * FROM install_sysmon_yum WHERE pm = "yum" }
+       )
+    },
+    c={
+       SELECT * FROM execve(argv=[SysmonBinaryLocation, "-u"], length=10000000)
+    },
+    d={
+       SELECT * FROM execve(argv=[SysmonBinaryLocation, "-accepteula", "-i", sysmon_config[0].OSPath], length=10000000)
+    },
+    e=enable_service,
+    f=start_service)
+    
+    LET do_reconfig = SELECT * FROM chain(
+    a={
+       SELECT * FROM execve(argv=[SysmonBinaryLocation, "-u"], length=10000000)
+    },
+    b={
+       SELECT * FROM execve(argv=[SysmonBinaryLocation, "-accepteula", "-i", sysmon_config[0].OSPath], length=10000000)
+    },
+    c=restart_service)
+    
+    SELECT * FROM if(
+    condition=if(
+        condition=NOT sysmon_config,
+        then=log(message="Failed to fetch sysmon config!") AND FALSE,
+        else=if(
+           condition=NOT sysmon_installed,
+           then=log(message="Sysmon not installed - installing now") OR TRUE,
+           else=if(
+              condition=existing_hash[0].Hash != Tool_SysmonLinuxConfig_HASH,
+              then=log(message="Sysmon config hash has changed (%v vs %v) - reconfiguring", args=[existing_hash[0].Hash, Tool_SysmonLinuxConfig_HASH]) OR TRUE,
+              else=log(message="Existing sysmon config hash has not changed (%v) - skipping reinstall", args=Tool_SysmonLinuxConfig_HASH) AND FALSE
+           )
+        )
+    ),
+    then={
+       SELECT * FROM if(
+         condition=sysmon_installed,
+         then={ SELECT * FROM do_reconfig },
+         else={ SELECT * FROM do_install }
+       )
+    },
+    else={ SELECT * FROM start_service })

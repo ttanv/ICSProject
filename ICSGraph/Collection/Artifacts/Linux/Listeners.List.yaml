@@ -1,0 +1,26 @@
+name: Custom.Linux.Listeners.List
+description: |
+   Linux Listening Table
+
+# Can be CLIENT, CLIENT_EVENT, SERVER, SERVER_EVENT or NOTEBOOK
+type: CLIENT
+
+        
+sources:
+  - precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+      LET process <= SELECT Name, Pid, CreateTime, Exe from pslist()
+      
+      SELECT * from foreach(
+        row={
+          SELECT Pid AS PortPid, Laddr.Port AS Port,
+                 TypeString as Protocol, FamilyString as Family,
+                 Laddr.IP as Address
+          FROM netstat() where Status = 'LISTEN'
+        },
+        query={
+          SELECT Name, Pid, CreateTime, Exe, Port, Protocol, Family, Address
+          FROM process where Pid = PortPid
+        })

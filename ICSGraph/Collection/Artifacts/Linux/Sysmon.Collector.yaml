@@ -1,0 +1,47 @@
+name: Custom.Linux.Sysmon.Collector
+description: |
+  Real-time monitoring of all Sysmon for Linux events.
+  Captures all event types in normalized JSON format.
+  
+  This is an event artifact designed to run continuously on endpoints.
+
+type: CLIENT
+
+precondition: SELECT OS From info() where OS = 'linux'
+
+parameters:
+  - name: SyslogPath
+    description: Path to syslog file to monitor
+    default: /var/log/syslog
+
+sources:
+- query: |
+    LET raw_events = SELECT Line
+        FROM watch_syslog(filename=SyslogPath)
+        WHERE Line =~ "sysmon: <Event>"
+
+    LET xml_events = SELECT 
+        parse_string_with_regex(
+            string=Line,
+            regex='sysmon: (?P<XMLContent><Event>.*</Event>)'
+        ).XMLContent AS XMLContent
+        FROM raw_events
+
+    LET parsed_events = SELECT
+        parse_xml(accessor="data", file=XMLContent).Event AS Event
+        FROM xml_events
+
+    LET enriched_events = SELECT
+        Event,
+        to_dict(item={
+            SELECT _value.AttrName AS _key,
+                   _value["#text"] AS _value
+            FROM foreach(row=Event.EventData.Data)
+        }) AS EventData
+        FROM parsed_events
+
+    SELECT "Sysmon" AS Source,
+        Event.System.TimeCreated.AttrSystemTime AS TimeStamp,
+        Event.System.EventID AS EID,
+        EventData AS EventData
+        FROM enriched_events

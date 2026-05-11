@@ -14,11 +14,14 @@ A pipeline that takes:
   (`ICSGraph/Collection/build_graph.py`), plus
 - **PCAPs** of the same time window,
 
-and emits an **augmented Cypher graph** plus optional **DuckDB signal stores**
-(Modbus/MQTT/OPC UA). The augmented graph is imported into Neo4j; the DuckDBs
-feed two downstream analytics paths: invariant mining (`network_aug.invariants`,
-`invariantExperiments.extract_*_invariants`) and the GECO CUSUM detector
-(`network_aug.geco`, `network_aug.geco_opcua`).
+and emits an **augmented Cypher graph** that is imported into Neo4j. **The
+augmented graph is the product** — it backs the LLM-driven investigation
+workflow described in §10. Two optional downstream analytics paths exist
+but are not required for the headline use case:
+
+- DuckDB signal stores (Modbus/MQTT/OPC UA) + invariant mining
+  (`network_aug.invariants`, `invariantExperiments.extract_*_invariants`).
+- The GECO CUSUM detector (`network_aug.geco`, `network_aug.geco_opcua`).
 
 Two testbeds are mixed in most datasets: a Tennessee Eastman simulation
 (192.168.43.x / 192.168.44.x, Modbus on 502) and a FischerTechnik physical rig
@@ -29,51 +32,86 @@ that is pure-TEP. See `memory/project_testbeds.md` for the full mapping.
 
 ## 2. Canonical pipeline (the order matters)
 
-The reference implementation lives in `scripts/run_industroyer_24h_v2.sh`
-(also `run_pipedream_24h_v1.sh`, `run_fuxnet_newversion_1hr_v1.sh`,
-`run_industroyer_1hr_safe_db.sh`, `run_1hr_batch_extract.sh`). For a new
-dataset, copy one of those and adjust paths. The four stages:
+Run each stage as a plain Python module invocation. Set `TMPDIR` per stage
+to a directory on real disk (not tmpfs — see §3.6).
 
-1. **Build base graph** from Sysmon logs:
-   ```
-   TMPDIR=$OUT_DIR/tmp python3 ICSGraph/Collection/build_graph.py \
-     --logs $LOG_DIR --assets $ASSETS --output $BASE_CYPHER --workers 8
-   ```
+Stages 1 and 2 are required to produce the augmented graph. Stages 3 and 4
+are only needed if you intend to mine invariants or run GECO downstream.
 
-2. **Augment** with PCAP evidence and write the Modbus signal DB:
-   ```
-   TMPDIR=$OUT_DIR/tmp python3 -m network_aug \
-     --base-cypher $BASE_CYPHER --output-cypher $AUG_CYPHER \
-     --pcap-dir $PCAP_DIR --assets $ASSETS \
-     --cache $CACHE --force-rebuild \
-     --streaming --signal-db $MAIN_DB
-   ```
+### Stage 1 — Build base graph from Sysmon/ETW logs
 
-3. **MQTT/OPC UA standalone extraction** (separate from main pipeline by
-   design — streaming augmentor does not produce MQTT/OPC UA `ICSSignal`
-   artifacts):
-   ```
-   TMPDIR=$OUT_DIR/tmp python3 -m invariantExperiments.extract_protocol_signals \
-     $PCAP_DIR --mqtt-db $MQTT_DB --opcua-db $OPCUA_DB \
-     --assets $ASSETS --cache $PROTOCOL_CACHE --force-rebuild
-   ```
+```bash
+TMPDIR=$OUT_DIR/tmp python3 ICSGraph/Collection/build_graph.py \
+  --logs $LOG_DIR \
+  --assets ICSGraph/Collection/assets.yaml \
+  --output $BASE_CYPHER \
+  --workers 8
+```
 
-4. **Mine invariants** (Modbus shown; MQTT/OPC UA have parallel modules):
-   ```
-   TMPDIR=$OUT_DIR/tmp python3 -m network_aug.invariants \
-     --signal-db $MAIN_DB --output $INVARIANTS_JSON
-   ```
+### Stage 2 — Augment with PCAP evidence (streaming)
 
-Then optionally train/score GECO (`network_aug.geco` for Modbus,
-`network_aug.geco_opcua` for OPC UA). Use **disjoint** baseline and scoring
-windows (or two separate DuckDB files); training and scoring on the same
-window will produce 0 alerts by construction.
+```bash
+TMPDIR=$OUT_DIR/tmp python3 -m network_aug \
+  --base-cypher $BASE_CYPHER \
+  --output-cypher $AUG_CYPHER \
+  --pcap-dir $PCAP_DIR \
+  --assets ICSGraph/Collection/assets.yaml \
+  --cache $OUT_DIR/${SLUG}_pcap_index.pkl \
+  --force-rebuild \
+  --streaming \
+  --signal-db $MAIN_DB     # optional; omit if you don't need downstream analytics
+```
 
-Importing the augmented Cypher into Neo4j is done by `purge_db.sh
-<file.cypher>` — it stops Neo4j, wipes
-`/var/lib/neo4j/data/{transactions,databases}/neo4j`, restarts, and pipes the
-file into `cypher-shell`. Default credentials are baked in
-(`neo4j` / `icsproject`).
+`--streaming` is the recommended path for any non-trivial PCAP set. The
+batch path (`MissingTrafficAugmentor`, no `--streaming`) still works but
+has a much heavier memory profile — see §3.12.
+
+### Stage 3 (optional) — Standalone MQTT / OPC UA extraction
+
+The streaming augmentor does not emit MQTT/OPC UA `ICSSignal` artifacts
+into the signal DB. Run this stage if you need those for invariants/GECO:
+
+```bash
+TMPDIR=$OUT_DIR/tmp python3 -m invariantExperiments.extract_protocol_signals \
+  $PCAP_DIR \
+  --mqtt-db $MQTT_DB \
+  --opcua-db $OPCUA_DB \
+  --assets ICSGraph/Collection/assets.yaml \
+  --cache $OUT_DIR/${SLUG}_protocol_index.pkl \
+  --force-rebuild
+```
+
+### Stage 4 (optional) — Mine invariants
+
+Modbus shown; MQTT and OPC UA have parallel modules
+(`invariantExperiments.extract_mqtt_invariants`,
+`invariantExperiments.extract_opcua_invariants`).
+
+```bash
+TMPDIR=$OUT_DIR/tmp python3 -m network_aug.invariants \
+  --signal-db $MAIN_DB \
+  --output $INVARIANTS_JSON
+```
+
+### GECO (optional, after stage 4)
+
+`network_aug.geco` for Modbus, `network_aug.geco_opcua` for OPC UA.
+Train and score must run on **disjoint** windows (use `--baseline-hours`
+or two separate DuckDB files); training and scoring on the same window
+will produce 0 alerts by construction.
+
+### Importing into Neo4j
+
+`bash purge_db.sh $AUG_CYPHER` stops Neo4j, wipes
+`/var/lib/neo4j/data/{transactions,databases}/neo4j`, restarts, and pipes
+the file into `cypher-shell`. Default credentials are baked in
+(`neo4j` / `icsproject`). Adjust the constants at the top of the script if
+your Neo4j user/password differ.
+
+> Example wrapper scripts under `scripts/run_*.sh` show how a real run
+> was orchestrated (verify-db checks, backup of partial outputs, batching
+> across scenarios). They are reference, not requirements — the four
+> commands above are the canonical interface.
 
 ---
 
@@ -431,11 +469,13 @@ ICSGraph/Collection/            Telemetry → base graph
   build_graph.py
   assets.yaml                   *** KEEP THIS UP TO DATE ***
 
-scripts/                        Orchestration + one-off fixes
-  run_*.sh                      Per-dataset pipelines (templates)
+scripts/                        One-off backfills + example run wrappers
   fix_signal_guids_ctas.py      Legacy Modbus DB GUID backfill (CTAS) — see 3.11
   fix_signal_guids.py           Legacy Modbus DB GUID backfill (UPDATE; small DBs only)
   fix_mqtt_signal_guids_ctas.py Legacy MQTT DB GUID backfill — see 3.11
+  run_*.sh                      Example per-scenario pipeline wrappers; reference,
+                                not required (canonical interface is the bare module
+                                invocations in §2)
 
 tests/                          pytest
   test_geco.py / test_geco_opcua.py
@@ -467,27 +507,31 @@ augmentation_log.txt            Shared log of past runs (append-only history)
 
 ## 6. Quick-start checklist for a new dataset
 
-1. Add every host that appears in PCAPs to `ICSGraph/Collection/assets.yaml`
+1. Verify the environment: `pytest tests/`. Should pass cleanly. This is
+   the canonical smoke test for a new machine.
+2. Add every host that appears in PCAPs to `ICSGraph/Collection/assets.yaml`
    (especially 192.168.0.x). Decide `has_logs` per host.
-2. Copy `scripts/run_pipedream_24h_v1.sh` → adjust `SLUG`, `LOG_DIR`,
-   `PCAP_DIR`, `OUT_DIR`. Keep the per-dataset `TMP_DIR`.
-3. If PCAPs are not in UTC, add `--pcap-time-offset <hours>` to the
-   `network_aug` invocation.
-4. Estimate wall + peak from §3.12 and pick a `TMPDIR` with enough disk
-   for the spool. Raise `watch_augmentation.sh` thresholds per §3.12 if
-   running a 24h+ scenario — the defaults will SIGTERM a healthy run.
-5. Run the script. Watch with `bash watch_augmentation.sh <pid> <slug>` in
-   another shell (with the overrides from §3.12).
-6. Sanity-check before GECO/invariants: `COUNT(DISTINCT value)` per
-   register, agreement between telemetry/attack `unit_id`, train/score
-   window disjointness. (No GUID-fix step — see 3.11; producers now emit
-   the same recipe the graph uses.)
-7. Import the augmented graph: `bash purge_db.sh $AUG_CYPHER`.
+3. Pick an `$OUT_DIR` on real disk with enough free space for the spool
+   (~30 GB per 24h of PCAPs; see §3.6). Set `TMPDIR=$OUT_DIR/tmp` on every
+   pipeline command.
+4. Run **stage 1** (build base graph) then **stage 2** (augment). If PCAPs
+   are not in UTC, add `--pcap-time-offset <hours>` to stage 2.
+5. While stage 2 runs, watch memory with
+   `bash watch_augmentation.sh <pid> <slug>`. Defaults are too tight for
+   24h+ streaming runs — use the override flags shown in §3.12.
+6. Import the augmented graph: `bash purge_db.sh $AUG_CYPHER`.
+7. *(Optional, only if running downstream analytics.)* Run stages 3 and 4,
+   then sanity-check the signal DB before GECO/invariants:
+   `COUNT(DISTINCT value)` per register, agreement between telemetry and
+   attack `unit_id`, train/score window disjointness. No GUID-fix step
+   needed on new DBs — see §3.11; producers now emit the same recipe the
+   graph uses.
+8. To run an LLM-driven investigation against the imported graph, see §10.
 
-For one-off profiling or regression hunts, prefer
-`python -m tests.profile_streaming_aug ...` over the canonical script —
-it captures per-stage wall time + peak RSS into a JSON file with no
-source modifications. See §3.12 for invocation.
+For one-off profiling or regression hunts, run
+`python -m tests.profile_streaming_aug ...` instead of the bare stage 2
+command — it captures per-stage wall time + peak RSS into a JSON file
+with no source modifications. See §3.12 for invocation.
 
 ---
 
@@ -503,9 +547,6 @@ source modifications. See §3.12 for invocation.
 - Cache files have no provenance metadata; users have to remember
   `--force-rebuild`. A cache header with PCAP-set hash would prevent silent
   wrong-graph runs.
-- `scripts/run_*.sh` use `set -uo pipefail` but **not** `set -e`.
-  Mid-pipeline failures don't abort the wrapper. Adding `-e` (or per-stage
-  exit checks) would prevent downstream stages running on bad inputs.
 - DuckDB index rebuild at `SignalDatabase.close()` adds a ~10 GB
   transient peak on 24h runs (~15 GB at 1 week), independent of the
   caller's working set. Building indexes sequentially (`for name, defn in
@@ -546,12 +587,108 @@ source modifications. See §3.12 for invocation.
 - One output directory per dataset — `paper_graphs/`, `paper_graphs_v0/`,
   `_v1/`, `_v2/`, `paper_graphs_1hr/`, `paper_graphs_parallel/` are
   successive iterations of the same scenarios with different time slices /
-  pipeline versions. The `_v2` series is the most recent.
+  pipeline versions. The `_v2` series is the most recent and is the one
+  used by the investigation workflow in §10.
 - Per-dataset DB filenames follow `<Slug>_signals.duckdb`,
   `<Slug>_mqtt_signals.duckdb`, `<Slug>_opcua_signals.duckdb`.
-- Backup suffixes used by scripts: `.partial_<timestamp>` for pre-stage
-  rollovers, `.preCTAS` for pre-fix DBs, `.bak` for the original collector
-  output. Originals are preserved; nothing is destroyed in place.
-- All run scripts include a `verify_db()` Python heredoc that confirms each
-  DuckDB has a non-zero `signal_observations` row count before declaring
-  success. Keep that pattern in new scripts.
+- Backup suffixes encountered in the tree: `.partial_<timestamp>` for
+  pre-stage rollovers, `.preCTAS` for pre-fix DBs (one-shot legacy
+  backfill — see §3.11), `.bak` for original collector output. Originals
+  were preserved on purpose; nothing was destroyed in place.
+- Before declaring a signal DB usable, verify it is readable and
+  non-empty:
+  ```bash
+  python3 -c "import duckdb; \
+    print(duckdb.connect('$DB', read_only=True) \
+      .execute('SELECT COUNT(*) FROM signal_observations').fetchone())"
+  ```
+
+---
+
+## 10. Investigation workflow (the headline use case)
+
+Once you have an augmented Cypher in Neo4j, this is what the augmented
+graph is *for*: an LLM-driven analyst run that reads the graph (and,
+when warranted, the signal DuckDB) to reconstruct an attack and emit a
+structured detection list. The harness lives under
+`paper_graphs_v2/experiments/`.
+
+### Per-scenario sandbox layout
+
+Each scenario has its own sandbox dir. Treat that dir as CWD when running
+the investigation — the prompt and the supporting tooling expect CWD-local
+files.
+
+```
+paper_graphs_v2/experiments/
+  investigation_prompt_v3.md       canonical investigation prompt (use this one)
+  investigation_prompt{,_v0,_v2}.md  earlier versions, kept for reference
+  raw_logs_prompt.md               variant prompt for raw-log style investigations
+  evaluate.py                      detection scorer (see below)
+  <scenario>_gt.yaml               ground truth (see "Ground truth" below)
+  detections.yaml                  most recent run's detections (per scenario)
+  detections_v0.yaml / detections_triton.yaml   variants
+  be_24h/  frosty_24h/  fuxnet_24h/  id_24h/  id2_24h/  pipe_24h/
+  stuxnet_24h/  triton_24h/        per-scenario sandboxes — see below
+```
+
+A per-scenario sandbox (e.g. `be_24h/`) contains:
+
+- `assets.yaml` — scenario-scoped copy of the asset inventory.
+- `ics-attack.json` — MITRE ATT&CK for ICS, STIX 2.0 bundle. Referenced
+  by the prompt; same file across scenarios.
+- `<Scenario>_invariants.json`, `<Scenario>_mqtt_invariants.json`,
+  `<Scenario>_opcua_invariants.json` — pre-mined invariants the
+  process-level sub-agent reads when the investigation reaches the
+  field layer.
+- `detections.yaml` — the run's output.
+
+### Running an investigation
+
+1. `bash purge_db.sh paper_graphs_v2/<scenario>_24h/augmented_<Scenario>.cypher`
+   — load the augmented graph for the scenario you want to investigate.
+2. `cd paper_graphs_v2/experiments/<scenario>_24h/` — switch to the
+   sandbox so file references in the prompt resolve.
+3. Feed `paper_graphs_v2/experiments/investigation_prompt_v3.md` to the
+   LLM. The prompt tells the model how to interact with `cypher-shell`,
+   when to spawn a process-level sub-agent against the DuckDB, and what
+   shape the output detection list must take.
+4. Save the model's structured detections to `detections.yaml` in the
+   sandbox dir.
+
+### Scoring detections
+
+`evaluate.py` is the scorer. It is technique-agnostic: an event is a
+true positive iff its `(src, rel, dst)` triple appears in both ground
+truth and detections. The MITRE technique label is commentary, not part
+of the key.
+
+```bash
+cd paper_graphs_v2/experiments
+python3 evaluate.py \
+  --groundtruth be_gt.yaml \
+  --detections  be_24h/detections.yaml
+```
+
+Outputs precision/recall/F1 overall and per-relation. Use
+`--groundtruth <scenario>_gt.yaml` matching the loaded scenario.
+
+### Ground truth
+
+`*_gt.yaml` files (`be_gt.yaml`, `frosty_gt.yaml`, `fuxnet_gt.yaml`,
+`id2_gt.yaml`, `pipe_gt.yaml`, `triton_gt.yaml`, and variants like
+`*_gt1.yaml` / `*_gt2.yaml` / `*_gt_fixed.yaml`) are **hand-curated and
+actively evolving**. They are best-effort, not frozen. Expect to revise
+them as the graph improves, the prompt changes, or new attack phases
+get added to the testbed runs. Variant suffixes (`_gt1`, `_gt2`,
+`_fixed`) are successive curation passes — the unsuffixed file is the
+current default unless a per-scenario README in the sandbox dir says
+otherwise.
+
+### Why the prompt is the canonical contract
+
+The `(src, rel, dst)` triple in `*_gt.yaml` uses **GUIDs**
+(`{4dc8945f-…}` format) for nodes. Those GUIDs come from the augmented
+graph. If the augmenter changes how GUIDs are computed for a node type,
+existing `*_gt.yaml` files will silently fail to match. Treat the GUID
+recipe as a public contract of the augmenter, not an internal detail.

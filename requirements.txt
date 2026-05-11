@@ -1,8 +1,8 @@
-tqdm
-PyYAML
-dpkt
-scapy
-duckdb
-numpy
-pandas
-pytest
+dpkt==1.9.8
+duckdb==1.4.3
+numpy==2.1.3
+pandas==2.2.3
+pytest==8.4.1
+PyYAML==6.0.1
+scapy==2.6.1
+tqdm==4.67.1

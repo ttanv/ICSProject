@@ -1,0 +1,13 @@
+name: Custom.Linux.Process.List
+description: |
+   This is the human readable description of the artifact.
+
+# Can be CLIENT, CLIENT_EVENT, SERVER, SERVER_EVENT or NOTEBOOK
+type: CLIENT
+
+sources:
+  - precondition:
+      SELECT OS From info() where OS = 'linux'
+
+    query: |
+        SELECT * FROM process_tracker_pslist()

@@ -9,12 +9,14 @@ pcap_traffic
 pcap_traffic_latest
 zeek_logs
 pcap_connection_index.pkl
+raw_logs_v0/
+.scratch_profile/
+**/.DS_Store
+ICSGraph/logs_22_12/
+ICSGraph/Data/
 
 
-CLAUDE.md
 ICS-Project/
-ICSGraph/
-docs/
 graphs/
 *.pkl
 
