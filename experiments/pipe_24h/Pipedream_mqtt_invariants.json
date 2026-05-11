@@ -1,0 +1,848 @@
+{
+  "generated_at": "2026-05-05T07:47:00.586765+00:00",
+  "protocol": "mqtt",
+  "signal_db_path": "paper_graphs_v2/experiments/pipe_24h/Pipedream_mqtt_signals.duckdb",
+  "baseline_hours": 2.0,
+  "time_window": {
+    "start": 1777217229.852647,
+    "end": 1777224429.852647
+  },
+  "total_observations_used": 144914,
+  "miner_config": {
+    "min_observations": 10,
+    "correlation_threshold": 0.7,
+    "max_signals_per_broker": 50,
+    "skip_correlations": false,
+    "exclude_binary_value_ranges": false,
+    "include_binary_correlations": false,
+    "max_pair_lag_seconds": 5.0
+  },
+  "signal_summary": {
+    "signals": 18,
+    "signals_with_min_observations": 18,
+    "varying_signals": 4,
+    "varying_signals_with_min_observations": 4,
+    "binary_like_signals": 9,
+    "observations_by_access_type": {
+      "read": 74836,
+      "write": 70078
+    },
+    "brokers": [
+      {
+        "server_host": "FT-HMI-01",
+        "signal_count": 18,
+        "observation_count": 144914
+      }
+    ],
+    "top_topics": [
+      {
+        "topic": "i/ptu/pos",
+        "signal_count": 2,
+        "observation_count": 54792
+      },
+      {
+        "topic": "f/i/state/dsi",
+        "signal_count": 1,
+        "observation_count": 14228
+      },
+      {
+        "topic": "f/i/state/sld",
+        "signal_count": 1,
+        "observation_count": 14228
+      },
+      {
+        "topic": "f/i/state/vgr",
+        "signal_count": 1,
+        "observation_count": 14228
+      },
+      {
+        "topic": "f/i/state/hbw",
+        "signal_count": 1,
+        "observation_count": 14224
+      },
+      {
+        "topic": "f/i/state/mpo",
+        "signal_count": 1,
+        "observation_count": 14224
+      },
+      {
+        "topic": "f/i/state/dso",
+        "signal_count": 1,
+        "observation_count": 14222
+      },
+      {
+        "topic": "i/bme680",
+        "signal_count": 8,
+        "observation_count": 3808
+      },
+      {
+        "topic": "i/ldr",
+        "signal_count": 2,
+        "observation_count": 960
+      }
+    ]
+  },
+  "correlation_graph": {
+    "nodes": {
+      "{50fae01b-6cfe-094d-e6fd-690e05bbfab4}": {
+        "topic": "f/i/state/dsi",
+        "field_name": "code",
+        "signal_name": "f/i/state/dsi.code",
+        "server_host": "FT-HMI-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 14228
+      },
+      "{68b5822e-fc64-6de3-53dd-eb02be90e7dd}": {
+        "topic": "f/i/state/dso",
+        "field_name": "code",
+        "signal_name": "f/i/state/dso.code",
+        "server_host": "FT-HMI-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 14222
+      },
+      "{20c37d35-89ff-5d60-7f1e-d59ca4210a84}": {
+        "topic": "f/i/state/hbw",
+        "field_name": "code",
+        "signal_name": "f/i/state/hbw.code",
+        "server_host": "FT-HMI-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 14224
+      },
+      "{c65c5a1e-5e14-e5ab-3df3-1af3d5d4cf35}": {
+        "topic": "f/i/state/mpo",
+        "field_name": "code",
+        "signal_name": "f/i/state/mpo.code",
+        "server_host": "FT-HMI-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 14224
+      },
+      "{91768451-62d0-7532-0da2-68bfb712483b}": {
+        "topic": "f/i/state/sld",
+        "field_name": "code",
+        "signal_name": "f/i/state/sld.code",
+        "server_host": "FT-HMI-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 14228
+      },
+      "{c8f53fe3-8c8e-882c-ff5e-0eb681453ed5}": {
+        "topic": "f/i/state/vgr",
+        "field_name": "code",
+        "signal_name": "f/i/state/vgr.code",
+        "server_host": "FT-HMI-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 14228
+      },
+      "{e4e10ce5-b59a-f9f0-ee4d-34385f283133}": {
+        "topic": "i/bme680",
+        "field_name": "aq",
+        "signal_name": "i/bme680.aq",
+        "server_host": "FT-HMI-01",
+        "min": 3.0,
+        "max": 3.0,
+        "observation_count": 476
+      },
+      "{7aec5693-ef72-c133-bdf7-59c92230d833}": {
+        "topic": "i/bme680",
+        "field_name": "gr",
+        "signal_name": "i/bme680.gr",
+        "server_host": "FT-HMI-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 476
+      },
+      "{1edd838a-1731-3ec9-712d-6479f03b0946}": {
+        "topic": "i/bme680",
+        "field_name": "h",
+        "signal_name": "i/bme680.h",
+        "server_host": "FT-HMI-01",
+        "min": 42.9,
+        "max": 43.5,
+        "observation_count": 476
+      },
+      "{490377a1-940e-a6d4-e797-d98d8219c037}": {
+        "topic": "i/bme680",
+        "field_name": "iaq",
+        "signal_name": "i/bme680.iaq",
+        "server_host": "FT-HMI-01",
+        "min": 6.0,
+        "max": 17.0,
+        "observation_count": 476
+      },
+      "{0b50d96d-8e66-fbc9-7efa-a3cef224bc95}": {
+        "topic": "i/bme680",
+        "field_name": "p",
+        "signal_name": "i/bme680.p",
+        "server_host": "FT-HMI-01",
+        "min": 1009.5,
+        "max": 1010.8,
+        "observation_count": 476
+      },
+      "{8e6c2061-f185-8f42-e239-fbbf77199fbc}": {
+        "topic": "i/bme680",
+        "field_name": "rh",
+        "signal_name": "i/bme680.rh",
+        "server_host": "FT-HMI-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 476
+      },
+      "{f2390fc5-feee-7140-44e1-4335c2be5d81}": {
+        "topic": "i/bme680",
+        "field_name": "rt",
+        "signal_name": "i/bme680.rt",
+        "server_host": "FT-HMI-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 476
+      },
+      "{5d3f4adc-f57f-fdf0-eaaf-3c6b282680aa}": {
+        "topic": "i/bme680",
+        "field_name": "t",
+        "signal_name": "i/bme680.t",
+        "server_host": "FT-HMI-01",
+        "min": 22.5,
+        "max": 22.6,
+        "observation_count": 476
+      },
+      "{2ffe3b01-8315-19ac-8eab-57166c3d6524}": {
+        "topic": "i/ldr",
+        "field_name": "br",
+        "signal_name": "i/ldr.br",
+        "server_host": "FT-HMI-01",
+        "min": -3303721.0,
+        "max": -3303721.0,
+        "observation_count": 480
+      },
+      "{fae771f0-b37c-63ea-7355-9ba33b4867fc}": {
+        "topic": "i/ldr",
+        "field_name": "ldr",
+        "signal_name": "i/ldr.ldr",
+        "server_host": "FT-HMI-01",
+        "min": 2147483647.0,
+        "max": 2147483647.0,
+        "observation_count": 480
+      },
+      "{5877a78a-05f1-f0ec-b041-f6c4651e8a3e}": {
+        "topic": "i/ptu/pos",
+        "field_name": "pan",
+        "signal_name": "i/ptu/pos.pan",
+        "server_host": "FT-HMI-01",
+        "min": 0.984954,
+        "max": 0.984954,
+        "observation_count": 27396
+      },
+      "{2eb4044d-9a5b-316a-42d8-c2853df9a6bc}": {
+        "topic": "i/ptu/pos",
+        "field_name": "tilt",
+        "signal_name": "i/ptu/pos.tilt",
+        "server_host": "FT-HMI-01",
+        "min": -0.364,
+        "max": -0.364,
+        "observation_count": 27396
+      }
+    },
+    "edges": []
+  },
+  "invariants": [
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{50fae01b-6cfe-094d-e6fd-690e05bbfab4}",
+      "topic": "f/i/state/dsi",
+      "field_name": "code",
+      "signal_name": "f/i/state/dsi.code",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 14228,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 7114,
+        "write_count": 7114,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217230.367445,
+        "last_seen": 1777224429.142126,
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{68b5822e-fc64-6de3-53dd-eb02be90e7dd}",
+      "topic": "f/i/state/dso",
+      "field_name": "code",
+      "signal_name": "f/i/state/dso.code",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 14222,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 7110,
+        "write_count": 7112,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217230.8197,
+        "last_seen": 1777224428.653092,
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{20c37d35-89ff-5d60-7f1e-d59ca4210a84}",
+      "topic": "f/i/state/hbw",
+      "field_name": "code",
+      "signal_name": "f/i/state/hbw.code",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 14224,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 7112,
+        "write_count": 7112,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217231.417757,
+        "last_seen": 1777224429.215871,
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{c65c5a1e-5e14-e5ab-3df3-1af3d5d4cf35}",
+      "topic": "f/i/state/mpo",
+      "field_name": "code",
+      "signal_name": "f/i/state/mpo.code",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 14224,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 7112,
+        "write_count": 7112,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217231.396968,
+        "last_seen": 1777224429.192156,
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{91768451-62d0-7532-0da2-68bfb712483b}",
+      "topic": "f/i/state/sld",
+      "field_name": "code",
+      "signal_name": "f/i/state/sld.code",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 14228,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 7114,
+        "write_count": 7114,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217230.672331,
+        "last_seen": 1777224429.388397,
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{c8f53fe3-8c8e-882c-ff5e-0eb681453ed5}",
+      "topic": "f/i/state/vgr",
+      "field_name": "code",
+      "signal_name": "f/i/state/vgr.code",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 14228,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 7114,
+        "write_count": 7114,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217230.33089,
+        "last_seen": 1777224429.088929,
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{e4e10ce5-b59a-f9f0-ee4d-34385f283133}",
+      "topic": "i/bme680",
+      "field_name": "aq",
+      "signal_name": "i/bme680.aq",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 3.0,
+        "max": 3.0,
+        "mean": 3.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 476,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217238.205412,
+        "last_seen": 1777224422.502498,
+        "binary_like": false,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{7aec5693-ef72-c133-bdf7-59c92230d833}",
+      "topic": "i/bme680",
+      "field_name": "gr",
+      "signal_name": "i/bme680.gr",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 476,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217238.205412,
+        "last_seen": 1777224422.502498,
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{1edd838a-1731-3ec9-712d-6479f03b0946}",
+      "topic": "i/bme680",
+      "field_name": "h",
+      "signal_name": "i/bme680.h",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 42.9,
+        "max": 43.5,
+        "mean": 43.257983,
+        "stddev": 0.133926,
+        "distinct_values": 7,
+        "read_count": 476,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217238.205412,
+        "last_seen": 1777224422.502498,
+        "binary_like": false,
+        "constant": false
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{490377a1-940e-a6d4-e797-d98d8219c037}",
+      "topic": "i/bme680",
+      "field_name": "iaq",
+      "signal_name": "i/bme680.iaq",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 6.0,
+        "max": 17.0,
+        "mean": 8.197479,
+        "stddev": 2.088282,
+        "distinct_values": 10,
+        "read_count": 476,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217238.205412,
+        "last_seen": 1777224422.502498,
+        "binary_like": false,
+        "constant": false
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{0b50d96d-8e66-fbc9-7efa-a3cef224bc95}",
+      "topic": "i/bme680",
+      "field_name": "p",
+      "signal_name": "i/bme680.p",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 1009.5,
+        "max": 1010.8,
+        "mean": 1010.164706,
+        "stddev": 0.315385,
+        "distinct_values": 14,
+        "read_count": 476,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217238.205412,
+        "last_seen": 1777224422.502498,
+        "binary_like": false,
+        "constant": false
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{8e6c2061-f185-8f42-e239-fbbf77199fbc}",
+      "topic": "i/bme680",
+      "field_name": "rh",
+      "signal_name": "i/bme680.rh",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 476,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217238.205412,
+        "last_seen": 1777224422.502498,
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{f2390fc5-feee-7140-44e1-4335c2be5d81}",
+      "topic": "i/bme680",
+      "field_name": "rt",
+      "signal_name": "i/bme680.rt",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 476,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217238.205412,
+        "last_seen": 1777224422.502498,
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{5d3f4adc-f57f-fdf0-eaaf-3c6b282680aa}",
+      "topic": "i/bme680",
+      "field_name": "t",
+      "signal_name": "i/bme680.t",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 22.5,
+        "max": 22.6,
+        "mean": 22.504202,
+        "stddev": 0.020084,
+        "distinct_values": 2,
+        "read_count": 476,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217238.205412,
+        "last_seen": 1777224422.502498,
+        "binary_like": false,
+        "constant": false
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{2ffe3b01-8315-19ac-8eab-57166c3d6524}",
+      "topic": "i/ldr",
+      "field_name": "br",
+      "signal_name": "i/ldr.br",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 480,
+      "parameters": {
+        "min": -3303721.0,
+        "max": -3303721.0,
+        "mean": -3303721.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 480,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217250.580173,
+        "last_seen": 1777224403.777962,
+        "binary_like": false,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{fae771f0-b37c-63ea-7355-9ba33b4867fc}",
+      "topic": "i/ldr",
+      "field_name": "ldr",
+      "signal_name": "i/ldr.ldr",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 480,
+      "parameters": {
+        "min": 2147483647.0,
+        "max": 2147483647.0,
+        "mean": 2147483647.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 480,
+        "write_count": 0,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217250.580173,
+        "last_seen": 1777224403.777962,
+        "binary_like": false,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{5877a78a-05f1-f0ec-b041-f6c4651e8a3e}",
+      "topic": "i/ptu/pos",
+      "field_name": "pan",
+      "signal_name": "i/ptu/pos.pan",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 27396,
+      "parameters": {
+        "min": 0.984954,
+        "max": 0.984954,
+        "mean": 0.984954,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 13696,
+        "write_count": 13700,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217229.852647,
+        "last_seen": 1777224429.656807,
+        "binary_like": false,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "mqtt",
+      "signal_guid": "{2eb4044d-9a5b-316a-42d8-c2853df9a6bc}",
+      "topic": "i/ptu/pos",
+      "field_name": "tilt",
+      "signal_name": "i/ptu/pos.tilt",
+      "server_host": "FT-HMI-01",
+      "client_hosts": [
+        "FT-RPI-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 27396,
+      "parameters": {
+        "min": -0.364,
+        "max": -0.364,
+        "mean": -0.364,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 13696,
+        "write_count": 13700,
+        "retain_count": 0,
+        "dup_count": 0,
+        "client_ids": [],
+        "qos_levels": [
+          "0"
+        ],
+        "first_seen": 1777217229.852647,
+        "last_seen": 1777224429.656807,
+        "binary_like": false,
+        "constant": true
+      }
+    }
+  ]
+}

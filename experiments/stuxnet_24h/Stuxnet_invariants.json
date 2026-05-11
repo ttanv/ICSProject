@@ -1,0 +1,3311 @@
+{
+  "generated_at": "2026-05-05T07:46:23.879610+00:00",
+  "signal_db_path": "paper_graphs_v2/experiments/stuxnet_24h/Stuxnet_signals.duckdb",
+  "st_file_path": null,
+  "baseline_hours": 2.0,
+  "total_observations_used": 145728198,
+  "correlation_graph": {
+    "nodes": {
+      "{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}@RTU-01": {
+        "signal_container_guid": "{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}",
+        "server_host": "RTU-01",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{4ac5a790-03cb-9be6-1d89-fe3ca9dc23e2}@RTU-01": {
+        "signal_container_guid": "{4ac5a790-03cb-9be6-1d89-fe3ca9dc23e2}",
+        "server_host": "RTU-01",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{ab1e7932-7e30-64b5-5d59-f2bd70ac6cc2}@RTU-01": {
+        "signal_container_guid": "{ab1e7932-7e30-64b5-5d59-f2bd70ac6cc2}",
+        "server_host": "RTU-01",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{dc68459f-9c08-964c-2615-270828506ed4}@RTU-01": {
+        "signal_container_guid": "{dc68459f-9c08-964c-2615-270828506ed4}",
+        "server_host": "RTU-01",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{12e2c3e8-88bd-bfba-cb14-2344e3274a9c}@RTU-02": {
+        "signal_container_guid": "{12e2c3e8-88bd-bfba-cb14-2344e3274a9c}",
+        "server_host": "RTU-02",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{3bd78f35-1611-8412-a647-d27c8c8f7ffc}@RTU-02": {
+        "signal_container_guid": "{3bd78f35-1611-8412-a647-d27c8c8f7ffc}",
+        "server_host": "RTU-02",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{477ba933-a90a-f1f4-b356-ef21c37d9762}@RTU-02": {
+        "signal_container_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "server_host": "RTU-02",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{515f76cc-7b91-1cbd-6a58-5a1968feb436}@RTU-02": {
+        "signal_container_guid": "{515f76cc-7b91-1cbd-6a58-5a1968feb436}",
+        "server_host": "RTU-02",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{9cff0568-8cd0-a692-eee3-633f0099144b}@RTU-02": {
+        "signal_container_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "server_host": "RTU-02",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{a4a3f042-8a1b-03cd-2f7d-96dfcea32d7b}@RTU-02": {
+        "signal_container_guid": "{a4a3f042-8a1b-03cd-2f7d-96dfcea32d7b}",
+        "server_host": "RTU-02",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}@RTU-02": {
+        "signal_container_guid": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "server_host": "RTU-02",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{16d2fe48-edae-9ac0-f1f5-2af904738498}@RTU-03": {
+        "signal_container_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "server_host": "RTU-03",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{680a38fa-62f1-39df-4e9c-252bd45bb089}@RTU-03": {
+        "signal_container_guid": "{680a38fa-62f1-39df-4e9c-252bd45bb089}",
+        "server_host": "RTU-03",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{752e470d-d4a4-999a-d952-8d6f5952c6f3}@RTU-03": {
+        "signal_container_guid": "{752e470d-d4a4-999a-d952-8d6f5952c6f3}",
+        "server_host": "RTU-03",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{aab8ab15-288d-2582-e163-3f56518cd9e6}@RTU-03": {
+        "signal_container_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "server_host": "RTU-03",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{af9fc849-c3e7-612a-e1c2-8b0613693d7e}@RTU-03": {
+        "signal_container_guid": "{af9fc849-c3e7-612a-e1c2-8b0613693d7e}",
+        "server_host": "RTU-03",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{bf38e55b-0ce0-b7cc-b344-e1e4da7f6109}@RTU-03": {
+        "signal_container_guid": "{bf38e55b-0ce0-b7cc-b344-e1e4da7f6109}",
+        "server_host": "RTU-03",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{c0db3528-d44e-eb53-fc4f-a1814793126e}@RTU-03": {
+        "signal_container_guid": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "server_host": "RTU-03",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{1678a424-49b5-7f7c-c62b-4a48bdf91393}@RTU-04": {
+        "signal_container_guid": "{1678a424-49b5-7f7c-c62b-4a48bdf91393}",
+        "server_host": "RTU-04",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{1c636655-5cc2-fa59-7e63-5138c25c57cc}@RTU-04": {
+        "signal_container_guid": "{1c636655-5cc2-fa59-7e63-5138c25c57cc}",
+        "server_host": "RTU-04",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{6bf882ac-d45d-5f77-68ec-81b109094646}@RTU-04": {
+        "signal_container_guid": "{6bf882ac-d45d-5f77-68ec-81b109094646}",
+        "server_host": "RTU-04",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{83af9c9e-e778-a1ad-5f5e-febb17e550ff}@RTU-04": {
+        "signal_container_guid": "{83af9c9e-e778-a1ad-5f5e-febb17e550ff}",
+        "server_host": "RTU-04",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{ef73cea6-607e-7453-8218-51df5cb076e2}@RTU-04": {
+        "signal_container_guid": "{ef73cea6-607e-7453-8218-51df5cb076e2}",
+        "server_host": "RTU-04",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{fe831004-d458-51c0-96e5-4cad62ef6131}@RTU-04": {
+        "signal_container_guid": "{fe831004-d458-51c0-96e5-4cad62ef6131}",
+        "server_host": "RTU-04",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{21d404a6-3ca9-8fff-1385-d8a1cfd87cf8}@RTU-05": {
+        "signal_container_guid": "{21d404a6-3ca9-8fff-1385-d8a1cfd87cf8}",
+        "server_host": "RTU-05",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}@RTU-05": {
+        "signal_container_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "server_host": "RTU-05",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{407287dd-3049-0460-6bf6-13a38657f7d9}@RTU-05": {
+        "signal_container_guid": "{407287dd-3049-0460-6bf6-13a38657f7d9}",
+        "server_host": "RTU-05",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}@RTU-05": {
+        "signal_container_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "server_host": "RTU-05",
+        "register": 3,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{bc981f94-b129-2ed2-74a8-34a5eb09f343}@RTU-05": {
+        "signal_container_guid": "{bc981f94-b129-2ed2-74a8-34a5eb09f343}",
+        "server_host": "RTU-05",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{bde27d95-23c6-094f-d90b-f5c514b5fd52}@RTU-05": {
+        "signal_container_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "server_host": "RTU-05",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{ee2cb9db-4951-67ce-e9c8-237d09e71083}@RTU-05": {
+        "signal_container_guid": "{ee2cb9db-4951-67ce-e9c8-237d09e71083}",
+        "server_host": "RTU-05",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{0d25db73-bb55-1486-937f-97a2c2a9dd4a}@RTU-06": {
+        "signal_container_guid": "{0d25db73-bb55-1486-937f-97a2c2a9dd4a}",
+        "server_host": "RTU-06",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{463d4e50-078c-250f-c266-131839dbd9ce}@RTU-06": {
+        "signal_container_guid": "{463d4e50-078c-250f-c266-131839dbd9ce}",
+        "server_host": "RTU-06",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{5573c586-718e-c38d-f75f-545099b27f2b}@RTU-06": {
+        "signal_container_guid": "{5573c586-718e-c38d-f75f-545099b27f2b}",
+        "server_host": "RTU-06",
+        "register": 1,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}@RTU-06": {
+        "signal_container_guid": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "server_host": "RTU-06",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{b8d03a4e-9882-dddc-ec27-83901396af3c}@RTU-06": {
+        "signal_container_guid": "{b8d03a4e-9882-dddc-ec27-83901396af3c}",
+        "server_host": "RTU-06",
+        "register": 2,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{c88af635-9de8-c3c9-c786-d50cab398271}@RTU-06": {
+        "signal_container_guid": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "server_host": "RTU-06",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{f986370c-07cb-f8a4-6963-83739c0f44b8}@RTU-06": {
+        "signal_container_guid": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "server_host": "RTU-06",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{0663f224-53e3-9b4b-c494-0d87f4285e99}@SIMFACTORY-01": {
+        "signal_container_guid": "{0663f224-53e3-9b4b-c494-0d87f4285e99}",
+        "server_host": "SIMFACTORY-01",
+        "register": 5,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{0b59c8f0-56ac-69cf-b4e1-ea1762ceb466}@SIMFACTORY-01": {
+        "signal_container_guid": "{0b59c8f0-56ac-69cf-b4e1-ea1762ceb466}",
+        "server_host": "SIMFACTORY-01",
+        "register": 5,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{1250539a-e0b0-7939-d52f-d9ab91e548c7}@SIMFACTORY-01": {
+        "signal_container_guid": "{1250539a-e0b0-7939-d52f-d9ab91e548c7}",
+        "server_host": "SIMFACTORY-01",
+        "register": 10,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{14944123-2930-f4ce-2d1e-169c1b6b4dff}@SIMFACTORY-01": {
+        "signal_container_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "server_host": "SIMFACTORY-01",
+        "register": 14,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{1aee8e25-06a8-296c-a0fd-5f35bf295091}@SIMFACTORY-01": {
+        "signal_container_guid": "{1aee8e25-06a8-296c-a0fd-5f35bf295091}",
+        "server_host": "SIMFACTORY-01",
+        "register": 2,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{27bfc9f3-ef76-1ef7-b492-3a66542cf938}@SIMFACTORY-01": {
+        "signal_container_guid": "{27bfc9f3-ef76-1ef7-b492-3a66542cf938}",
+        "server_host": "SIMFACTORY-01",
+        "register": 0,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{30e675dc-321a-9507-1676-bf91aa4b49a2}@SIMFACTORY-01": {
+        "signal_container_guid": "{30e675dc-321a-9507-1676-bf91aa4b49a2}",
+        "server_host": "SIMFACTORY-01",
+        "register": 4,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{34f0331a-0903-6636-a023-ae2cfeacd559}@SIMFACTORY-01": {
+        "signal_container_guid": "{34f0331a-0903-6636-a023-ae2cfeacd559}",
+        "server_host": "SIMFACTORY-01",
+        "register": 1,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{38e32a85-1e05-c1b7-378c-49b5d22a0e3a}@SIMFACTORY-01": {
+        "signal_container_guid": "{38e32a85-1e05-c1b7-378c-49b5d22a0e3a}",
+        "server_host": "SIMFACTORY-01",
+        "register": 1,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{4077a493-9b1e-cfad-fc17-f2721921f3a3}@SIMFACTORY-01": {
+        "signal_container_guid": "{4077a493-9b1e-cfad-fc17-f2721921f3a3}",
+        "server_host": "SIMFACTORY-01",
+        "register": 0,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{6e3e5b48-03a2-a0df-e2bb-e39737089a79}@SIMFACTORY-01": {
+        "signal_container_guid": "{6e3e5b48-03a2-a0df-e2bb-e39737089a79}",
+        "server_host": "SIMFACTORY-01",
+        "register": 4,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01": {
+        "signal_container_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "server_host": "SIMFACTORY-01",
+        "register": 8,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{8c5183f1-8501-6db8-6825-1f2eca53cc95}@SIMFACTORY-01": {
+        "signal_container_guid": "{8c5183f1-8501-6db8-6825-1f2eca53cc95}",
+        "server_host": "SIMFACTORY-01",
+        "register": 11,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{953e8e5e-9940-8343-5ccb-619529e5490c}@SIMFACTORY-01": {
+        "signal_container_guid": "{953e8e5e-9940-8343-5ccb-619529e5490c}",
+        "server_host": "SIMFACTORY-01",
+        "register": 2,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01": {
+        "signal_container_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "server_host": "SIMFACTORY-01",
+        "register": 6,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01": {
+        "signal_container_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "server_host": "SIMFACTORY-01",
+        "register": 7,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{cb872be5-fa5b-745b-4154-fdedd7496e19}@SIMFACTORY-01": {
+        "signal_container_guid": "{cb872be5-fa5b-745b-4154-fdedd7496e19}",
+        "server_host": "SIMFACTORY-01",
+        "register": 3,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{cd437a96-47b2-9cb3-019f-b1e2768a6507}@SIMFACTORY-01": {
+        "signal_container_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "server_host": "SIMFACTORY-01",
+        "register": 12,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}@SIMFACTORY-01": {
+        "signal_container_guid": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}",
+        "server_host": "SIMFACTORY-01",
+        "register": 9,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}@SIMFACTORY-01": {
+        "signal_container_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "server_host": "SIMFACTORY-01",
+        "register": 15,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}@SIMFACTORY-01": {
+        "signal_container_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "server_host": "SIMFACTORY-01",
+        "register": 13,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{fbb545d8-79dd-289e-5a64-154ccfaef9c2}@SIMFACTORY-01": {
+        "signal_container_guid": "{fbb545d8-79dd-289e-5a64-154ccfaef9c2}",
+        "server_host": "SIMFACTORY-01",
+        "register": 3,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}@SIMFACTORY-01": {
+        "signal_container_guid": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}",
+        "server_host": "SIMFACTORY-01",
+        "register": 10,
+        "unit_id": 1,
+        "variable_name": null
+      }
+    },
+    "edges": [
+      {
+        "source": "{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}@RTU-01",
+        "target": "{dc68459f-9c08-964c-2615-270828506ed4}@RTU-01",
+        "source_guid": "{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}",
+        "source_server_host": "RTU-01",
+        "target_guid": "{dc68459f-9c08-964c-2615-270828506ed4}",
+        "target_server_host": "RTU-01",
+        "pearson_r": 0.9997,
+        "slope": 0.999799,
+        "intercept": -0.0,
+        "relationship": "positive"
+      },
+      {
+        "source": "{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}@RTU-01",
+        "target": "{4ac5a790-03cb-9be6-1d89-fe3ca9dc23e2}@RTU-01",
+        "source_guid": "{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}",
+        "source_server_host": "RTU-01",
+        "target_guid": "{4ac5a790-03cb-9be6-1d89-fe3ca9dc23e2}",
+        "target_server_host": "RTU-01",
+        "pearson_r": 0.9997,
+        "slope": 0.084886,
+        "intercept": -0.0,
+        "relationship": "positive"
+      },
+      {
+        "source": "{dc68459f-9c08-964c-2615-270828506ed4}@RTU-01",
+        "target": "{4ac5a790-03cb-9be6-1d89-fe3ca9dc23e2}@RTU-01",
+        "source_guid": "{dc68459f-9c08-964c-2615-270828506ed4}",
+        "source_server_host": "RTU-01",
+        "target_guid": "{4ac5a790-03cb-9be6-1d89-fe3ca9dc23e2}",
+        "target_server_host": "RTU-01",
+        "pearson_r": 1.0,
+        "slope": 0.084903,
+        "intercept": -0.0,
+        "relationship": "positive"
+      },
+      {
+        "source": "{a4a3f042-8a1b-03cd-2f7d-96dfcea32d7b}@RTU-02",
+        "target": "{3bd78f35-1611-8412-a647-d27c8c8f7ffc}@RTU-02",
+        "source_guid": "{a4a3f042-8a1b-03cd-2f7d-96dfcea32d7b}",
+        "source_server_host": "RTU-02",
+        "target_guid": "{3bd78f35-1611-8412-a647-d27c8c8f7ffc}",
+        "target_server_host": "RTU-02",
+        "pearson_r": 0.7091,
+        "slope": 0.827159,
+        "intercept": 2960.8325,
+        "relationship": "positive"
+      },
+      {
+        "source": "{12e2c3e8-88bd-bfba-cb14-2344e3274a9c}@RTU-02",
+        "target": "{3bd78f35-1611-8412-a647-d27c8c8f7ffc}@RTU-02",
+        "source_guid": "{12e2c3e8-88bd-bfba-cb14-2344e3274a9c}",
+        "source_server_host": "RTU-02",
+        "target_guid": "{3bd78f35-1611-8412-a647-d27c8c8f7ffc}",
+        "target_server_host": "RTU-02",
+        "pearson_r": 0.9442,
+        "slope": 1.10188,
+        "intercept": 1090.305,
+        "relationship": "positive"
+      },
+      {
+        "source": "{9cff0568-8cd0-a692-eee3-633f0099144b}@RTU-02",
+        "target": "{477ba933-a90a-f1f4-b356-ef21c37d9762}@RTU-02",
+        "source_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "source_server_host": "RTU-02",
+        "target_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "target_server_host": "RTU-02",
+        "pearson_r": 0.8322,
+        "slope": 0.832731,
+        "intercept": 465.6986,
+        "relationship": "positive"
+      },
+      {
+        "source": "{9cff0568-8cd0-a692-eee3-633f0099144b}@RTU-02",
+        "target": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}@RTU-02",
+        "source_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "source_server_host": "RTU-02",
+        "target_guid": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "target_server_host": "RTU-02",
+        "pearson_r": 0.853,
+        "slope": 0.922022,
+        "intercept": 545.3466,
+        "relationship": "positive"
+      },
+      {
+        "source": "{477ba933-a90a-f1f4-b356-ef21c37d9762}@RTU-02",
+        "target": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}@RTU-02",
+        "source_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "source_server_host": "RTU-02",
+        "target_guid": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "target_server_host": "RTU-02",
+        "pearson_r": 0.9764,
+        "slope": 1.054915,
+        "intercept": 176.7646,
+        "relationship": "positive"
+      },
+      {
+        "source": "{bf38e55b-0ce0-b7cc-b344-e1e4da7f6109}@RTU-03",
+        "target": "{680a38fa-62f1-39df-4e9c-252bd45bb089}@RTU-03",
+        "source_guid": "{bf38e55b-0ce0-b7cc-b344-e1e4da7f6109}",
+        "source_server_host": "RTU-03",
+        "target_guid": "{680a38fa-62f1-39df-4e9c-252bd45bb089}",
+        "target_server_host": "RTU-03",
+        "pearson_r": 0.9994,
+        "slope": 1.00521,
+        "intercept": -778.2316,
+        "relationship": "positive"
+      },
+      {
+        "source": "{bf38e55b-0ce0-b7cc-b344-e1e4da7f6109}@RTU-03",
+        "target": "{af9fc849-c3e7-612a-e1c2-8b0613693d7e}@RTU-03",
+        "source_guid": "{bf38e55b-0ce0-b7cc-b344-e1e4da7f6109}",
+        "source_server_host": "RTU-03",
+        "target_guid": "{af9fc849-c3e7-612a-e1c2-8b0613693d7e}",
+        "target_server_host": "RTU-03",
+        "pearson_r": 0.9997,
+        "slope": 0.391048,
+        "intercept": -71.0077,
+        "relationship": "positive"
+      },
+      {
+        "source": "{680a38fa-62f1-39df-4e9c-252bd45bb089}@RTU-03",
+        "target": "{af9fc849-c3e7-612a-e1c2-8b0613693d7e}@RTU-03",
+        "source_guid": "{680a38fa-62f1-39df-4e9c-252bd45bb089}",
+        "source_server_host": "RTU-03",
+        "target_guid": "{af9fc849-c3e7-612a-e1c2-8b0613693d7e}",
+        "target_server_host": "RTU-03",
+        "pearson_r": 0.9944,
+        "slope": 0.38706,
+        "intercept": 298.3818,
+        "relationship": "positive"
+      },
+      {
+        "source": "{aab8ab15-288d-2582-e163-3f56518cd9e6}@RTU-03",
+        "target": "{16d2fe48-edae-9ac0-f1f5-2af904738498}@RTU-03",
+        "source_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "source_server_host": "RTU-03",
+        "target_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "target_server_host": "RTU-03",
+        "pearson_r": 0.9995,
+        "slope": 0.999513,
+        "intercept": 5.2995,
+        "relationship": "positive"
+      },
+      {
+        "source": "{aab8ab15-288d-2582-e163-3f56518cd9e6}@RTU-03",
+        "target": "{c0db3528-d44e-eb53-fc4f-a1814793126e}@RTU-03",
+        "source_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "source_server_host": "RTU-03",
+        "target_guid": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "target_server_host": "RTU-03",
+        "pearson_r": 0.9986,
+        "slope": 0.398487,
+        "intercept": -5.4691,
+        "relationship": "positive"
+      },
+      {
+        "source": "{16d2fe48-edae-9ac0-f1f5-2af904738498}@RTU-03",
+        "target": "{c0db3528-d44e-eb53-fc4f-a1814793126e}@RTU-03",
+        "source_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "source_server_host": "RTU-03",
+        "target_guid": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "target_server_host": "RTU-03",
+        "pearson_r": 0.999,
+        "slope": 0.3985,
+        "intercept": -6.9363,
+        "relationship": "positive"
+      },
+      {
+        "source": "{1678a424-49b5-7f7c-c62b-4a48bdf91393}@RTU-04",
+        "target": "{6bf882ac-d45d-5f77-68ec-81b109094646}@RTU-04",
+        "source_guid": "{1678a424-49b5-7f7c-c62b-4a48bdf91393}",
+        "source_server_host": "RTU-04",
+        "target_guid": "{6bf882ac-d45d-5f77-68ec-81b109094646}",
+        "target_server_host": "RTU-04",
+        "pearson_r": 0.7857,
+        "slope": 1.681343,
+        "intercept": -52071.8908,
+        "relationship": "positive"
+      },
+      {
+        "source": "{ee2cb9db-4951-67ce-e9c8-237d09e71083}@RTU-05",
+        "target": "{bc981f94-b129-2ed2-74a8-34a5eb09f343}@RTU-05",
+        "source_guid": "{ee2cb9db-4951-67ce-e9c8-237d09e71083}",
+        "source_server_host": "RTU-05",
+        "target_guid": "{bc981f94-b129-2ed2-74a8-34a5eb09f343}",
+        "target_server_host": "RTU-05",
+        "pearson_r": -0.8494,
+        "slope": -2.15709,
+        "intercept": 68196.1674,
+        "relationship": "negative"
+      },
+      {
+        "source": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}@RTU-05",
+        "target": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}@RTU-05",
+        "source_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "source_server_host": "RTU-05",
+        "target_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "target_server_host": "RTU-05",
+        "pearson_r": -0.9367,
+        "slope": -1.013035,
+        "intercept": 33858.2559,
+        "relationship": "negative"
+      },
+      {
+        "source": "{5573c586-718e-c38d-f75f-545099b27f2b}@RTU-06",
+        "target": "{463d4e50-078c-250f-c266-131839dbd9ce}@RTU-06",
+        "source_guid": "{5573c586-718e-c38d-f75f-545099b27f2b}",
+        "source_server_host": "RTU-06",
+        "target_guid": "{463d4e50-078c-250f-c266-131839dbd9ce}",
+        "target_server_host": "RTU-06",
+        "pearson_r": 0.9925,
+        "slope": 0.986381,
+        "intercept": 1071.6145,
+        "relationship": "positive"
+      },
+      {
+        "source": "{5573c586-718e-c38d-f75f-545099b27f2b}@RTU-06",
+        "target": "{b8d03a4e-9882-dddc-ec27-83901396af3c}@RTU-06",
+        "source_guid": "{5573c586-718e-c38d-f75f-545099b27f2b}",
+        "source_server_host": "RTU-06",
+        "target_guid": "{b8d03a4e-9882-dddc-ec27-83901396af3c}",
+        "target_server_host": "RTU-06",
+        "pearson_r": 0.995,
+        "slope": 0.996985,
+        "intercept": 1265.6512,
+        "relationship": "positive"
+      },
+      {
+        "source": "{463d4e50-078c-250f-c266-131839dbd9ce}@RTU-06",
+        "target": "{b8d03a4e-9882-dddc-ec27-83901396af3c}@RTU-06",
+        "source_guid": "{463d4e50-078c-250f-c266-131839dbd9ce}",
+        "source_server_host": "RTU-06",
+        "target_guid": "{b8d03a4e-9882-dddc-ec27-83901396af3c}",
+        "target_server_host": "RTU-06",
+        "pearson_r": 0.9887,
+        "slope": 0.998509,
+        "intercept": 647.6093,
+        "relationship": "positive"
+      },
+      {
+        "source": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}@RTU-06",
+        "target": "{f986370c-07cb-f8a4-6963-83739c0f44b8}@RTU-06",
+        "source_guid": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "source_server_host": "RTU-06",
+        "target_guid": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "target_server_host": "RTU-06",
+        "pearson_r": 0.9956,
+        "slope": 0.995566,
+        "intercept": 269.0782,
+        "relationship": "positive"
+      },
+      {
+        "source": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}@RTU-06",
+        "target": "{c88af635-9de8-c3c9-c786-d50cab398271}@RTU-06",
+        "source_guid": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "source_server_host": "RTU-06",
+        "target_guid": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "target_server_host": "RTU-06",
+        "pearson_r": 0.9924,
+        "slope": 0.981933,
+        "intercept": 1270.3819,
+        "relationship": "positive"
+      },
+      {
+        "source": "{f986370c-07cb-f8a4-6963-83739c0f44b8}@RTU-06",
+        "target": "{c88af635-9de8-c3c9-c786-d50cab398271}@RTU-06",
+        "source_guid": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "source_server_host": "RTU-06",
+        "target_guid": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "target_server_host": "RTU-06",
+        "pearson_r": 0.9972,
+        "slope": 0.986797,
+        "intercept": 972.9619,
+        "relationship": "positive"
+      },
+      {
+        "source": "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01",
+        "target": "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01",
+        "source_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.9992,
+        "slope": 0.894392,
+        "intercept": -6.7625,
+        "relationship": "positive"
+      },
+      {
+        "source": "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01",
+        "target": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01",
+        "source_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.9982,
+        "slope": 0.56121,
+        "intercept": -6.5828,
+        "relationship": "positive"
+      },
+      {
+        "source": "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01",
+        "target": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}@SIMFACTORY-01",
+        "source_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.8431,
+        "slope": 1405.133084,
+        "intercept": -87902.0334,
+        "relationship": "positive"
+      },
+      {
+        "source": "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01",
+        "target": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}@SIMFACTORY-01",
+        "source_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.8431,
+        "slope": 658.123173,
+        "intercept": -41064.4115,
+        "relationship": "positive"
+      },
+      {
+        "source": "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01",
+        "target": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}@SIMFACTORY-01",
+        "source_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -0.8431,
+        "slope": -4.301318,
+        "intercept": 469.6932,
+        "relationship": "negative"
+      },
+      {
+        "source": "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01",
+        "target": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}@SIMFACTORY-01",
+        "source_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -0.8431,
+        "slope": -4.301318,
+        "intercept": 469.6932,
+        "relationship": "negative"
+      },
+      {
+        "source": "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01",
+        "target": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01",
+        "source_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.9987,
+        "slope": 0.627286,
+        "intercept": -2.3241,
+        "relationship": "positive"
+      },
+      {
+        "source": "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01",
+        "target": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}@SIMFACTORY-01",
+        "source_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.841,
+        "slope": 1565.962149,
+        "intercept": -76866.7131,
+        "relationship": "positive"
+      },
+      {
+        "source": "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01",
+        "target": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}@SIMFACTORY-01",
+        "source_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.841,
+        "slope": 733.450796,
+        "intercept": -35895.7907,
+        "relationship": "positive"
+      },
+      {
+        "source": "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01",
+        "target": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}@SIMFACTORY-01",
+        "source_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -0.841,
+        "slope": -4.793639,
+        "intercept": 435.9125,
+        "relationship": "negative"
+      },
+      {
+        "source": "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01",
+        "target": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}@SIMFACTORY-01",
+        "source_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -0.841,
+        "slope": -4.793639,
+        "intercept": 435.9125,
+        "relationship": "negative"
+      },
+      {
+        "source": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01",
+        "target": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}@SIMFACTORY-01",
+        "source_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.8609,
+        "slope": 2551.798154,
+        "intercept": -73743.6602,
+        "relationship": "positive"
+      },
+      {
+        "source": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01",
+        "target": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}@SIMFACTORY-01",
+        "source_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.8609,
+        "slope": 1195.1875,
+        "intercept": -34433.0443,
+        "relationship": "positive"
+      },
+      {
+        "source": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01",
+        "target": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}@SIMFACTORY-01",
+        "source_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -0.8609,
+        "slope": -7.811428,
+        "intercept": 426.3524,
+        "relationship": "negative"
+      },
+      {
+        "source": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01",
+        "target": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}@SIMFACTORY-01",
+        "source_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -0.8609,
+        "slope": -7.811428,
+        "intercept": 426.3524,
+        "relationship": "negative"
+      },
+      {
+        "source": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}@SIMFACTORY-01",
+        "target": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}@SIMFACTORY-01",
+        "source_guid": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 1.0,
+        "slope": 8.0,
+        "intercept": 0.0,
+        "relationship": "positive"
+      },
+      {
+        "source": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}@SIMFACTORY-01",
+        "target": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}@SIMFACTORY-01",
+        "source_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 1.0,
+        "slope": 0.468371,
+        "intercept": 106.3259,
+        "relationship": "positive"
+      },
+      {
+        "source": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}@SIMFACTORY-01",
+        "target": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}@SIMFACTORY-01",
+        "source_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -1.0,
+        "slope": -0.003061,
+        "intercept": 200.6122,
+        "relationship": "negative"
+      },
+      {
+        "source": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}@SIMFACTORY-01",
+        "target": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}@SIMFACTORY-01",
+        "source_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -1.0,
+        "slope": -0.003061,
+        "intercept": 200.6122,
+        "relationship": "negative"
+      },
+      {
+        "source": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}@SIMFACTORY-01",
+        "target": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}@SIMFACTORY-01",
+        "source_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -1.0,
+        "slope": -0.006536,
+        "intercept": 201.3071,
+        "relationship": "negative"
+      },
+      {
+        "source": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}@SIMFACTORY-01",
+        "target": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}@SIMFACTORY-01",
+        "source_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": -1.0,
+        "slope": -0.006536,
+        "intercept": 201.3071,
+        "relationship": "negative"
+      },
+      {
+        "source": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}@SIMFACTORY-01",
+        "target": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}@SIMFACTORY-01",
+        "source_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 1.0,
+        "slope": 1.0,
+        "intercept": 0.0,
+        "relationship": "positive"
+      }
+    ]
+  },
+  "invariants": [
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}",
+      "server_host": "RTU-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127392,
+      "parameters": {
+        "min": 0,
+        "max": 30801,
+        "mean": 22959.5497,
+        "stddev": 13417.8083
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{4ac5a790-03cb-9be6-1d89-fe3ca9dc23e2}",
+      "server_host": "RTU-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 110178,
+      "parameters": {
+        "min": 0,
+        "max": 2615,
+        "mean": 1952.7887,
+        "stddev": 1137.1765
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{ab1e7932-7e30-64b5-5d59-f2bd70ac6cc2}",
+      "server_host": "RTU-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1086,
+      "parameters": {
+        "min": 204,
+        "max": 204,
+        "mean": 204.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{dc68459f-9c08-964c-2615-270828506ed4}",
+      "server_host": "RTU-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 110178,
+      "parameters": {
+        "min": 0,
+        "max": 30800,
+        "mean": 23000.3413,
+        "stddev": 13393.8957
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{12e2c3e8-88bd-bfba-cb14-2344e3274a9c}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1099,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 6867.7625,
+        "stddev": 18720.035
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{3bd78f35-1611-8412-a647-d27c8c8f7ffc}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1099,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 8657.7571,
+        "stddev": 21846.175
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 110861,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 2780.2017,
+        "stddev": 12790.7865
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{515f76cc-7b91-1cbd-6a58-5a1968feb436}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1098,
+      "parameters": {
+        "min": 204,
+        "max": 204,
+        "mean": 204.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127393,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 2754.669,
+        "stddev": 12737.6311
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{a4a3f042-8a1b-03cd-2f7d-96dfcea32d7b}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1098,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 6827.9709,
+        "stddev": 18679.0862
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 110861,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 3109.6402,
+        "stddev": 13819.2372
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 111659,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 7839.0402,
+        "stddev": 17613.8027
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{680a38fa-62f1-39df-4e9c-252bd45bb089}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1110,
+      "parameters": {
+        "min": 0,
+        "max": 59332,
+        "mean": 34451.209,
+        "stddev": 20785.0579
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{752e470d-d4a4-999a-d952-8d6f5952c6f3}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1110,
+      "parameters": {
+        "min": 204,
+        "max": 204,
+        "mean": 204.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127394,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 7821.3436,
+        "stddev": 17600.7544
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{af9fc849-c3e7-612a-e1c2-8b0613693d7e}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1121,
+      "parameters": {
+        "min": 0,
+        "max": 23321,
+        "mean": 13563.5183,
+        "stddev": 8083.8948
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{bf38e55b-0ce0-b7cc-b344-e1e4da7f6109}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1121,
+      "parameters": {
+        "min": 0,
+        "max": 59332,
+        "mean": 34866.6075,
+        "stddev": 20665.7964
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 111659,
+      "parameters": {
+        "min": 0,
+        "max": 27776,
+        "mean": 3116.9205,
+        "stddev": 7026.3128
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{1678a424-49b5-7f7c-c62b-4a48bdf91393}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 86805,
+      "parameters": {
+        "min": 43979,
+        "max": 65535,
+        "mean": 60899.0071,
+        "stddev": 7693.1701
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{1c636655-5cc2-fa59-7e63-5138c25c57cc}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 924,
+      "parameters": {
+        "min": 44591,
+        "max": 48112,
+        "mean": 46251.7381,
+        "stddev": 1198.0591
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{6bf882ac-d45d-5f77-68ec-81b109094646}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 86805,
+      "parameters": {
+        "min": 28651,
+        "max": 65535,
+        "mean": 50320.2004,
+        "stddev": 16461.9187
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{83af9c9e-e778-a1ad-5f5e-febb17e550ff}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 924,
+      "parameters": {
+        "min": 28690,
+        "max": 28942,
+        "mean": 28761.7554,
+        "stddev": 72.2769
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{ef73cea6-607e-7453-8218-51df5cb076e2}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 898,
+      "parameters": {
+        "min": 203,
+        "max": 203,
+        "mean": 203.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{fe831004-d458-51c0-96e5-4cad62ef6131}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 898,
+      "parameters": {
+        "min": 204,
+        "max": 204,
+        "mean": 204.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{21d404a6-3ca9-8fff-1385-d8a1cfd87cf8}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 961,
+      "parameters": {
+        "min": 204,
+        "max": 204,
+        "mean": 204.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 91047,
+      "parameters": {
+        "min": 804,
+        "max": 4180,
+        "mean": 1800.4864,
+        "stddev": 892.482
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{407287dd-3049-0460-6bf6-13a38657f7d9}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 961,
+      "parameters": {
+        "min": 203,
+        "max": 203,
+        "mean": 203.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        3
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 91047,
+      "parameters": {
+        "min": 29640,
+        "max": 33435,
+        "mean": 32034.3006,
+        "stddev": 965.2635
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{bc981f94-b129-2ed2-74a8-34a5eb09f343}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 982,
+      "parameters": {
+        "min": 934,
+        "max": 1027,
+        "mean": 975.8442,
+        "stddev": 34.7627
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 91047,
+      "parameters": {
+        "min": 31112,
+        "max": 32009,
+        "mean": 31698.7131,
+        "stddev": 338.3067
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{ee2cb9db-4951-67ce-e9c8-237d09e71083}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 982,
+      "parameters": {
+        "min": 31142,
+        "max": 31189,
+        "mean": 31162.5081,
+        "stddev": 13.689
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{0d25db73-bb55-1486-937f-97a2c2a9dd4a}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1092,
+      "parameters": {
+        "min": 204,
+        "max": 204,
+        "mean": 204.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{463d4e50-078c-250f-c266-131839dbd9ce}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1092,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 41013.5531,
+        "stddev": 29719.6002
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{5573c586-718e-c38d-f75f-545099b27f2b}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1102,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 40983.1561,
+        "stddev": 29834.1788
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127394,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 60735.6205,
+        "stddev": 16564.3986
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{b8d03a4e-9882-dddc-ec27-83901396af3c}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1102,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 42125.2613,
+        "stddev": 29894.5112
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 104047,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 60925.015,
+        "stddev": 16368.6597
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 104047,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 60754.1984,
+        "stddev": 16540.6792
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        5
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{0663f224-53e3-9b4b-c494-0d87f4285e99}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "min": 0,
+        "max": 940,
+        "mean": 17.752,
+        "stddev": 122.319
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        5
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{0b59c8f0-56ac-69cf-b4e1-ea1762ceb466}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 65010,
+      "parameters": {
+        "min": 0,
+        "max": 932,
+        "mean": 17.7442,
+        "stddev": 107.7823
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        10
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{1250539a-e0b0-7939-d52f-d9ab91e548c7}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 99568,
+      "parameters": {
+        "min": 0,
+        "max": 9,
+        "mean": 0.1811,
+        "stddev": 1.1399
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        14
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "min": 0,
+        "max": 200,
+        "mean": 48.152,
+        "stddev": 85.5091
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{1aee8e25-06a8-296c-a0fd-5f35bf295091}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 65010,
+      "parameters": {
+        "min": 0,
+        "max": 999,
+        "mean": 11.178,
+        "stddev": 95.511
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        0
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{27bfc9f3-ef76-1ef7-b492-3a66542cf938}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 65010,
+      "parameters": {
+        "min": 0,
+        "max": 999,
+        "mean": 18.6224,
+        "stddev": 123.0239
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        4
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{30e675dc-321a-9507-1676-bf91aa4b49a2}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 65010,
+      "parameters": {
+        "min": 0,
+        "max": 1000,
+        "mean": 20.6423,
+        "stddev": 129.4484
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{34f0331a-0903-6636-a023-ae2cfeacd559}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 65010,
+      "parameters": {
+        "min": 0,
+        "max": 932,
+        "mean": 16.0473,
+        "stddev": 102.6026
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{38e32a85-1e05-c1b7-378c-49b5d22a0e3a}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "min": 0,
+        "max": 940,
+        "mean": 16.1368,
+        "stddev": 116.7157
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        0
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{4077a493-9b1e-cfad-fc17-f2721921f3a3}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "min": 0,
+        "max": 1000,
+        "mean": 18.7205,
+        "stddev": 135.5364
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        4
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{6e3e5b48-03a2-a0df-e2bb-e39737089a79}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "min": 0,
+        "max": 1000,
+        "mean": 20.6279,
+        "stddev": 142.1355
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        8
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "min": 17,
+        "max": 53,
+        "mean": 48.3641,
+        "stddev": 9.4506
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        11
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{8c5183f1-8501-6db8-6825-1f2eca53cc95}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 99568,
+      "parameters": {
+        "min": 0,
+        "max": 8,
+        "mean": 0.1528,
+        "stddev": 0.9867
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{953e8e5e-9940-8343-5ccb-619529e5490c}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "min": 0,
+        "max": 1000,
+        "mean": 11.3215,
+        "stddev": 105.7988
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        6
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "min": 41,
+        "max": 106,
+        "mean": 97.9081,
+        "stddev": 16.8091
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        7
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "min": 29,
+        "max": 88,
+        "mean": 80.8056,
+        "stddev": 15.0456
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        3
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{cb872be5-fa5b-745b-4154-fdedd7496e19}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 65010,
+      "parameters": {
+        "min": 0,
+        "max": 928,
+        "mean": 9.564,
+        "stddev": 79.3427
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        12
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "min": 200,
+        "max": 65535,
+        "mean": 49804.9533,
+        "stddev": 27933.7004
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        9
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 130018,
+      "parameters": {
+        "min": 128,
+        "max": 512,
+        "mean": 342.835,
+        "stddev": 160.9325
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        15
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "min": 0,
+        "max": 200,
+        "mean": 48.152,
+        "stddev": 85.5091
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        13
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "min": 200,
+        "max": 30801,
+        "mean": 23433.507,
+        "stddev": 13083.3269
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        3
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{fbb545d8-79dd-289e-5a64-154ccfaef9c2}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "min": 0,
+        "max": 940,
+        "mean": 9.6288,
+        "stddev": 90.4889
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        10
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230317,
+      "parameters": {
+        "min": 1024,
+        "max": 4096,
+        "mean": 2742.8103,
+        "stddev": 1287.5856
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127392,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 1,
+        "signal_guid_a": "{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}",
+        "signal_guid_b": "{dc68459f-9c08-964c-2615-270828506ed4}",
+        "server_host_a": "RTU-01",
+        "server_host_b": "RTU-01",
+        "pearson_r": 0.9997,
+        "slope": 0.999799,
+        "intercept": -0.0,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127392,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}",
+        "signal_guid_b": "{4ac5a790-03cb-9be6-1d89-fe3ca9dc23e2}",
+        "server_host_a": "RTU-01",
+        "server_host_b": "RTU-01",
+        "pearson_r": 0.9997,
+        "slope": 0.084886,
+        "intercept": -0.0,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 110178,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{dc68459f-9c08-964c-2615-270828506ed4}",
+        "signal_guid_b": "{4ac5a790-03cb-9be6-1d89-fe3ca9dc23e2}",
+        "server_host_a": "RTU-01",
+        "server_host_b": "RTU-01",
+        "pearson_r": 1.0,
+        "slope": 0.084903,
+        "intercept": -0.0,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1097,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{a4a3f042-8a1b-03cd-2f7d-96dfcea32d7b}",
+        "signal_guid_b": "{3bd78f35-1611-8412-a647-d27c8c8f7ffc}",
+        "server_host_a": "RTU-02",
+        "server_host_b": "RTU-02",
+        "pearson_r": 0.7091,
+        "slope": 0.827159,
+        "intercept": 2960.8325,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1099,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{12e2c3e8-88bd-bfba-cb14-2344e3274a9c}",
+        "signal_guid_b": "{3bd78f35-1611-8412-a647-d27c8c8f7ffc}",
+        "server_host_a": "RTU-02",
+        "server_host_b": "RTU-02",
+        "pearson_r": 0.9442,
+        "slope": 1.10188,
+        "intercept": 1090.305,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127393,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 1,
+        "signal_guid_a": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "signal_guid_b": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "server_host_a": "RTU-02",
+        "server_host_b": "RTU-02",
+        "pearson_r": 0.8322,
+        "slope": 0.832731,
+        "intercept": 465.6986,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127393,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "signal_guid_b": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "server_host_a": "RTU-02",
+        "server_host_b": "RTU-02",
+        "pearson_r": 0.853,
+        "slope": 0.922022,
+        "intercept": 545.3466,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 110861,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "signal_guid_b": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "server_host_a": "RTU-02",
+        "server_host_b": "RTU-02",
+        "pearson_r": 0.9764,
+        "slope": 1.054915,
+        "intercept": 176.7646,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1121,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 1,
+        "signal_guid_a": "{bf38e55b-0ce0-b7cc-b344-e1e4da7f6109}",
+        "signal_guid_b": "{680a38fa-62f1-39df-4e9c-252bd45bb089}",
+        "server_host_a": "RTU-03",
+        "server_host_b": "RTU-03",
+        "pearson_r": 0.9994,
+        "slope": 1.00521,
+        "intercept": -778.2316,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1121,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{bf38e55b-0ce0-b7cc-b344-e1e4da7f6109}",
+        "signal_guid_b": "{af9fc849-c3e7-612a-e1c2-8b0613693d7e}",
+        "server_host_a": "RTU-03",
+        "server_host_b": "RTU-03",
+        "pearson_r": 0.9997,
+        "slope": 0.391048,
+        "intercept": -71.0077,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1108,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{680a38fa-62f1-39df-4e9c-252bd45bb089}",
+        "signal_guid_b": "{af9fc849-c3e7-612a-e1c2-8b0613693d7e}",
+        "server_host_a": "RTU-03",
+        "server_host_b": "RTU-03",
+        "pearson_r": 0.9944,
+        "slope": 0.38706,
+        "intercept": 298.3818,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127394,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 1,
+        "signal_guid_a": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "signal_guid_b": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "server_host_a": "RTU-03",
+        "server_host_b": "RTU-03",
+        "pearson_r": 0.9995,
+        "slope": 0.999513,
+        "intercept": 5.2995,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127394,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "signal_guid_b": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "server_host_a": "RTU-03",
+        "server_host_b": "RTU-03",
+        "pearson_r": 0.9986,
+        "slope": 0.398487,
+        "intercept": -5.4691,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 111659,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "signal_guid_b": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "server_host_a": "RTU-03",
+        "server_host_b": "RTU-03",
+        "pearson_r": 0.999,
+        "slope": 0.3985,
+        "intercept": -6.9363,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 86805,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{1678a424-49b5-7f7c-c62b-4a48bdf91393}",
+        "signal_guid_b": "{6bf882ac-d45d-5f77-68ec-81b109094646}",
+        "server_host_a": "RTU-04",
+        "server_host_b": "RTU-04",
+        "pearson_r": 0.7857,
+        "slope": 1.681343,
+        "intercept": -52071.8908,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 982,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{ee2cb9db-4951-67ce-e9c8-237d09e71083}",
+        "signal_guid_b": "{bc981f94-b129-2ed2-74a8-34a5eb09f343}",
+        "server_host_a": "RTU-05",
+        "server_host_b": "RTU-05",
+        "pearson_r": -0.8494,
+        "slope": -2.15709,
+        "intercept": 68196.1674,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        2,
+        3
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 91047,
+      "parameters": {
+        "register_a": 2,
+        "register_b": 3,
+        "signal_guid_a": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "signal_guid_b": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "server_host_a": "RTU-05",
+        "server_host_b": "RTU-05",
+        "pearson_r": -0.9367,
+        "slope": -1.013035,
+        "intercept": 33858.2559,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        1
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1102,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 1,
+        "signal_guid_a": "{5573c586-718e-c38d-f75f-545099b27f2b}",
+        "signal_guid_b": "{463d4e50-078c-250f-c266-131839dbd9ce}",
+        "server_host_a": "RTU-06",
+        "server_host_b": "RTU-06",
+        "pearson_r": 0.9925,
+        "slope": 0.986381,
+        "intercept": 1071.6145,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1102,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{5573c586-718e-c38d-f75f-545099b27f2b}",
+        "signal_guid_b": "{b8d03a4e-9882-dddc-ec27-83901396af3c}",
+        "server_host_a": "RTU-06",
+        "server_host_b": "RTU-06",
+        "pearson_r": 0.995,
+        "slope": 0.996985,
+        "intercept": 1265.6512,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 1091,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{463d4e50-078c-250f-c266-131839dbd9ce}",
+        "signal_guid_b": "{b8d03a4e-9882-dddc-ec27-83901396af3c}",
+        "server_host_a": "RTU-06",
+        "server_host_b": "RTU-06",
+        "pearson_r": 0.9887,
+        "slope": 0.998509,
+        "intercept": 647.6093,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127394,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 1,
+        "signal_guid_a": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "signal_guid_b": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "server_host_a": "RTU-06",
+        "server_host_b": "RTU-06",
+        "pearson_r": 0.9956,
+        "slope": 0.995566,
+        "intercept": 269.0782,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127394,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "signal_guid_b": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "server_host_a": "RTU-06",
+        "server_host_b": "RTU-06",
+        "pearson_r": 0.9924,
+        "slope": 0.981933,
+        "intercept": 1270.3819,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 104047,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "signal_guid_b": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "server_host_a": "RTU-06",
+        "server_host_b": "RTU-06",
+        "pearson_r": 0.9972,
+        "slope": 0.986797,
+        "intercept": 972.9619,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        6,
+        7
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 6,
+        "register_b": 7,
+        "signal_guid_a": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "signal_guid_b": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.9992,
+        "slope": 0.894392,
+        "intercept": -6.7625,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        6,
+        8
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 6,
+        "register_b": 8,
+        "signal_guid_a": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "signal_guid_b": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.9982,
+        "slope": 0.56121,
+        "intercept": -6.5828,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        6,
+        12
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 6,
+        "register_b": 12,
+        "signal_guid_a": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "signal_guid_b": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.8431,
+        "slope": 1405.133084,
+        "intercept": -87902.0334,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        6,
+        13
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 6,
+        "register_b": 13,
+        "signal_guid_a": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "signal_guid_b": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.8431,
+        "slope": 658.123173,
+        "intercept": -41064.4115,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        6,
+        14
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 6,
+        "register_b": 14,
+        "signal_guid_a": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "signal_guid_b": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -0.8431,
+        "slope": -4.301318,
+        "intercept": 469.6932,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        6,
+        15
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 6,
+        "register_b": 15,
+        "signal_guid_a": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "signal_guid_b": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -0.8431,
+        "slope": -4.301318,
+        "intercept": 469.6932,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        7,
+        8
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 7,
+        "register_b": 8,
+        "signal_guid_a": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "signal_guid_b": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.9987,
+        "slope": 0.627286,
+        "intercept": -2.3241,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        7,
+        12
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 7,
+        "register_b": 12,
+        "signal_guid_a": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "signal_guid_b": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.841,
+        "slope": 1565.962149,
+        "intercept": -76866.7131,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        7,
+        13
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 7,
+        "register_b": 13,
+        "signal_guid_a": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "signal_guid_b": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.841,
+        "slope": 733.450796,
+        "intercept": -35895.7907,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        7,
+        14
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 7,
+        "register_b": 14,
+        "signal_guid_a": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "signal_guid_b": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -0.841,
+        "slope": -4.793639,
+        "intercept": 435.9125,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        7,
+        15
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 7,
+        "register_b": 15,
+        "signal_guid_a": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "signal_guid_b": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -0.841,
+        "slope": -4.793639,
+        "intercept": 435.9125,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        8,
+        12
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 8,
+        "register_b": 12,
+        "signal_guid_a": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "signal_guid_b": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.8609,
+        "slope": 2551.798154,
+        "intercept": -73743.6602,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        8,
+        13
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 8,
+        "register_b": 13,
+        "signal_guid_a": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "signal_guid_b": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.8609,
+        "slope": 1195.1875,
+        "intercept": -34433.0443,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        8,
+        14
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 8,
+        "register_b": 14,
+        "signal_guid_a": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "signal_guid_b": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -0.8609,
+        "slope": -7.811428,
+        "intercept": 426.3524,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        8,
+        15
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 195027,
+      "parameters": {
+        "register_a": 8,
+        "register_b": 15,
+        "signal_guid_a": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "signal_guid_b": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -0.8609,
+        "slope": -7.811428,
+        "intercept": 426.3524,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        9,
+        10
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 130018,
+      "parameters": {
+        "register_a": 9,
+        "register_b": 10,
+        "signal_guid_a": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}",
+        "signal_guid_b": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 1.0,
+        "slope": 8.0,
+        "intercept": 0.0,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        12,
+        13
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "register_a": 12,
+        "register_b": 13,
+        "signal_guid_a": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "signal_guid_b": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 1.0,
+        "slope": 0.468371,
+        "intercept": 106.3259,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        12,
+        14
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "register_a": 12,
+        "register_b": 14,
+        "signal_guid_a": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "signal_guid_b": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -1.0,
+        "slope": -0.003061,
+        "intercept": 200.6122,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        12,
+        15
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "register_a": 12,
+        "register_b": 15,
+        "signal_guid_a": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "signal_guid_b": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -1.0,
+        "slope": -0.003061,
+        "intercept": 200.6122,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        13,
+        14
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "register_a": 13,
+        "register_b": 14,
+        "signal_guid_a": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "signal_guid_b": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -1.0,
+        "slope": -0.006536,
+        "intercept": 201.3071,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        13,
+        15
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "register_a": 13,
+        "register_b": 15,
+        "signal_guid_a": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "signal_guid_b": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": -1.0,
+        "slope": -0.006536,
+        "intercept": 201.3071,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        14,
+        15
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 230300,
+      "parameters": {
+        "register_a": 14,
+        "register_b": 15,
+        "signal_guid_a": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "signal_guid_b": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 1.0,
+        "slope": 1.0,
+        "intercept": 0.0,
+        "relationship": "positive"
+      }
+    }
+  ]
+}

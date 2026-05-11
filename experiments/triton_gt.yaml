@@ -1,0 +1,372 @@
+
+host: EWS-WIN-01
+start: "2026-03-20T12:17:43Z"
+end: "2026-03-21T07:47:33Z"
+
+events:
+
+  # ── Pre-agent execution chain ────────────────────────────────────────────────
+  # explorer.exe spawns two update.exe instances and an intermediate cmd.exe
+  # starting at 12:17:43Z — 8 minutes before the file is refreshed on disk.
+  # Source: `executeShell` runs under the main agent, but these three processes
+  # are the pre-launch chain that sets up the agent environment.
+  # All three GUIDs verified in Neo4j.
+  - seq: 1
+    timestamp: "2026-03-20T12:17:43Z"
+    rel: CREATE_PROCESS
+    src: "{00551036-7254-65e6-e920-bb5e58503af4}"
+    dst: "{23f17c91-084d-7131-6fca-fdf3422e887b}"
+    technique: T0863
+    note: "User Execution — explorer.exe (EWS-WIN-01\\Administrator, pid=2960) spawns first update.exe instance (pid=1856) from C:\\Users\\Public\\Downloads."
+
+  - seq: 2
+    timestamp: "2026-03-20T12:18:06Z"
+    rel: CREATE_PROCESS
+    src: "{00551036-7254-65e6-e920-bb5e58503af4}"
+    dst: "{ba43b7b2-ae60-bfac-a9c6-6a2f20e59c35}"
+    technique: T0863
+    note: "User Execution — explorer.exe spawns cmd.exe (pid=3444) as intermediate launcher for the second update.exe instance."
+
+  - seq: 3
+    timestamp: "2026-03-20T12:18:25Z"
+    rel: CREATE_PROCESS
+    src: "{ba43b7b2-ae60-bfac-a9c6-6a2f20e59c35}"
+    dst: "{8be5507b-63b8-a1c3-1bc8-12e467c67efa}"
+    technique: T0863
+    note: "User Execution — cmd.exe (pid=3444) spawns second update.exe instance (pid=704, cmd=update.exe)."
+
+  # ── Operational binary staged on EWS-WIN-01 ─────────────────────────────────
+  # explorer.exe (pid=2960) overwrites update.exe on disk at 12:25:28Z,
+  # refreshing the binary used by the main agent (pid=3520) launched 43s later.
+  - seq: 4
+    timestamp: "2026-03-20T12:25:28Z"
+    rel: CREATE_FILE
+    src: "{00551036-7254-65e6-e920-bb5e58503af4}"
+    dst: "{dfae0b22-4117-1414-eceb-5a1f76fddb4f}"
+    technique: T0867
+    note: "Lateral Tool Transfer — explorer.exe (EWS-WIN-01\\Administrator) writes the operational attack binary to C:\\Users\\Public\\Downloads\\update.exe. Also logged as DELETE_FILE in the same Sysmon event (overwrite)."
+
+  # ── Main agent (pid=3520) activates ──────────────────────────────────────────
+  # explorer.exe launches the definitive update.exe instance that drives every
+  # subsequent phase until 07:47:33Z the next day.
+  - seq: 5
+    timestamp: "2026-03-20T12:27:11Z"
+    rel: CREATE_PROCESS
+    src: "{00551036-7254-65e6-e920-bb5e58503af4}"
+    dst: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    technique: T0863
+    note: "User Execution — explorer.exe launches main update.exe instance (pid=3520, cmd=\"C:\\Users\\Public\\Downloads\\update.exe\"). This is the TriStation C2 orchestrator that executes all subsequent phases autonomously."
+
+  - seq: 6
+    timestamp: "2026-03-20T12:27:12Z"
+    rel: LOAD_IMAGE
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{dfae0b22-4117-1414-eceb-5a1f76fddb4f}"
+    technique: T0863
+    note: "Confirms main agent image mapped into pid=3520. LOAD_IMAGE of C:\\Users\\Public\\Downloads\\update.exe by the main orchestrator process."
+
+  # ── initial_access phase: staging directory + manifest ───────────────────────
+  # Source: `executeShell` in initial_access phase runs:
+  #   "mkdir C:\ProgramData\SystemUpdater 2>nul & echo %date% %time% > manifest.txt"
+  # cmd.exe (pid=2832) is spawned with /C and the compound command.
+  - seq: 7
+    timestamp: "2026-03-20T12:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{4b734f25-a236-880d-1d64-5462ac94dea8}"
+    technique: T0859
+    note: "Valid Accounts — main agent spawns cmd.exe (pid=2832) running \"mkdir C:\\ProgramData\\SystemUpdater 2>nul & echo %date% %time% > C:\\ProgramData\\SystemUpdater\\manifest.txt\" to mark presence on EWS."
+
+  - seq: 8
+    timestamp: "2026-03-20T12:27:12Z"
+    rel: CREATE_FILE
+    src: "{4b734f25-a236-880d-1d64-5462ac94dea8}"
+    dst: "{e431686e-4609-f554-704a-6e199b915258}"
+    technique: T0859
+    note: "Presence marker — C:\\ProgramData\\SystemUpdater\\manifest.txt written by staging cmd.exe (pid=2832)."
+
+  # ── reconnaissance phase: route/arp/netstat + targets.txt ───────────────────
+  # Source: `executeShell` in reconnaissance phase — three separate shell actions.
+  # Three cmd.exe children of the main agent, each with a distinct command string.
+  # The netstat cmd (pid=3764) expands into 3 NETSTAT+findstr pairs (seqs 15–20).
+  - seq: 9
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{00142fc0-96b2-4707-36aa-b545e673e831}"
+    technique: T0840
+    note: "Network Connection Enumeration — main agent spawns cmd.exe (pid=216) running \"route print && arp -a\" to map the OT routing table and ARP cache."
+
+  - seq: 10
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{59e69f51-8b88-50b3-941a-2bd177290142}"
+    technique: T0840
+    note: "Network Connection Enumeration — main agent spawns cmd.exe (pid=3764) running \"netstat -an | findstr :502 & netstat -an | findstr :1502 & netstat -an | findstr :8080\" to enumerate active ICS sessions."
+
+  - seq: 11
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{ab1b66a5-3803-44e3-c5e8-0ef310a2fdac}"
+    technique: T0846
+    note: "Remote System Discovery — main agent spawns cmd.exe (pid=2332) that echoes SIS controller target (192.168.43.11) and ports 1502/502/8080 into targets.txt."
+
+  - seq: 12
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_FILE
+    src: "{ab1b66a5-3803-44e3-c5e8-0ef310a2fdac}"
+    dst: "{97ce8bb6-fe58-73aa-8c6f-7f84eb615839}"
+    technique: T0846
+    note: "Target inventory persisted — C:\\ProgramData\\SystemUpdater\\targets.txt records PLC-03 (192.168.43.11) and its 1502/502/8080 service ports."
+
+  # Recon grandchildren — route/arp chain (cmd pid=216 children)
+  - seq: 13
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{00142fc0-96b2-4707-36aa-b545e673e831}"
+    dst: "{a0c76783-3a72-404c-5bbb-b6ccc5dfb487}"
+    technique: T0840
+    note: "Network Connection Enumeration — ROUTE.EXE (pid=908) run \"route print\" via the route && arp recon chain."
+
+  - seq: 14
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{00142fc0-96b2-4707-36aa-b545e673e831}"
+    dst: "{5fe7ea28-9eef-4dd5-e2cc-6ca85be978ea}"
+    technique: T0840
+    note: "Network Connection Enumeration — ARP.EXE (pid=1496) run \"arp -a\" via the route && arp recon chain."
+
+  # Recon grandchildren — netstat|findstr triples (cmd pid=3764 children)
+  # Three NETSTAT+findstr pairs for ports :502, :1502, :8080 in command order.
+  - seq: 15
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{59e69f51-8b88-50b3-941a-2bd177290142}"
+    dst: "{8da0eabc-ad31-66c7-3564-a1277fef2b62}"
+    technique: T0840
+    note: "Network Connection Enumeration — NETSTAT.EXE (pid=628) \"netstat -an\" in the first :502 pipe pair."
+
+  - seq: 16
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{59e69f51-8b88-50b3-941a-2bd177290142}"
+    dst: "{1013931f-d99e-b7c9-5ae8-030ede909c01}"
+    technique: T0840
+    note: "Network Connection Enumeration — findstr.exe (pid=2696) filtering for \":502\" (Modbus sessions)."
+
+  - seq: 17
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{59e69f51-8b88-50b3-941a-2bd177290142}"
+    dst: "{6c86d37a-e383-6f24-8ce6-b355e2627529}"
+    technique: T0840
+    note: "Network Connection Enumeration — NETSTAT.EXE (pid=4028) \"netstat -an\" in the second :1502 pipe pair."
+
+  - seq: 18
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{59e69f51-8b88-50b3-941a-2bd177290142}"
+    dst: "{fc934b08-8c0e-383e-17ee-6c6db72c31cd}"
+    technique: T0840
+    note: "Network Connection Enumeration — findstr.exe (pid=1348) filtering for \":1502\" (TriStation sessions)."
+
+  - seq: 19
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{59e69f51-8b88-50b3-941a-2bd177290142}"
+    dst: "{e179142f-43e0-ca45-beff-30e11516a585}"
+    technique: T0840
+    note: "Network Connection Enumeration — NETSTAT.EXE (pid=2476) \"netstat -an\" in the third :8080 pipe pair."
+
+  - seq: 20
+    timestamp: "2026-03-20T14:27:12Z"
+    rel: CREATE_PROCESS
+    src: "{59e69f51-8b88-50b3-941a-2bd177290142}"
+    dst: "{1b38b701-559e-aba2-1cc8-c4b7456bf81c}"
+    technique: T0840
+    note: "Network Connection Enumeration — findstr.exe (pid=2184) filtering for \":8080\" (HTTP sessions)."
+
+  # ── port_scan phase ──────────────────────────────────────────────────────────
+  # Source: `executeNetworkScan` probes ports [1502, 502, 8080, 22] via TCP dial
+  # (network.IsPortOpen). The port-8080 TCP SYN is the only probe captured as a
+  # CONNECT_TO in the graph.
+  # IMPORTANT timestamp note: The graph records this edge at 2026-03-20T09:27:13Z,
+  # which predates the main agent's creation (12:27:11Z) by ~3 hours. This is a
+  # PCAP attribution artifact — the graph builder assigned EWS→PLC-03:8080 traffic
+  # observed in the PCAP to the main agent process node by host IP, irrespective
+  # of process lifetime. The logical attack time for the port_scan phase is
+  # approximately 14:27Z (T+2h from agent launch). The 09:27:13Z timestamp should
+  # not be used for correlation — use the reconnaissance phase timestamps instead.
+  - seq: 21
+    timestamp: "2026-03-20T09:27:13Z"
+    rel: CONNECT_TO
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{629f1e88-e1c9-338c-92dd-4ebae25a9595}"
+    technique: T0846
+    note: "Remote System Discovery — TCP SYN probe to PLC-03:8080 (port_scan phase). Graph timestamp 09:27:13Z is a PCAP attribution artifact predating agent creation; logical time ~14:27Z. `executeNetworkScan` probes ports [1502, 502, 8080, 22] — 8080 probe is the only one captured as a distinct CONNECT_TO edge."
+
+  # ── firmware_injection phase ─────────────────────────────────────────────────
+  # Source: `executeFileTransferHTTP` + two `executeSSHExec` actions.
+  # `executeSSHExec` is NOT cached — creates a new SSH connection per action.
+  # Four SSH sessions total (HTTP-transfer SSH + killall + cp/chmod/nohup + sleep
+  # is not SSH). All four are aggregated into one CONNECT_TO edge in the graph
+  # (firstSeen 15:27:15Z, 4 correlated PCAP sessions, ~4.2MB out / 3.1MB in).
+  #
+  # `executeFileTransferHTTP` flow:
+  #   1. EWS starts HTTP server on port 8000 serving imain.bin
+  #   2. EWS SSHes to PLC-03 (port 22) — one of the 4 aggregated SSH sessions
+  #   3. PLC-03 runs wget/curl to download imain.bin from EWS:8000 (reverse connection)
+  #   4. EWS HTTP server shuts down after transfer
+  #
+  # `executeModbusRead` FC=43: SOURCE CODE NOTE — the FC=43 handler in
+  # executor.go is a no-op. It opens a TCP connection to port 502 but sends no
+  # MEI PDU (case 43 logs "Device identification (MEI) successful" without
+  # transmitting any Modbus bytes). The CONNECT_TO to port 502 is real;
+  # no MEI request is ever transmitted over the wire. Confirmed by absence of
+  # FC=43 in predicted/signals.duckdb (which captures all Modbus function codes).
+  - seq: 22
+    timestamp: "2026-03-20T15:27:15Z"
+    rel: CONNECT_TO
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{534881df-1718-b27e-5630-aad1c8568723}"
+    technique: T0886
+    note: "Remote Services — SSH (cs-admin@192.168.43.11) to PLC-03:22. Timestamp 15:27:15Z from graph (Sysmon); GT previously stated 16:27:14Z which was incorrect. 4 correlated PCAP sessions covering: (a) file_transfer_http SSH for wget trigger, (b) killall cleanup ssh_exec, (c) cp/chmod/nohup launch ssh_exec. SSH carries process management only; imain.bin arrives via reverse HTTP (seq 23)."
+
+  - seq: 23
+    timestamp: null
+    rel: CONNECT_TO
+    src: "runtime://PLC-03"
+    dst: "{5b1b22ec-2057-08bc-0c8c-3d5f648e056e}"
+    technique: T0867
+    note: "Lateral Tool Transfer — PLC-03 Runtime (wget/curl spawned via SSH) downloads imain.bin from EWS HTTP server on port 8000. Reverse connection: PLC-03 pulls, EWS serves. Confirmed in graph (PLC-03 Runtime → EWS NetworkService port=8000). Timestamp null (PCAP-augmented, no Sysmon event from PLC-03 perspective). This is the actual imain.bin/tristation_server payload delivery vector."
+
+  # Modbus TCP connection to PLC-03:502.
+  # Covers sis_identification FC=43 probe (no-op — TCP connect only, no MEI PDU),
+  # pre_attack_recheck FC=1 coil reads (seqs 26–35), and verification FC=1 read
+  # (seq 36). 4 correlated PCAP sessions, ~11KB out / 5.8KB in, duration ~15.2h.
+  - seq: 24
+    timestamp: "2026-03-21T00:37:33Z"
+    rel: CONNECT_TO
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{cb7cdc22-ab89-4b6d-a20b-0935bf0980b2}"
+    technique: T0846
+    note: "Remote System Discovery — Modbus TCP session to PLC-03:502. Timestamp 00:37:33Z from graph (GT previously stated 16:27:14Z which was incorrect). sis_identification FC=43 action is a source-code no-op (TCP connect, no MEI bytes sent — see firmware_injection note). FC=1 coil reads in pre_attack_recheck and verification phases flow over this session."
+
+  # ── tristation_connection + c2_commands + safety_bypass over TriStation C2 ───
+  # Source: `executeTriStationConnect` → `client.Connect()` → UDP to port 1502.
+  # FC sequence over this aggregated edge:
+  #   FC 0x04 × 4  (handshake + 3 status polls: tristation_connection,
+  #                 pre_attack_recheck, safety_bypass verify, verification)
+  #   FC 0x11 × 7  (5 c2_commands + 1 pre_attack_recheck verify + 1 verification log)
+  #   FC 0x12 × 1  (SafetyBypass Enable, targetCoil=40)
+  #   FC 0xFF × 1  (Disconnect at cleanup)
+  - seq: 25
+    timestamp: "2026-03-21T00:47:33Z"
+    rel: CONNECT_TO
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{64a1b683-6d30-b233-86e8-5ade4289124e}"
+    technique: T0855
+    note: "Unauthorized Command Message — EWS agent opens UDP session to PLC-03:1502 (imain.bin TriStation backdoor). Timestamp 00:47:33Z from graph (GT previously stated 17:27:21Z which was incorrect). FC sequence: ReadStatus ×4, ExecuteCommand ×7, SafetyBypass Enable coil 40 ×1, Disconnect ×1. lastSeen 2026-03-21T00:47:33Z (same as firstSeen — aggregated single session)."
+
+  # ── pre_attack_recheck: Modbus ReadCoils PLC-03 coils 40–49 ─────────────────
+  # Source: `executeModbusRead` FC=1, address=40, count=10.
+  # Timestamps confirmed by predicted/signals.duckdb: all 10 reads at
+  # 2026-03-21T06:27:26.805Z (DuckDB actual; GT previously stated 06:27:00Z).
+  # Values: coil 40 = 1 (run_bit, safety shutdown demanded), coils 41–49 = 0.
+  # All signal GUIDs verified in Neo4j (ICSSignal nodes, host=PLC-03, coil type).
+  - seq: 26
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{f18edb6a-0c9e-d439-c87c-98bc1274ef0b}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 40 (run_bit). value=1 (safety shutdown demanded by SIS logic). Timestamp 06:27:26Z confirmed by signals.duckdb (previously 06:27:00Z in GT — off by 26s). First of two reads on coil 40; second at seq 36."
+
+  - seq: 27
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{8de8edd7-0205-8342-f8c8-d80a3c3275b1}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 41 (pre_attack_recheck span 40..49). value=0."
+
+  - seq: 28
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{ed4a96de-3111-a01f-e856-ab4bf65dc6c8}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 42. value=0."
+
+  - seq: 29
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{f97ab5eb-9d24-883e-cc77-ec2215475887}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 43. value=0."
+
+  - seq: 30
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{438a4817-c7b1-bf11-2bfe-3c40cdeac18d}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 44. value=0."
+
+  - seq: 31
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{c4ec287e-088b-f908-d9f0-b201ba2679a4}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 45. value=0."
+
+  - seq: 32
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{c68ba0b0-318f-5569-1e20-5e186142cc2f}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 46. value=0."
+
+  - seq: 33
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{3e19cbd4-5f0e-ef32-ebad-d97172e910ed}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 47. value=0."
+
+  - seq: 34
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{7d079514-07ec-3282-924f-5db41f660f6f}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 48. value=0."
+
+  - seq: 35
+    timestamp: "2026-03-21T06:27:26Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{5bbbd545-21c0-7232-23dc-28c4ae44040f}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 49. value=0."
+
+  # ── verification phase: second ReadCoils on coil 40 only ────────────────────
+  # Source: `executeModbusRead` FC=1, address=40, count=1 in verification phase.
+  # Timestamp confirmed by signals.duckdb lastSeenAt for coil 40 = 07:37:37.157Z.
+  # coil 40 value=1 — safety logic still demanding HALT (run_bit not cleared at
+  # Modbus level). The FC 0x12 bypass operates inside imain.bin in-memory state
+  # only; no Modbus WRITE_SIGNAL is recorded. Confirmed: zero FC=5/15 writes to
+  # PLC-03 in the entire signals.duckdb dataset (22M rows).
+  - seq: 36
+    timestamp: "2026-03-21T07:37:37Z"
+    rel: READ_SIGNAL
+    src: "{7ccae393-ff47-89db-35e0-eb595dec7a33}"
+    dst: "{f18edb6a-0c9e-d439-c87c-98bc1274ef0b}"
+    technique: T0861
+    note: "Point & Tag Identification — Modbus ReadCoils PLC-03 coil 40 (run_bit), verification read after safety bypass (count=1). value=1 confirms safety logic still demanding HALT while bypass is active in imain.bin memory. Graph s.readCount=2 total across seqs 26 and 36. Timestamp 07:37:37Z confirmed exact by signals.duckdb (07:37:37.157Z)."

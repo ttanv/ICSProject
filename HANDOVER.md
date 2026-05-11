@@ -4,6 +4,27 @@ A practical guide for picking up this repo. Caveats first, mechanics second.
 The README explains *what* the tool does and *how* to invoke it; this document
 covers the things you only learn after running into them.
 
+## Branch layout — read this first
+
+**Work on `simplify-correlation`. It is the canonical branch.** `main` exists
+but is a *parallel, unrelated history* of the same project — `main` and
+`simplify-correlation` share **no common ancestor**, so they cannot be
+merged in the usual sense. `simplify-correlation` is a functional superset
+of `main` (every feature on `main` is present here, plus the streaming
+augmentor, GUID-matching producers, perf work, and this handover prep).
+`main` is preserved purely as a historical reference and should not be
+treated as authoritative.
+
+```bash
+git checkout simplify-correlation   # do this immediately after cloning
+```
+
+If you ever want to retire `main`, the safe operation is a hard reset to
+`simplify-correlation` (consider tagging the old tip first:
+`git tag main-archive-pre-handover main && git checkout main && git reset --hard simplify-correlation`).
+Do not attempt `git merge main` into `simplify-correlation` — with no
+common ancestor it produces a per-byte conflict in every file.
+
 ---
 
 ## 1. What this repo actually is
@@ -469,6 +490,17 @@ ICSGraph/Collection/            Telemetry → base graph
   build_graph.py
   assets.yaml                   *** KEEP THIS UP TO DATE ***
 
+experiments/                    Tracked handover package for §10 workflow
+  README.md                     Layout + how to run an investigation
+  investigation_prompt_v3.md    Canonical LLM investigation prompt
+  raw_logs_prompt.md            Alternate prompt
+  evaluate.py                   Detection scorer (src,rel,dst triples)
+  ics-attack.json               MITRE ATT&CK for ICS, STIX 2.0
+  assets.yaml                   Asset inventory (LLM-flavor, old schema)
+  <scenario>_gt.yaml            Latest hand-curated ground truth
+  <scenario>_24h/               Per-scenario sandboxes (invariants +
+                                symlinks to shared assets/STIX)
+
 scripts/                        One-off backfills + example run wrappers
   fix_signal_guids_ctas.py      Legacy Modbus DB GUID backfill (CTAS) — see 3.11
   fix_signal_guids.py           Legacy Modbus DB GUID backfill (UPDATE; small DBs only)
@@ -610,49 +642,58 @@ with no source modifications. See §3.12 for invocation.
 Once you have an augmented Cypher in Neo4j, this is what the augmented
 graph is *for*: an LLM-driven analyst run that reads the graph (and,
 when warranted, the signal DuckDB) to reconstruct an attack and emit a
-structured detection list. The harness lives under
-`paper_graphs_v2/experiments/`.
+structured detection list.
+
+**There are two copies of the experiments harness:**
+
+- **`experiments/`** at repo root — **tracked**, shipped with the repo,
+  contains the inputs (canonical prompt, scorer, latest ground truth,
+  invariants, MITRE STIX bundle, asset inventory). See
+  `experiments/README.md`. Work from here.
+- **`paper_graphs_v2/experiments/`** — gitignored working/output dir
+  used by past runs. Contains the full augmented Cypher and DuckDB
+  outputs plus older curation passes. Reference, not source of truth.
 
 ### Per-scenario sandbox layout
 
-Each scenario has its own sandbox dir. Treat that dir as CWD when running
-the investigation — the prompt and the supporting tooling expect CWD-local
-files.
+Each scenario has its own sandbox dir under `experiments/`. Treat that
+dir as CWD when running the investigation — the prompt and the
+supporting tooling expect CWD-local files.
 
 ```
-paper_graphs_v2/experiments/
-  investigation_prompt_v3.md       canonical investigation prompt (use this one)
-  investigation_prompt{,_v0,_v2}.md  earlier versions, kept for reference
-  raw_logs_prompt.md               variant prompt for raw-log style investigations
-  evaluate.py                      detection scorer (see below)
-  <scenario>_gt.yaml               ground truth (see "Ground truth" below)
-  detections.yaml                  most recent run's detections (per scenario)
-  detections_v0.yaml / detections_triton.yaml   variants
-  be_24h/  frosty_24h/  fuxnet_24h/  id_24h/  id2_24h/  pipe_24h/
-  stuxnet_24h/  triton_24h/        per-scenario sandboxes — see below
+experiments/
+  investigation_prompt_v3.md     canonical investigation prompt
+  raw_logs_prompt.md             alternate prompt (raw-log style)
+  evaluate.py                    detection scorer
+  ics-attack.json                MITRE ATT&CK for ICS, STIX 2.0
+  assets.yaml                    asset inventory (LLM-flavor, old schema)
+  <scenario>_gt.yaml             hand-curated ground truth, latest version
+                                 per scenario (be / frosty / fuxnet /
+                                 id2 / pipe / triton)
+  <scenario>_24h/                per-scenario sandbox:
+    assets.yaml                  → symlink to ../assets.yaml
+    ics-attack.json              → symlink to ../ics-attack.json
+    *_invariants.json            pre-mined invariants (Modbus +
+                                 MQTT/OPC UA where applicable)
 ```
 
-A per-scenario sandbox (e.g. `be_24h/`) contains:
-
-- `assets.yaml` — scenario-scoped copy of the asset inventory.
-- `ics-attack.json` — MITRE ATT&CK for ICS, STIX 2.0 bundle. Referenced
-  by the prompt; same file across scenarios.
-- `<Scenario>_invariants.json`, `<Scenario>_mqtt_invariants.json`,
-  `<Scenario>_opcua_invariants.json` — pre-mined invariants the
-  process-level sub-agent reads when the investigation reaches the
-  field layer.
-- `detections.yaml` — the run's output.
+Scenarios with sandboxes: `be_24h`, `frosty_24h`, `fuxnet_24h`,
+`industroyer_24h`, `industroyer2_24h`, `pipe_24h`, `stuxnet_24h`,
+`triton_24h`. Ground truth currently exists for `be`, `frosty`,
+`fuxnet`, `id2`, `pipe`, `triton`; no `id_gt.yaml` or `stuxnet_gt.yaml`
+yet. `fuxnet_24h/` has no invariants yet (signal DB exists but was not
+mined).
 
 ### Running an investigation
 
 1. `bash purge_db.sh paper_graphs_v2/<scenario>_24h/augmented_<Scenario>.cypher`
    — load the augmented graph for the scenario you want to investigate.
-2. `cd paper_graphs_v2/experiments/<scenario>_24h/` — switch to the
-   sandbox so file references in the prompt resolve.
-3. Feed `paper_graphs_v2/experiments/investigation_prompt_v3.md` to the
-   LLM. The prompt tells the model how to interact with `cypher-shell`,
-   when to spawn a process-level sub-agent against the DuckDB, and what
-   shape the output detection list must take.
+2. `cd experiments/<scenario>_24h/` — switch to the sandbox so file
+   references in the prompt resolve.
+3. Feed `../investigation_prompt_v3.md` to the LLM. The prompt tells
+   the model how to interact with `cypher-shell`, when to spawn a
+   process-level sub-agent against the DuckDB, and what shape the
+   output detection list must take.
 4. Save the model's structured detections to `detections.yaml` in the
    sandbox dir.
 
@@ -664,7 +705,7 @@ truth and detections. The MITRE technique label is commentary, not part
 of the key.
 
 ```bash
-cd paper_graphs_v2/experiments
+cd experiments
 python3 evaluate.py \
   --groundtruth be_gt.yaml \
   --detections  be_24h/detections.yaml
@@ -675,15 +716,15 @@ Outputs precision/recall/F1 overall and per-relation. Use
 
 ### Ground truth
 
-`*_gt.yaml` files (`be_gt.yaml`, `frosty_gt.yaml`, `fuxnet_gt.yaml`,
-`id2_gt.yaml`, `pipe_gt.yaml`, `triton_gt.yaml`, and variants like
-`*_gt1.yaml` / `*_gt2.yaml` / `*_gt_fixed.yaml`) are **hand-curated and
+`<scenario>_gt.yaml` files under `experiments/` are **hand-curated and
 actively evolving**. They are best-effort, not frozen. Expect to revise
 them as the graph improves, the prompt changes, or new attack phases
-get added to the testbed runs. Variant suffixes (`_gt1`, `_gt2`,
-`_fixed`) are successive curation passes — the unsuffixed file is the
-current default unless a per-scenario README in the sandbox dir says
-otherwise.
+get added to the testbed runs. The tracked copies in `experiments/` are
+the **latest curation pass** per scenario (e.g. `be_gt.yaml` is the
+file historically called `be_gt2.yaml`; `frosty_gt.yaml` is
+`frosty_gt1.yaml`; etc.) — renamed to drop the version suffix so the
+file you grep for is always the current default. The full version
+history of past passes is preserved in `paper_graphs_v2/experiments/`.
 
 ### Why the prompt is the canonical contract
 

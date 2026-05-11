@@ -1,0 +1,2991 @@
+{
+  "generated_at": "2026-05-05T07:46:38.973477+00:00",
+  "signal_db_path": "paper_graphs_v2/experiments/pipe_24h/Pipedream_signals.duckdb",
+  "st_file_path": null,
+  "baseline_hours": 2.0,
+  "total_observations_used": 232141741,
+  "correlation_graph": {
+    "nodes": {
+      "{b66be63f-e37f-34d4-222b-bf696c6882e2}@PLC-01": {
+        "signal_container_guid": "{b66be63f-e37f-34d4-222b-bf696c6882e2}",
+        "server_host": "PLC-01",
+        "register": 100,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{0edbd7b2-a581-ab79-ca05-5ebbc5f1102c}@PLC-03": {
+        "signal_container_guid": "{0edbd7b2-a581-ab79-ca05-5ebbc5f1102c}",
+        "server_host": "PLC-03",
+        "register": 102,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}@PLC-03": {
+        "signal_container_guid": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "server_host": "PLC-03",
+        "register": 106,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{1f20610e-868c-7457-bbe5-3a8717b2efb0}@PLC-03": {
+        "signal_container_guid": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "server_host": "PLC-03",
+        "register": 100,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{24146e97-0d84-fe60-6c28-70debd17a8ed}@PLC-03": {
+        "signal_container_guid": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "server_host": "PLC-03",
+        "register": 103,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{2ce6b25e-2032-782f-2f2f-2b9cd04054ae}@PLC-03": {
+        "signal_container_guid": "{2ce6b25e-2032-782f-2f2f-2b9cd04054ae}",
+        "server_host": "PLC-03",
+        "register": 112,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{2f0e927e-74be-74e4-febb-10ee46a30962}@PLC-03": {
+        "signal_container_guid": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "server_host": "PLC-03",
+        "register": 101,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{4afb2f63-f171-b396-bd68-c2416d2dfffe}@PLC-03": {
+        "signal_container_guid": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "server_host": "PLC-03",
+        "register": 100,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{51105b41-d61f-37bb-4ba4-34d9f79a3b0a}@PLC-03": {
+        "signal_container_guid": "{51105b41-d61f-37bb-4ba4-34d9f79a3b0a}",
+        "server_host": "PLC-03",
+        "register": 110,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{71c69fdc-7727-f893-6eac-4cce81f85c39}@PLC-03": {
+        "signal_container_guid": "{71c69fdc-7727-f893-6eac-4cce81f85c39}",
+        "server_host": "PLC-03",
+        "register": 1028,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{736ccce8-02aa-c741-b8c8-0a2c5e0f115b}@PLC-03": {
+        "signal_container_guid": "{736ccce8-02aa-c741-b8c8-0a2c5e0f115b}",
+        "server_host": "PLC-03",
+        "register": 1025,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{878933e1-d364-026c-b2e8-d704943ca001}@PLC-03": {
+        "signal_container_guid": "{878933e1-d364-026c-b2e8-d704943ca001}",
+        "server_host": "PLC-03",
+        "register": 1027,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{8c3cab04-5064-7889-4525-30e44d2c485e}@PLC-03": {
+        "signal_container_guid": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "server_host": "PLC-03",
+        "register": 107,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{9ec3d57d-fbfa-5bdc-2d26-96cf1602f180}@PLC-03": {
+        "signal_container_guid": "{9ec3d57d-fbfa-5bdc-2d26-96cf1602f180}",
+        "server_host": "PLC-03",
+        "register": 1026,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{a359770f-8df5-5cd1-c8ed-54b739c65019}@PLC-03": {
+        "signal_container_guid": "{a359770f-8df5-5cd1-c8ed-54b739c65019}",
+        "server_host": "PLC-03",
+        "register": 104,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{ade31d6a-35f1-8ab7-518f-cac085d44236}@PLC-03": {
+        "signal_container_guid": "{ade31d6a-35f1-8ab7-518f-cac085d44236}",
+        "server_host": "PLC-03",
+        "register": 105,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{e2435434-2111-e5c9-b031-71ab473415f4}@PLC-03": {
+        "signal_container_guid": "{e2435434-2111-e5c9-b031-71ab473415f4}",
+        "server_host": "PLC-03",
+        "register": 109,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{f0157f75-ddd1-c690-4571-908af366e6bc}@PLC-03": {
+        "signal_container_guid": "{f0157f75-ddd1-c690-4571-908af366e6bc}",
+        "server_host": "PLC-03",
+        "register": 108,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{f29e15c6-0d48-34c4-cd45-4bc33cc7a88f}@PLC-03": {
+        "signal_container_guid": "{f29e15c6-0d48-34c4-cd45-4bc33cc7a88f}",
+        "server_host": "PLC-03",
+        "register": 111,
+        "unit_id": 0,
+        "variable_name": null
+      },
+      "{477ba933-a90a-f1f4-b356-ef21c37d9762}@RTU-02": {
+        "signal_container_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "server_host": "RTU-02",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{9cff0568-8cd0-a692-eee3-633f0099144b}@RTU-02": {
+        "signal_container_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "server_host": "RTU-02",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}@RTU-02": {
+        "signal_container_guid": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "server_host": "RTU-02",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{16d2fe48-edae-9ac0-f1f5-2af904738498}@RTU-03": {
+        "signal_container_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "server_host": "RTU-03",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{aab8ab15-288d-2582-e163-3f56518cd9e6}@RTU-03": {
+        "signal_container_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "server_host": "RTU-03",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{c0db3528-d44e-eb53-fc4f-a1814793126e}@RTU-03": {
+        "signal_container_guid": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "server_host": "RTU-03",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{1678a424-49b5-7f7c-c62b-4a48bdf91393}@RTU-04": {
+        "signal_container_guid": "{1678a424-49b5-7f7c-c62b-4a48bdf91393}",
+        "server_host": "RTU-04",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{6bf882ac-d45d-5f77-68ec-81b109094646}@RTU-04": {
+        "signal_container_guid": "{6bf882ac-d45d-5f77-68ec-81b109094646}",
+        "server_host": "RTU-04",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}@RTU-05": {
+        "signal_container_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "server_host": "RTU-05",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}@RTU-05": {
+        "signal_container_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "server_host": "RTU-05",
+        "register": 3,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{bde27d95-23c6-094f-d90b-f5c514b5fd52}@RTU-05": {
+        "signal_container_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "server_host": "RTU-05",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}@RTU-06": {
+        "signal_container_guid": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "server_host": "RTU-06",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{c88af635-9de8-c3c9-c786-d50cab398271}@RTU-06": {
+        "signal_container_guid": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "server_host": "RTU-06",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{f986370c-07cb-f8a4-6963-83739c0f44b8}@RTU-06": {
+        "signal_container_guid": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "server_host": "RTU-06",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{0663f224-53e3-9b4b-c494-0d87f4285e99}@SIMFACTORY-01": {
+        "signal_container_guid": "{0663f224-53e3-9b4b-c494-0d87f4285e99}",
+        "server_host": "SIMFACTORY-01",
+        "register": 5,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{0b59c8f0-56ac-69cf-b4e1-ea1762ceb466}@SIMFACTORY-01": {
+        "signal_container_guid": "{0b59c8f0-56ac-69cf-b4e1-ea1762ceb466}",
+        "server_host": "SIMFACTORY-01",
+        "register": 5,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{1250539a-e0b0-7939-d52f-d9ab91e548c7}@SIMFACTORY-01": {
+        "signal_container_guid": "{1250539a-e0b0-7939-d52f-d9ab91e548c7}",
+        "server_host": "SIMFACTORY-01",
+        "register": 10,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{14944123-2930-f4ce-2d1e-169c1b6b4dff}@SIMFACTORY-01": {
+        "signal_container_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+        "server_host": "SIMFACTORY-01",
+        "register": 14,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{1aee8e25-06a8-296c-a0fd-5f35bf295091}@SIMFACTORY-01": {
+        "signal_container_guid": "{1aee8e25-06a8-296c-a0fd-5f35bf295091}",
+        "server_host": "SIMFACTORY-01",
+        "register": 2,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{27bfc9f3-ef76-1ef7-b492-3a66542cf938}@SIMFACTORY-01": {
+        "signal_container_guid": "{27bfc9f3-ef76-1ef7-b492-3a66542cf938}",
+        "server_host": "SIMFACTORY-01",
+        "register": 0,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{30e675dc-321a-9507-1676-bf91aa4b49a2}@SIMFACTORY-01": {
+        "signal_container_guid": "{30e675dc-321a-9507-1676-bf91aa4b49a2}",
+        "server_host": "SIMFACTORY-01",
+        "register": 4,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{34f0331a-0903-6636-a023-ae2cfeacd559}@SIMFACTORY-01": {
+        "signal_container_guid": "{34f0331a-0903-6636-a023-ae2cfeacd559}",
+        "server_host": "SIMFACTORY-01",
+        "register": 1,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{38e32a85-1e05-c1b7-378c-49b5d22a0e3a}@SIMFACTORY-01": {
+        "signal_container_guid": "{38e32a85-1e05-c1b7-378c-49b5d22a0e3a}",
+        "server_host": "SIMFACTORY-01",
+        "register": 1,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{4077a493-9b1e-cfad-fc17-f2721921f3a3}@SIMFACTORY-01": {
+        "signal_container_guid": "{4077a493-9b1e-cfad-fc17-f2721921f3a3}",
+        "server_host": "SIMFACTORY-01",
+        "register": 0,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{6e3e5b48-03a2-a0df-e2bb-e39737089a79}@SIMFACTORY-01": {
+        "signal_container_guid": "{6e3e5b48-03a2-a0df-e2bb-e39737089a79}",
+        "server_host": "SIMFACTORY-01",
+        "register": 4,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01": {
+        "signal_container_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "server_host": "SIMFACTORY-01",
+        "register": 8,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{8c5183f1-8501-6db8-6825-1f2eca53cc95}@SIMFACTORY-01": {
+        "signal_container_guid": "{8c5183f1-8501-6db8-6825-1f2eca53cc95}",
+        "server_host": "SIMFACTORY-01",
+        "register": 11,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{953e8e5e-9940-8343-5ccb-619529e5490c}@SIMFACTORY-01": {
+        "signal_container_guid": "{953e8e5e-9940-8343-5ccb-619529e5490c}",
+        "server_host": "SIMFACTORY-01",
+        "register": 2,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01": {
+        "signal_container_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "server_host": "SIMFACTORY-01",
+        "register": 6,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01": {
+        "signal_container_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "server_host": "SIMFACTORY-01",
+        "register": 7,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{cb872be5-fa5b-745b-4154-fdedd7496e19}@SIMFACTORY-01": {
+        "signal_container_guid": "{cb872be5-fa5b-745b-4154-fdedd7496e19}",
+        "server_host": "SIMFACTORY-01",
+        "register": 3,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{cd437a96-47b2-9cb3-019f-b1e2768a6507}@SIMFACTORY-01": {
+        "signal_container_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+        "server_host": "SIMFACTORY-01",
+        "register": 12,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}@SIMFACTORY-01": {
+        "signal_container_guid": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}",
+        "server_host": "SIMFACTORY-01",
+        "register": 9,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}@SIMFACTORY-01": {
+        "signal_container_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+        "server_host": "SIMFACTORY-01",
+        "register": 15,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}@SIMFACTORY-01": {
+        "signal_container_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+        "server_host": "SIMFACTORY-01",
+        "register": 13,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{fbb545d8-79dd-289e-5a64-154ccfaef9c2}@SIMFACTORY-01": {
+        "signal_container_guid": "{fbb545d8-79dd-289e-5a64-154ccfaef9c2}",
+        "server_host": "SIMFACTORY-01",
+        "register": 3,
+        "unit_id": 1,
+        "variable_name": null
+      },
+      "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}@SIMFACTORY-01": {
+        "signal_container_guid": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}",
+        "server_host": "SIMFACTORY-01",
+        "register": 10,
+        "unit_id": 1,
+        "variable_name": null
+      }
+    },
+    "edges": [
+      {
+        "source": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}@PLC-03",
+        "target": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}@PLC-03",
+        "source_guid": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.9982,
+        "slope": 0.998397,
+        "intercept": 65.528,
+        "relationship": "positive"
+      },
+      {
+        "source": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}@PLC-03",
+        "target": "{2f0e927e-74be-74e4-febb-10ee46a30962}@PLC-03",
+        "source_guid": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.9958,
+        "slope": 0.991096,
+        "intercept": 1171.7887,
+        "relationship": "positive"
+      },
+      {
+        "source": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}@PLC-03",
+        "target": "{24146e97-0d84-fe60-6c28-70debd17a8ed}@PLC-03",
+        "source_guid": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.7507,
+        "slope": -0.576895,
+        "intercept": 58561.3062,
+        "relationship": "negative"
+      },
+      {
+        "source": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}@PLC-03",
+        "target": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}@PLC-03",
+        "source_guid": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.7537,
+        "slope": -0.579153,
+        "intercept": 58661.446,
+        "relationship": "negative"
+      },
+      {
+        "source": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}@PLC-03",
+        "target": "{8c3cab04-5064-7889-4525-30e44d2c485e}@PLC-03",
+        "source_guid": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.7603,
+        "slope": -0.234942,
+        "intercept": 23567.3455,
+        "relationship": "negative"
+      },
+      {
+        "source": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}@PLC-03",
+        "target": "{2f0e927e-74be-74e4-febb-10ee46a30962}@PLC-03",
+        "source_guid": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.9853,
+        "slope": 0.980326,
+        "intercept": 1705.9925,
+        "relationship": "positive"
+      },
+      {
+        "source": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}@PLC-03",
+        "target": "{24146e97-0d84-fe60-6c28-70debd17a8ed}@PLC-03",
+        "source_guid": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.7539,
+        "slope": -0.578151,
+        "intercept": 58605.6966,
+        "relationship": "negative"
+      },
+      {
+        "source": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}@PLC-03",
+        "target": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}@PLC-03",
+        "source_guid": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.7634,
+        "slope": -0.585498,
+        "intercept": 58952.3632,
+        "relationship": "negative"
+      },
+      {
+        "source": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}@PLC-03",
+        "target": "{8c3cab04-5064-7889-4525-30e44d2c485e}@PLC-03",
+        "source_guid": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.7708,
+        "slope": -0.237668,
+        "intercept": 23692.966,
+        "relationship": "negative"
+      },
+      {
+        "source": "{2f0e927e-74be-74e4-febb-10ee46a30962}@PLC-03",
+        "target": "{24146e97-0d84-fe60-6c28-70debd17a8ed}@PLC-03",
+        "source_guid": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.7293,
+        "slope": -0.563014,
+        "intercept": 58306.3642,
+        "relationship": "negative"
+      },
+      {
+        "source": "{2f0e927e-74be-74e4-febb-10ee46a30962}@PLC-03",
+        "target": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}@PLC-03",
+        "source_guid": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.7323,
+        "slope": -0.565287,
+        "intercept": 58408.8157,
+        "relationship": "negative"
+      },
+      {
+        "source": "{2f0e927e-74be-74e4-febb-10ee46a30962}@PLC-03",
+        "target": "{8c3cab04-5064-7889-4525-30e44d2c485e}@PLC-03",
+        "source_guid": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.7399,
+        "slope": -0.229669,
+        "intercept": 23482.235,
+        "relationship": "negative"
+      },
+      {
+        "source": "{0edbd7b2-a581-ab79-ca05-5ebbc5f1102c}@PLC-03",
+        "target": "{a359770f-8df5-5cd1-c8ed-54b739c65019}@PLC-03",
+        "source_guid": "{0edbd7b2-a581-ab79-ca05-5ebbc5f1102c}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{a359770f-8df5-5cd1-c8ed-54b739c65019}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.7004,
+        "slope": 0.699938,
+        "intercept": 3408.3815,
+        "relationship": "positive"
+      },
+      {
+        "source": "{0edbd7b2-a581-ab79-ca05-5ebbc5f1102c}@PLC-03",
+        "target": "{ade31d6a-35f1-8ab7-518f-cac085d44236}@PLC-03",
+        "source_guid": "{0edbd7b2-a581-ab79-ca05-5ebbc5f1102c}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{ade31d6a-35f1-8ab7-518f-cac085d44236}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.7372,
+        "slope": 0.80265,
+        "intercept": 3981.8302,
+        "relationship": "positive"
+      },
+      {
+        "source": "{24146e97-0d84-fe60-6c28-70debd17a8ed}@PLC-03",
+        "target": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}@PLC-03",
+        "source_guid": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.9983,
+        "slope": 0.998451,
+        "intercept": 37.427,
+        "relationship": "positive"
+      },
+      {
+        "source": "{24146e97-0d84-fe60-6c28-70debd17a8ed}@PLC-03",
+        "target": "{8c3cab04-5064-7889-4525-30e44d2c485e}@PLC-03",
+        "source_guid": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.9962,
+        "slope": 0.40058,
+        "intercept": -77.9813,
+        "relationship": "positive"
+      },
+      {
+        "source": "{a359770f-8df5-5cd1-c8ed-54b739c65019}@PLC-03",
+        "target": "{ade31d6a-35f1-8ab7-518f-cac085d44236}@PLC-03",
+        "source_guid": "{a359770f-8df5-5cd1-c8ed-54b739c65019}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{ade31d6a-35f1-8ab7-518f-cac085d44236}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.9608,
+        "slope": 1.046907,
+        "intercept": 1212.5108,
+        "relationship": "positive"
+      },
+      {
+        "source": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}@PLC-03",
+        "target": "{8c3cab04-5064-7889-4525-30e44d2c485e}@PLC-03",
+        "source_guid": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.9974,
+        "slope": 0.401053,
+        "intercept": -87.8912,
+        "relationship": "positive"
+      },
+      {
+        "source": "{f0157f75-ddd1-c690-4571-908af366e6bc}@PLC-03",
+        "target": "{9ec3d57d-fbfa-5bdc-2d26-96cf1602f180}@PLC-03",
+        "source_guid": "{f0157f75-ddd1-c690-4571-908af366e6bc}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{9ec3d57d-fbfa-5bdc-2d26-96cf1602f180}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.7286,
+        "slope": 0.965861,
+        "intercept": 3446.5885,
+        "relationship": "positive"
+      },
+      {
+        "source": "{51105b41-d61f-37bb-4ba4-34d9f79a3b0a}@PLC-03",
+        "target": "{f29e15c6-0d48-34c4-cd45-4bc33cc7a88f}@PLC-03",
+        "source_guid": "{51105b41-d61f-37bb-4ba4-34d9f79a3b0a}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{f29e15c6-0d48-34c4-cd45-4bc33cc7a88f}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.9991,
+        "slope": -0.333351,
+        "intercept": 10922.3955,
+        "relationship": "negative"
+      },
+      {
+        "source": "{51105b41-d61f-37bb-4ba4-34d9f79a3b0a}@PLC-03",
+        "target": "{2ce6b25e-2032-782f-2f2f-2b9cd04054ae}@PLC-03",
+        "source_guid": "{51105b41-d61f-37bb-4ba4-34d9f79a3b0a}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{2ce6b25e-2032-782f-2f2f-2b9cd04054ae}",
+        "target_server_host": "PLC-03",
+        "pearson_r": -0.9997,
+        "slope": -0.666702,
+        "intercept": 54612.7813,
+        "relationship": "negative"
+      },
+      {
+        "source": "{f29e15c6-0d48-34c4-cd45-4bc33cc7a88f}@PLC-03",
+        "target": "{2ce6b25e-2032-782f-2f2f-2b9cd04054ae}@PLC-03",
+        "source_guid": "{f29e15c6-0d48-34c4-cd45-4bc33cc7a88f}",
+        "source_server_host": "PLC-03",
+        "target_guid": "{2ce6b25e-2032-782f-2f2f-2b9cd04054ae}",
+        "target_server_host": "PLC-03",
+        "pearson_r": 0.9989,
+        "slope": 1.996608,
+        "intercept": 32769.8078,
+        "relationship": "positive"
+      },
+      {
+        "source": "{9cff0568-8cd0-a692-eee3-633f0099144b}@RTU-02",
+        "target": "{477ba933-a90a-f1f4-b356-ef21c37d9762}@RTU-02",
+        "source_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "source_server_host": "RTU-02",
+        "target_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "target_server_host": "RTU-02",
+        "pearson_r": 0.7895,
+        "slope": 0.78959,
+        "intercept": 2406.4765,
+        "relationship": "positive"
+      },
+      {
+        "source": "{9cff0568-8cd0-a692-eee3-633f0099144b}@RTU-02",
+        "target": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}@RTU-02",
+        "source_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "source_server_host": "RTU-02",
+        "target_guid": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "target_server_host": "RTU-02",
+        "pearson_r": 0.8141,
+        "slope": 0.886278,
+        "intercept": 3047.0128,
+        "relationship": "positive"
+      },
+      {
+        "source": "{477ba933-a90a-f1f4-b356-ef21c37d9762}@RTU-02",
+        "target": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}@RTU-02",
+        "source_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "source_server_host": "RTU-02",
+        "target_guid": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "target_server_host": "RTU-02",
+        "pearson_r": 0.9623,
+        "slope": 1.047086,
+        "intercept": 1200.1512,
+        "relationship": "positive"
+      },
+      {
+        "source": "{16d2fe48-edae-9ac0-f1f5-2af904738498}@RTU-03",
+        "target": "{aab8ab15-288d-2582-e163-3f56518cd9e6}@RTU-03",
+        "source_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "source_server_host": "RTU-03",
+        "target_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "target_server_host": "RTU-03",
+        "pearson_r": 0.9991,
+        "slope": 0.999112,
+        "intercept": 27.3396,
+        "relationship": "positive"
+      },
+      {
+        "source": "{16d2fe48-edae-9ac0-f1f5-2af904738498}@RTU-03",
+        "target": "{c0db3528-d44e-eb53-fc4f-a1814793126e}@RTU-03",
+        "source_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "source_server_host": "RTU-03",
+        "target_guid": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "target_server_host": "RTU-03",
+        "pearson_r": 0.9974,
+        "slope": 0.401026,
+        "intercept": -88.0293,
+        "relationship": "positive"
+      },
+      {
+        "source": "{aab8ab15-288d-2582-e163-3f56518cd9e6}@RTU-03",
+        "target": "{c0db3528-d44e-eb53-fc4f-a1814793126e}@RTU-03",
+        "source_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "source_server_host": "RTU-03",
+        "target_guid": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "target_server_host": "RTU-03",
+        "pearson_r": 0.9968,
+        "slope": 0.400828,
+        "intercept": -81.0914,
+        "relationship": "positive"
+      },
+      {
+        "source": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}@RTU-05",
+        "target": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}@RTU-05",
+        "source_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "source_server_host": "RTU-05",
+        "target_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "target_server_host": "RTU-05",
+        "pearson_r": -0.9991,
+        "slope": -0.333431,
+        "intercept": 10924.8724,
+        "relationship": "negative"
+      },
+      {
+        "source": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}@RTU-05",
+        "target": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}@RTU-05",
+        "source_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "source_server_host": "RTU-05",
+        "target_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "target_server_host": "RTU-05",
+        "pearson_r": -0.9997,
+        "slope": -0.666618,
+        "intercept": 54610.1602,
+        "relationship": "negative"
+      },
+      {
+        "source": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}@RTU-05",
+        "target": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}@RTU-05",
+        "source_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "source_server_host": "RTU-05",
+        "target_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "target_server_host": "RTU-05",
+        "pearson_r": 0.9989,
+        "slope": 1.995862,
+        "intercept": 32770.2015,
+        "relationship": "positive"
+      },
+      {
+        "source": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}@RTU-06",
+        "target": "{f986370c-07cb-f8a4-6963-83739c0f44b8}@RTU-06",
+        "source_guid": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "source_server_host": "RTU-06",
+        "target_guid": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "target_server_host": "RTU-06",
+        "pearson_r": 0.9943,
+        "slope": 0.994301,
+        "intercept": 276.1209,
+        "relationship": "positive"
+      },
+      {
+        "source": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}@RTU-06",
+        "target": "{c88af635-9de8-c3c9-c786-d50cab398271}@RTU-06",
+        "source_guid": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "source_server_host": "RTU-06",
+        "target_guid": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "target_server_host": "RTU-06",
+        "pearson_r": 0.9897,
+        "slope": 0.985117,
+        "intercept": 1462.9516,
+        "relationship": "positive"
+      },
+      {
+        "source": "{f986370c-07cb-f8a4-6963-83739c0f44b8}@RTU-06",
+        "target": "{c88af635-9de8-c3c9-c786-d50cab398271}@RTU-06",
+        "source_guid": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "source_server_host": "RTU-06",
+        "target_guid": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "target_server_host": "RTU-06",
+        "pearson_r": 0.9958,
+        "slope": 0.99102,
+        "intercept": 1177.0249,
+        "relationship": "positive"
+      },
+      {
+        "source": "{27bfc9f3-ef76-1ef7-b492-3a66542cf938}@SIMFACTORY-01",
+        "target": "{4077a493-9b1e-cfad-fc17-f2721921f3a3}@SIMFACTORY-01",
+        "source_guid": "{27bfc9f3-ef76-1ef7-b492-3a66542cf938}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{4077a493-9b1e-cfad-fc17-f2721921f3a3}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.7013,
+        "slope": 0.761098,
+        "intercept": 1.6698,
+        "relationship": "positive"
+      },
+      {
+        "source": "{1aee8e25-06a8-296c-a0fd-5f35bf295091}@SIMFACTORY-01",
+        "target": "{953e8e5e-9940-8343-5ccb-619529e5490c}@SIMFACTORY-01",
+        "source_guid": "{1aee8e25-06a8-296c-a0fd-5f35bf295091}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{953e8e5e-9940-8343-5ccb-619529e5490c}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.704,
+        "slope": 0.76589,
+        "intercept": 0.9587,
+        "relationship": "positive"
+      },
+      {
+        "source": "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01",
+        "target": "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01",
+        "source_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.9951,
+        "slope": 0.871219,
+        "intercept": -14.3611,
+        "relationship": "positive"
+      },
+      {
+        "source": "{b42229e7-e2e8-018e-c0e0-2839708bf508}@SIMFACTORY-01",
+        "target": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01",
+        "source_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.9853,
+        "slope": 0.42086,
+        "intercept": 18.59,
+        "relationship": "positive"
+      },
+      {
+        "source": "{bd0445a6-e6ba-0065-1d1a-b21059938099}@SIMFACTORY-01",
+        "target": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}@SIMFACTORY-01",
+        "source_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 0.979,
+        "slope": 0.477605,
+        "intercept": 26.3167,
+        "relationship": "positive"
+      },
+      {
+        "source": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}@SIMFACTORY-01",
+        "target": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}@SIMFACTORY-01",
+        "source_guid": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}",
+        "source_server_host": "SIMFACTORY-01",
+        "target_guid": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}",
+        "target_server_host": "SIMFACTORY-01",
+        "pearson_r": 1.0,
+        "slope": 8.0,
+        "intercept": 0.0,
+        "relationship": "positive"
+      }
+    ]
+  },
+  "invariants": [
+    {
+      "type": "value_range",
+      "registers": [
+        100
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{b66be63f-e37f-34d4-222b-bf696c6882e2}",
+      "server_host": "PLC-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 18883,
+      "parameters": {
+        "min": 0,
+        "max": 9,
+        "mean": 0.0664,
+        "stddev": 0.7057
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        102
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{0edbd7b2-a581-ab79-ca05-5ebbc5f1102c}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14196,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 11386.3358,
+        "stddev": 23754.543
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        106
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14095,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 30534.753,
+        "stddev": 21054.6744
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        100
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14097,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 48569.3064,
+        "stddev": 27398.351
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        103
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14196,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 30553.8053,
+        "stddev": 21036.1471
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        112
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{2ce6b25e-2032-782f-2f2f-2b9cd04054ae}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14096,
+      "parameters": {
+        "min": 33801,
+        "max": 33870,
+        "mean": 33832.779,
+        "stddev": 15.0041
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        101
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14094,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 49301.4535,
+        "stddev": 27272.648
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        100
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14193,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 48517.6772,
+        "stddev": 27430.1029
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        110
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{51105b41-d61f-37bb-4ba4-34d9f79a3b0a}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14096,
+      "parameters": {
+        "min": 31113,
+        "max": 31216,
+        "mean": 31168.3303,
+        "stddev": 22.4976
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1028
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{71c69fdc-7727-f893-6eac-4cce81f85c39}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14233,
+      "parameters": {
+        "min": 28835,
+        "max": 28835,
+        "mean": 28835.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1025
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{736ccce8-02aa-c741-b8c8-0a2c5e0f115b}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14231,
+      "parameters": {
+        "min": 30801,
+        "max": 30801,
+        "mean": 30801.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1027
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{878933e1-d364-026c-b2e8-d704943ca001}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14233,
+      "parameters": {
+        "min": 31675,
+        "max": 31675,
+        "mean": 31675.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        107
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14098,
+      "parameters": {
+        "min": 0,
+        "max": 27708,
+        "mean": 12156.9425,
+        "stddev": 8466.0206
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1026
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{9ec3d57d-fbfa-5bdc-2d26-96cf1602f180}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14374,
+      "parameters": {
+        "min": 45295,
+        "max": 55295,
+        "mean": 50294.3043,
+        "stddev": 5000.1739
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        104
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{a359770f-8df5-5cd1-c8ed-54b739c65019}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14099,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 11365.1258,
+        "stddev": 23718.0166
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        105
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{ade31d6a-35f1-8ab7-518f-cac085d44236}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14097,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 13127.1976,
+        "stddev": 25855.6041
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        109
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{e2435434-2111-e5c9-b031-71ab473415f4}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14098,
+      "parameters": {
+        "min": 28662,
+        "max": 28992,
+        "mean": 28834.2351,
+        "stddev": 99.0711
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        108
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{f0157f75-ddd1-c690-4571-908af366e6bc}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14097,
+      "parameters": {
+        "min": 44345,
+        "max": 55429,
+        "mean": 48496.892,
+        "stddev": 3771.7076
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        111
+      ],
+      "unit_id": 0,
+      "signal_container_guid": "{f29e15c6-0d48-34c4-cd45-4bc33cc7a88f}",
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14099,
+      "parameters": {
+        "min": 517,
+        "max": 551,
+        "mean": 532.3878,
+        "stddev": 7.5064
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 113306,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 11455.1413,
+        "stddev": 23809.8533
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127398,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 11404.8299,
+        "stddev": 23767.0639
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 113306,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 13194.6718,
+        "stddev": 25906.9226
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 113330,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 30571.2124,
+        "stddev": 21047.4542
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127398,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 30576.1554,
+        "stddev": 21051.1935
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 113330,
+      "parameters": {
+        "min": 0,
+        "max": 27708,
+        "mean": 12171.8146,
+        "stddev": 8462.9626
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{1678a424-49b5-7f7c-c62b-4a48bdf91393}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 91067,
+      "parameters": {
+        "min": 44345,
+        "max": 55429,
+        "mean": 48509.9928,
+        "stddev": 3775.8894
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{6bf882ac-d45d-5f77-68ec-81b109094646}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 91067,
+      "parameters": {
+        "min": 28662,
+        "max": 28992,
+        "mean": 28834.154,
+        "stddev": 99.086
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 94298,
+      "parameters": {
+        "min": 517,
+        "max": 551,
+        "mean": 532.4129,
+        "stddev": 7.529
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        3
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 94298,
+      "parameters": {
+        "min": 33801,
+        "max": 33870,
+        "mean": 33832.8241,
+        "stddev": 15.0434
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 94298,
+      "parameters": {
+        "min": 31113,
+        "max": 31216,
+        "mean": 31168.2619,
+        "stddev": 22.5602
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127398,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 48492.4561,
+        "stddev": 27438.9881
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 108726,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 49306.3458,
+        "stddev": 27267.6804
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 108726,
+      "parameters": {
+        "min": 0,
+        "max": 65535,
+        "mean": 48565.4464,
+        "stddev": 27398.322
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        5
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{0663f224-53e3-9b4b-c494-0d87f4285e99}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "min": 0,
+        "max": 940,
+        "mean": 7.3158,
+        "stddev": 79.0071
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        5
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{0b59c8f0-56ac-69cf-b4e1-ea1762ceb466}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101250,
+      "parameters": {
+        "min": 0,
+        "max": 932,
+        "mean": 7.1801,
+        "stddev": 69.685
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        10
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{1250539a-e0b0-7939-d52f-d9ab91e548c7}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101874,
+      "parameters": {
+        "min": 0,
+        "max": 9,
+        "mean": 0.0668,
+        "stddev": 0.7068
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        14
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{14944123-2930-f4ce-2d1e-169c1b6b4dff}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 231717,
+      "parameters": {
+        "min": 200,
+        "max": 200,
+        "mean": 200.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{1aee8e25-06a8-296c-a0fd-5f35bf295091}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101250,
+      "parameters": {
+        "min": 0,
+        "max": 999,
+        "mean": 4.087,
+        "stddev": 58.6577
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        0
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{27bfc9f3-ef76-1ef7-b492-3a66542cf938}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101250,
+      "parameters": {
+        "min": 0,
+        "max": 999,
+        "mean": 7.2402,
+        "stddev": 77.8035
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        4
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{30e675dc-321a-9507-1676-bf91aa4b49a2}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101250,
+      "parameters": {
+        "min": 0,
+        "max": 999,
+        "mean": 8.6889,
+        "stddev": 85.1996
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{34f0331a-0903-6636-a023-ae2cfeacd559}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101250,
+      "parameters": {
+        "min": 0,
+        "max": 932,
+        "mean": 6.0952,
+        "stddev": 64.2073
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{38e32a85-1e05-c1b7-378c-49b5d22a0e3a}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "min": 0,
+        "max": 940,
+        "mean": 6.1947,
+        "stddev": 72.7151
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        0
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{4077a493-9b1e-cfad-fc17-f2721921f3a3}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "min": 0,
+        "max": 1000,
+        "mean": 7.2216,
+        "stddev": 84.6729
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        4
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{6e3e5b48-03a2-a0df-e2bb-e39737089a79}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "min": 0,
+        "max": 1000,
+        "mean": 8.5319,
+        "stddev": 91.9737
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        8
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "min": 83,
+        "max": 96,
+        "mean": 95.2853,
+        "stddev": 2.4924
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        11
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{8c5183f1-8501-6db8-6825-1f2eca53cc95}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101874,
+      "parameters": {
+        "min": 0,
+        "max": 8,
+        "mean": 0.1802,
+        "stddev": 1.0767
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{953e8e5e-9940-8343-5ccb-619529e5490c}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "min": 0,
+        "max": 1000,
+        "mean": 4.0941,
+        "stddev": 63.8543
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        6
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "min": 157,
+        "max": 184,
+        "mean": 182.2346,
+        "stddev": 5.8352
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        7
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "min": 123,
+        "max": 146,
+        "mean": 144.4051,
+        "stddev": 5.1087
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        3
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{cb872be5-fa5b-745b-4154-fdedd7496e19}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101250,
+      "parameters": {
+        "min": 0,
+        "max": 932,
+        "mean": 3.4911,
+        "stddev": 48.7456
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        12
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{cd437a96-47b2-9cb3-019f-b1e2768a6507}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 231717,
+      "parameters": {
+        "min": 200,
+        "max": 200,
+        "mean": 200.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        9
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 130932,
+      "parameters": {
+        "min": 128,
+        "max": 512,
+        "mean": 342.878,
+        "stddev": 161.0036
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        15
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{ed4f6384-8f6e-11f2-c34d-0f1ac6de66c6}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 231717,
+      "parameters": {
+        "min": 200,
+        "max": 200,
+        "mean": 200.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        13
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{fb49341e-e6ac-620c-fed3-52ae6083b9bd}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 231717,
+      "parameters": {
+        "min": 200,
+        "max": 200,
+        "mean": 200.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        3
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{fbb545d8-79dd-289e-5a64-154ccfaef9c2}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "min": 0,
+        "max": 940,
+        "mean": 3.5869,
+        "stddev": 55.5004
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        10
+      ],
+      "unit_id": 1,
+      "signal_container_guid": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}",
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232477,
+      "parameters": {
+        "min": 1024,
+        "max": 4096,
+        "mean": 2742.7459,
+        "stddev": 1288.1902
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        100,
+        100
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14097,
+      "parameters": {
+        "register_a": 100,
+        "register_b": 100,
+        "signal_guid_a": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "signal_guid_b": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.9982,
+        "slope": 0.998397,
+        "intercept": 65.528,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        100,
+        101
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14097,
+      "parameters": {
+        "register_a": 100,
+        "register_b": 101,
+        "signal_guid_a": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "signal_guid_b": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.9958,
+        "slope": 0.991096,
+        "intercept": 1171.7887,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        100,
+        103
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14097,
+      "parameters": {
+        "register_a": 100,
+        "register_b": 103,
+        "signal_guid_a": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "signal_guid_b": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.7507,
+        "slope": -0.576895,
+        "intercept": 58561.3062,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        100,
+        106
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14097,
+      "parameters": {
+        "register_a": 100,
+        "register_b": 106,
+        "signal_guid_a": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "signal_guid_b": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.7537,
+        "slope": -0.579153,
+        "intercept": 58661.446,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        100,
+        107
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14097,
+      "parameters": {
+        "register_a": 100,
+        "register_b": 107,
+        "signal_guid_a": "{1f20610e-868c-7457-bbe5-3a8717b2efb0}",
+        "signal_guid_b": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.7603,
+        "slope": -0.234942,
+        "intercept": 23567.3455,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        100,
+        101
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14191,
+      "parameters": {
+        "register_a": 100,
+        "register_b": 101,
+        "signal_guid_a": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "signal_guid_b": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.9853,
+        "slope": 0.980326,
+        "intercept": 1705.9925,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        100,
+        103
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14193,
+      "parameters": {
+        "register_a": 100,
+        "register_b": 103,
+        "signal_guid_a": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "signal_guid_b": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.7539,
+        "slope": -0.578151,
+        "intercept": 58605.6966,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        100,
+        106
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14191,
+      "parameters": {
+        "register_a": 100,
+        "register_b": 106,
+        "signal_guid_a": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "signal_guid_b": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.7634,
+        "slope": -0.585498,
+        "intercept": 58952.3632,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        100,
+        107
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14191,
+      "parameters": {
+        "register_a": 100,
+        "register_b": 107,
+        "signal_guid_a": "{4afb2f63-f171-b396-bd68-c2416d2dfffe}",
+        "signal_guid_b": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.7708,
+        "slope": -0.237668,
+        "intercept": 23692.966,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        101,
+        103
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14094,
+      "parameters": {
+        "register_a": 101,
+        "register_b": 103,
+        "signal_guid_a": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "signal_guid_b": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.7293,
+        "slope": -0.563014,
+        "intercept": 58306.3642,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        101,
+        106
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14094,
+      "parameters": {
+        "register_a": 101,
+        "register_b": 106,
+        "signal_guid_a": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "signal_guid_b": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.7323,
+        "slope": -0.565287,
+        "intercept": 58408.8157,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        101,
+        107
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14094,
+      "parameters": {
+        "register_a": 101,
+        "register_b": 107,
+        "signal_guid_a": "{2f0e927e-74be-74e4-febb-10ee46a30962}",
+        "signal_guid_b": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.7399,
+        "slope": -0.229669,
+        "intercept": 23482.235,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        102,
+        104
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14194,
+      "parameters": {
+        "register_a": 102,
+        "register_b": 104,
+        "signal_guid_a": "{0edbd7b2-a581-ab79-ca05-5ebbc5f1102c}",
+        "signal_guid_b": "{a359770f-8df5-5cd1-c8ed-54b739c65019}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.7004,
+        "slope": 0.699938,
+        "intercept": 3408.3815,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        102,
+        105
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14194,
+      "parameters": {
+        "register_a": 102,
+        "register_b": 105,
+        "signal_guid_a": "{0edbd7b2-a581-ab79-ca05-5ebbc5f1102c}",
+        "signal_guid_b": "{ade31d6a-35f1-8ab7-518f-cac085d44236}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.7372,
+        "slope": 0.80265,
+        "intercept": 3981.8302,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        103,
+        106
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14194,
+      "parameters": {
+        "register_a": 103,
+        "register_b": 106,
+        "signal_guid_a": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "signal_guid_b": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.9983,
+        "slope": 0.998451,
+        "intercept": 37.427,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        103,
+        107
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14194,
+      "parameters": {
+        "register_a": 103,
+        "register_b": 107,
+        "signal_guid_a": "{24146e97-0d84-fe60-6c28-70debd17a8ed}",
+        "signal_guid_b": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.9962,
+        "slope": 0.40058,
+        "intercept": -77.9813,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        104,
+        105
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14099,
+      "parameters": {
+        "register_a": 104,
+        "register_b": 105,
+        "signal_guid_a": "{a359770f-8df5-5cd1-c8ed-54b739c65019}",
+        "signal_guid_b": "{ade31d6a-35f1-8ab7-518f-cac085d44236}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.9608,
+        "slope": 1.046907,
+        "intercept": 1212.5108,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        106,
+        107
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14095,
+      "parameters": {
+        "register_a": 106,
+        "register_b": 107,
+        "signal_guid_a": "{1950e5e1-bb66-aea1-7ae5-e6dfe94eadbd}",
+        "signal_guid_b": "{8c3cab04-5064-7889-4525-30e44d2c485e}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.9974,
+        "slope": 0.401053,
+        "intercept": -87.8912,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        108,
+        1026
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14095,
+      "parameters": {
+        "register_a": 108,
+        "register_b": 1026,
+        "signal_guid_a": "{f0157f75-ddd1-c690-4571-908af366e6bc}",
+        "signal_guid_b": "{9ec3d57d-fbfa-5bdc-2d26-96cf1602f180}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.7286,
+        "slope": 0.965861,
+        "intercept": 3446.5885,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        110,
+        111
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14096,
+      "parameters": {
+        "register_a": 110,
+        "register_b": 111,
+        "signal_guid_a": "{51105b41-d61f-37bb-4ba4-34d9f79a3b0a}",
+        "signal_guid_b": "{f29e15c6-0d48-34c4-cd45-4bc33cc7a88f}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.9991,
+        "slope": -0.333351,
+        "intercept": 10922.3955,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        110,
+        112
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14096,
+      "parameters": {
+        "register_a": 110,
+        "register_b": 112,
+        "signal_guid_a": "{51105b41-d61f-37bb-4ba4-34d9f79a3b0a}",
+        "signal_guid_b": "{2ce6b25e-2032-782f-2f2f-2b9cd04054ae}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": -0.9997,
+        "slope": -0.666702,
+        "intercept": 54612.7813,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        111,
+        112
+      ],
+      "unit_id": 0,
+      "signal_container_guid": null,
+      "server_host": "PLC-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 14099,
+      "parameters": {
+        "register_a": 111,
+        "register_b": 112,
+        "signal_guid_a": "{f29e15c6-0d48-34c4-cd45-4bc33cc7a88f}",
+        "signal_guid_b": "{2ce6b25e-2032-782f-2f2f-2b9cd04054ae}",
+        "server_host_a": "PLC-03",
+        "server_host_b": "PLC-03",
+        "pearson_r": 0.9989,
+        "slope": 1.996608,
+        "intercept": 32769.8078,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127398,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 1,
+        "signal_guid_a": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "signal_guid_b": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "server_host_a": "RTU-02",
+        "server_host_b": "RTU-02",
+        "pearson_r": 0.7895,
+        "slope": 0.78959,
+        "intercept": 2406.4765,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127398,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "signal_guid_b": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "server_host_a": "RTU-02",
+        "server_host_b": "RTU-02",
+        "pearson_r": 0.8141,
+        "slope": 0.886278,
+        "intercept": 3047.0128,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 113306,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "signal_guid_b": "{b15b2332-3c31-cc5c-a9eb-160a6a5eaefa}",
+        "server_host_a": "RTU-02",
+        "server_host_b": "RTU-02",
+        "pearson_r": 0.9623,
+        "slope": 1.047086,
+        "intercept": 1200.1512,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 113329,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 1,
+        "signal_guid_a": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "signal_guid_b": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "server_host_a": "RTU-03",
+        "server_host_b": "RTU-03",
+        "pearson_r": 0.9991,
+        "slope": 0.999112,
+        "intercept": 27.3396,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 113330,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "signal_guid_b": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "server_host_a": "RTU-03",
+        "server_host_b": "RTU-03",
+        "pearson_r": 0.9974,
+        "slope": 0.401026,
+        "intercept": -88.0293,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127398,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "signal_guid_b": "{c0db3528-d44e-eb53-fc4f-a1814793126e}",
+        "server_host_a": "RTU-03",
+        "server_host_b": "RTU-03",
+        "pearson_r": 0.9968,
+        "slope": 0.400828,
+        "intercept": -81.0914,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 94298,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "signal_guid_b": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "server_host_a": "RTU-05",
+        "server_host_b": "RTU-05",
+        "pearson_r": -0.9991,
+        "slope": -0.333431,
+        "intercept": 10924.8724,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        3
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 94298,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 3,
+        "signal_guid_a": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "signal_guid_b": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "server_host_a": "RTU-05",
+        "server_host_b": "RTU-05",
+        "pearson_r": -0.9997,
+        "slope": -0.666618,
+        "intercept": 54610.1602,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        2,
+        3
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 94298,
+      "parameters": {
+        "register_a": 2,
+        "register_b": 3,
+        "signal_guid_a": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "signal_guid_b": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "server_host_a": "RTU-05",
+        "server_host_b": "RTU-05",
+        "pearson_r": 0.9989,
+        "slope": 1.995862,
+        "intercept": 32770.2015,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127398,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 1,
+        "signal_guid_a": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "signal_guid_b": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "server_host_a": "RTU-06",
+        "server_host_b": "RTU-06",
+        "pearson_r": 0.9943,
+        "slope": 0.994301,
+        "intercept": 276.1209,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127398,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}",
+        "signal_guid_b": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "server_host_a": "RTU-06",
+        "server_host_b": "RTU-06",
+        "pearson_r": 0.9897,
+        "slope": 0.985117,
+        "intercept": 1462.9516,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-06",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 108726,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{f986370c-07cb-f8a4-6963-83739c0f44b8}",
+        "signal_guid_b": "{c88af635-9de8-c3c9-c786-d50cab398271}",
+        "server_host_a": "RTU-06",
+        "server_host_b": "RTU-06",
+        "pearson_r": 0.9958,
+        "slope": 0.99102,
+        "intercept": 1177.0249,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        0,
+        0
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101248,
+      "parameters": {
+        "register_a": 0,
+        "register_b": 0,
+        "signal_guid_a": "{27bfc9f3-ef76-1ef7-b492-3a66542cf938}",
+        "signal_guid_b": "{4077a493-9b1e-cfad-fc17-f2721921f3a3}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.7013,
+        "slope": 0.761098,
+        "intercept": 1.6698,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        2,
+        2
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 101248,
+      "parameters": {
+        "register_a": 2,
+        "register_b": 2,
+        "signal_guid_a": "{1aee8e25-06a8-296c-a0fd-5f35bf295091}",
+        "signal_guid_b": "{953e8e5e-9940-8343-5ccb-619529e5490c}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.704,
+        "slope": 0.76589,
+        "intercept": 0.9587,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        6,
+        7
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "register_a": 6,
+        "register_b": 7,
+        "signal_guid_a": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "signal_guid_b": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.9951,
+        "slope": 0.871219,
+        "intercept": -14.3611,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        6,
+        8
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "register_a": 6,
+        "register_b": 8,
+        "signal_guid_a": "{b42229e7-e2e8-018e-c0e0-2839708bf508}",
+        "signal_guid_b": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.9853,
+        "slope": 0.42086,
+        "intercept": 18.59,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        7,
+        8
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 232773,
+      "parameters": {
+        "register_a": 7,
+        "register_b": 8,
+        "signal_guid_a": "{bd0445a6-e6ba-0065-1d1a-b21059938099}",
+        "signal_guid_b": "{72f4a3c1-0e2c-4e12-2b6b-7e4385612cf6}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 0.979,
+        "slope": 0.477605,
+        "intercept": 26.3167,
+        "relationship": "positive"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        9,
+        10
+      ],
+      "unit_id": 1,
+      "signal_container_guid": null,
+      "server_host": "SIMFACTORY-01",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 130932,
+      "parameters": {
+        "register_a": 9,
+        "register_b": 10,
+        "signal_guid_a": "{d4ec6360-3da1-e26a-92cd-bf62d22407cc}",
+        "signal_guid_b": "{fd2f3426-de6c-46e2-8ae8-7e08d5d44ee7}",
+        "server_host_a": "SIMFACTORY-01",
+        "server_host_b": "SIMFACTORY-01",
+        "pearson_r": 1.0,
+        "slope": 8.0,
+        "intercept": 0.0,
+        "relationship": "positive"
+      }
+    }
+  ]
+}

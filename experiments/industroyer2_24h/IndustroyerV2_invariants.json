@@ -1,0 +1,363 @@
+{
+  "generated_at": "2026-05-05T07:46:26.123833+00:00",
+  "signal_db_path": "paper_graphs_v2/experiments/industroyer2_24h/IndustroyerV2_signals.duckdb",
+  "st_file_path": null,
+  "baseline_hours": 2.0,
+  "total_observations_used": 22237272,
+  "correlation_graph": {
+    "nodes": {
+      "{477ba933-a90a-f1f4-b356-ef21c37d9762}@RTU-02": {
+        "signal_container_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+        "server_host": "RTU-02",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{9cff0568-8cd0-a692-eee3-633f0099144b}@RTU-02": {
+        "signal_container_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+        "server_host": "RTU-02",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{16d2fe48-edae-9ac0-f1f5-2af904738498}@RTU-03": {
+        "signal_container_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+        "server_host": "RTU-03",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{aab8ab15-288d-2582-e163-3f56518cd9e6}@RTU-03": {
+        "signal_container_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+        "server_host": "RTU-03",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{1678a424-49b5-7f7c-c62b-4a48bdf91393}@RTU-04": {
+        "signal_container_guid": "{1678a424-49b5-7f7c-c62b-4a48bdf91393}",
+        "server_host": "RTU-04",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{6bf882ac-d45d-5f77-68ec-81b109094646}@RTU-04": {
+        "signal_container_guid": "{6bf882ac-d45d-5f77-68ec-81b109094646}",
+        "server_host": "RTU-04",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}@RTU-05": {
+        "signal_container_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "server_host": "RTU-05",
+        "register": 2,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}@RTU-05": {
+        "signal_container_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "server_host": "RTU-05",
+        "register": 3,
+        "unit_id": 247,
+        "variable_name": null
+      },
+      "{bde27d95-23c6-094f-d90b-f5c514b5fd52}@RTU-05": {
+        "signal_container_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "server_host": "RTU-05",
+        "register": 1,
+        "unit_id": 247,
+        "variable_name": null
+      }
+    },
+    "edges": [
+      {
+        "source": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}@RTU-05",
+        "target": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}@RTU-05",
+        "source_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "source_server_host": "RTU-05",
+        "target_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "target_server_host": "RTU-05",
+        "pearson_r": -0.9969,
+        "slope": -0.333084,
+        "intercept": 10921.6773,
+        "relationship": "negative"
+      },
+      {
+        "source": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}@RTU-05",
+        "target": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}@RTU-05",
+        "source_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "source_server_host": "RTU-05",
+        "target_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "target_server_host": "RTU-05",
+        "pearson_r": -0.999,
+        "slope": -0.665884,
+        "intercept": 54611.1692,
+        "relationship": "negative"
+      },
+      {
+        "source": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}@RTU-05",
+        "target": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}@RTU-05",
+        "source_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "source_server_host": "RTU-05",
+        "target_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "target_server_host": "RTU-05",
+        "pearson_r": 0.9962,
+        "slope": 1.987283,
+        "intercept": 32904.2103,
+        "relationship": "positive"
+      }
+    ]
+  },
+  "invariants": [
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{477ba933-a90a-f1f4-b356-ef21c37d9762}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 112031,
+      "parameters": {
+        "min": 65535,
+        "max": 65535,
+        "mean": 65535.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{9cff0568-8cd0-a692-eee3-633f0099144b}",
+      "server_host": "RTU-02",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127250,
+      "parameters": {
+        "min": 65535,
+        "max": 65535,
+        "mean": 65535.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{16d2fe48-edae-9ac0-f1f5-2af904738498}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 112473,
+      "parameters": {
+        "min": 65535,
+        "max": 65535,
+        "mean": 65535.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{aab8ab15-288d-2582-e163-3f56518cd9e6}",
+      "server_host": "RTU-03",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 127250,
+      "parameters": {
+        "min": 65535,
+        "max": 65535,
+        "mean": 65535.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{1678a424-49b5-7f7c-c62b-4a48bdf91393}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 89069,
+      "parameters": {
+        "min": 112,
+        "max": 112,
+        "mean": 112.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{6bf882ac-d45d-5f77-68ec-81b109094646}",
+      "server_host": "RTU-04",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 89069,
+      "parameters": {
+        "min": 27615,
+        "max": 27615,
+        "mean": 27615.0,
+        "stddev": 0.0
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 92498,
+      "parameters": {
+        "min": 10704,
+        "max": 10718,
+        "mean": 10711.3605,
+        "stddev": 4.0437
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        3
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 92498,
+      "parameters": {
+        "min": 54177,
+        "max": 54205,
+        "mean": 54190.7156,
+        "stddev": 8.0668
+      }
+    },
+    {
+      "type": "value_range",
+      "registers": [
+        1
+      ],
+      "unit_id": 247,
+      "signal_container_guid": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 92498,
+      "parameters": {
+        "min": 611,
+        "max": 653,
+        "mean": 631.4218,
+        "stddev": 12.1024
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        2
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 92498,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 2,
+        "signal_guid_a": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "signal_guid_b": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "server_host_a": "RTU-05",
+        "server_host_b": "RTU-05",
+        "pearson_r": -0.9969,
+        "slope": -0.333084,
+        "intercept": 10921.6773,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        1,
+        3
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 92498,
+      "parameters": {
+        "register_a": 1,
+        "register_b": 3,
+        "signal_guid_a": "{bde27d95-23c6-094f-d90b-f5c514b5fd52}",
+        "signal_guid_b": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "server_host_a": "RTU-05",
+        "server_host_b": "RTU-05",
+        "pearson_r": -0.999,
+        "slope": -0.665884,
+        "intercept": 54611.1692,
+        "relationship": "negative"
+      }
+    },
+    {
+      "type": "inter_register",
+      "registers": [
+        2,
+        3
+      ],
+      "unit_id": 247,
+      "signal_container_guid": null,
+      "server_host": "RTU-05",
+      "state_id": null,
+      "state_name": null,
+      "confidence": 1.0,
+      "observation_count": 92498,
+      "parameters": {
+        "register_a": 2,
+        "register_b": 3,
+        "signal_guid_a": "{284d0ba2-8c2c-ddf6-c060-a829a4fcc5a1}",
+        "signal_guid_b": "{a285ff8b-6d6e-aab5-72cb-2d4fd5b674a8}",
+        "server_host_a": "RTU-05",
+        "server_host_b": "RTU-05",
+        "pearson_r": 0.9962,
+        "slope": 1.987283,
+        "intercept": 32904.2103,
+        "relationship": "positive"
+      }
+    }
+  ]
+}

