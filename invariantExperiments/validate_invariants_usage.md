@@ -63,6 +63,80 @@ timestamp is available. Each violation also includes a `source` field:
 Use this form when the protocol signal data is split across separate DuckDBs,
 which is the normal layout for this repo.
 
+## Unified SAIN and GECO Alerts
+
+`validate_invariants.py` only creates SAIN-style invariant violations. GECO
+already creates its own alert files through `network_aug.geco score` and
+`network_aug.geco_opcua score`.
+
+To combine both detector families into one alert file, use
+`collect_alerts.py`:
+
+```bash
+python -m invariantExperiments.collect_alerts \
+  --sain-pair modbus_invariants.json attack_modbus_signals.duckdb \
+  --sain-pair mqtt_invariants.json attack_mqtt_signals.duckdb \
+  --sain-pair opcua_invariants.json attack_opcua_signals.duckdb \
+  --geco-alerts modbus=modbus_geco_alerts.json \
+  --geco-alerts opcua=opcua_geco_alerts.json \
+  --output unified_alerts.json
+```
+
+The GECO protocol prefix is optional when the file already has a `protocol`
+field. Modbus GECO files usually do not, so `modbus=...` is recommended.
+
+The unified file has this shape:
+
+```json
+{
+  "summary": {
+    "total_alerts": 2,
+    "by_source": {
+      "sain": 1,
+      "geco": 1
+    },
+    "by_protocol": {
+      "modbus": 2
+    },
+    "by_type": {
+      "value_range": 1,
+      "geco_cusum": 1
+    }
+  },
+  "inputs": {
+    "sain_pairs": [],
+    "geco_alerts": []
+  },
+  "alerts": []
+}
+```
+
+Each alert in `alerts` uses the same normalized fields:
+
+```json
+{
+  "source": "sain",
+  "protocol": "modbus",
+  "type": "value_range",
+  "name": "reg_40001",
+  "signal_ids": ["guid@PLC"],
+  "start_timestamp": 123.0,
+  "end_timestamp": 123.0,
+  "severity": "medium",
+  "details": {},
+  "source_files": {},
+  "raw": {}
+}
+```
+
+GECO alerts use `source: "geco"` and `type: "geco_cusum"`. Their `details`
+include `peak_cusum`, `threshold`, `triggered_points`, `max_abs_error`, and
+`first_trigger_timestamp`. SAIN alerts keep the invariant violation details,
+benign values, attack values, and observation count.
+
+Use `unified_alerts.json` when a downstream report, prompt, or graph import
+should consume both SAIN invariant violations and GECO residual/CUSUM alerts.
+
 ## Supported Inputs
 
 The script supports invariant JSON files produced by the repo's miners:
